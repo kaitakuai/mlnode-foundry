@@ -1,0 +1,6 @@
+[tools]
+python = "3.12"
+cue = "0.16"
+
+[env]
+VIRTUAL_ENV_DISABLE_PROMPT = "1"
