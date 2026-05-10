@@ -1,0 +1,57 @@
+# syntax=docker/dockerfile:1.7
+#
+# Stage 2 build — `mlnode-base` image.
+#
+# Skeleton. Real implementation lands in PR #2 (Phase 3). For now this file
+# documents the intended structure.
+#
+# Inputs (from `tools/stage2.lock.cue` + CI):
+#   BASE_IMAGE         — kaitakuai/vllm digest pin (Stage 1)
+#   UPSTREAM_REPO      — gonka-ai/gonka
+#   UPSTREAM_COMMIT    — pinned SHA from stage2.lock.cue
+#   MLNODE_VERSION     — for tagging
+#
+# Pipeline:
+#   1. Clone upstream `gonka-ai/gonka` at pinned commit (separate stage, alpine/git)
+#   2. Apply `patches/*.patch` (currently: Content-Type middleware fix)
+#   3. Run upstream's mlnode/packages/api/Dockerfile via --build-context
+#      with BASE_IMAGE overridden to kaitakuai/vllm@digest
+#   4. Output: tagged image ready for ghcr.io/kaitakuai/mlnode-base push
+
+ARG BASE_IMAGE
+ARG UPSTREAM_REPO
+ARG UPSTREAM_COMMIT
+ARG MLNODE_VERSION
+
+# Stage A — fetch + patch upstream source
+FROM alpine/git:latest AS src
+ARG UPSTREAM_REPO
+ARG UPSTREAM_COMMIT
+WORKDIR /work
+RUN git clone --depth 100 https://github.com/${UPSTREAM_REPO}.git . && \
+    git fetch --depth 1 origin ${UPSTREAM_COMMIT} && \
+    git checkout ${UPSTREAM_COMMIT}
+COPY patches/ /patches/
+RUN if [ -d /patches ] && [ "$(ls -A /patches)" ]; then \
+        for p in /patches/*.patch; do \
+            echo "Applying $p" && git apply --3way "$p"; \
+        done; \
+    else \
+        echo "No patches to apply"; \
+    fi
+
+# Stage B — actual build (real implementation invokes upstream Dockerfile via --build-context)
+# For Phase 2 skeleton: just inherit BASE_IMAGE and exit. PR #2 wires the real build.
+FROM ${BASE_IMAGE} AS app
+
+ARG MLNODE_VERSION
+LABEL gonka.kaitaku.stage="2" \
+      gonka.kaitaku.mlnode_version="${MLNODE_VERSION}" \
+      gonka.kaitaku.skeleton="true" \
+      org.opencontainers.image.source="https://github.com/kaitakuai/mlnode-foundry" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
+# TODO(PR#2): COPY --from=src /work/mlnode /src/mlnode
+# TODO(PR#2): RUN cd /src/mlnode && \
+#     poetry install --no-dev (via upstream Dockerfile builder stage)
+# TODO(PR#2): introspect vLLM env vars → write state/_stage2-vllm-env.json
