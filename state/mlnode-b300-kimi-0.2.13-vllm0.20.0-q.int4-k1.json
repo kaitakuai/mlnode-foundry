@@ -1,0 +1,18 @@
+{
+  "profile": "profiles/b300-kimi-int4.cue",
+  "profile_hash": "862dbd158ce076d1d6a1e2587a262060aa7016b14b3921bd9a2acf8f3fbbda39",
+  "status": "draft",
+  "image": {
+    "package": "ghcr.io/kaitakuai/mlnode-b300-kimi",
+    "tag": "0.2.13-vllm0.20.0-q.int4-k1",
+    "digest": "sha256:4570596624ad2dc6df264dd0e8ba99a77e12bf11e3cb104675e2403508c6fbf0",
+    "built_at": "2026-05-11T10:13:49Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main"
+  },
+  "validation": {
+    "build_smoke": {
+      "result": "pass",
+      "at": "2026-05-11T10:13:49Z"
+    }
+  }
+}
