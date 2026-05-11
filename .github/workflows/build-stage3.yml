@@ -235,21 +235,31 @@ jobs:
 
       - name: Commit state file
         if: steps.skip.outputs.skip != 'true'
+        env:
+          STATE_PUSH_TOKEN: ${{ secrets.STATE_PUSH_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull --rebase --autostash origin main || true
+          REMOTE="https://x-access-token:${STATE_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
+          git pull --rebase --autostash "$REMOTE" main || true
           git add "$state_file"
           if git diff --cached --quiet; then
             echo "No state changes to commit"
           else
             git commit -m "state: ${{ matrix.profile }} → ${{ steps.meta.outputs.tag }} (hash ${{ steps.meta.outputs.profile_hash }}, digest ${{ steps.build.outputs.digest }}, run ${{ github.run_id }})"
-            # Retry push up to 3 times (other matrix jobs may push concurrently)
+            pushed=false
             for i in 1 2 3; do
-              git pull --rebase --autostash origin main && git push origin HEAD:main && break
+              if git pull --rebase --autostash "$REMOTE" main && git push "$REMOTE" HEAD:main; then
+                pushed=true
+                break
+              fi
               echo "Push attempt $i failed, retrying..."
               sleep $((i * 5))
             done
+            if [ "$pushed" != "true" ]; then
+              echo "::error::Failed to push state file after 3 attempts"
+              exit 1
+            fi
           fi
 
       - name: Summary

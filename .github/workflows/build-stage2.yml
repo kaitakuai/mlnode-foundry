@@ -148,6 +148,8 @@ jobs:
           cat state/_stage2-vllm-env.json
 
       - name: Commit state/_stage2-vllm-env.json
+        env:
+          STATE_PUSH_TOKEN: ${{ secrets.STATE_PUSH_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -156,7 +158,7 @@ jobs:
             echo "No state changes to commit"
           else
             git commit -m "state: update _stage2-vllm-env.json after stage2 build (digest ${{ steps.build.outputs.digest }}, run ${{ github.run_id }})"
-            git push origin HEAD:main
+            git push "https://x-access-token:${STATE_PUSH_TOKEN}@github.com/${{ github.repository }}.git" HEAD:main
           fi
 
       - name: Summary
