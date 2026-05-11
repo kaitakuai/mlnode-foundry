@@ -1,57 +1,161 @@
 # syntax=docker/dockerfile:1.7
 #
-# Stage 2 build — `mlnode-base` image.
-#
-# Skeleton. Real implementation lands in PR #2 (Phase 3). For now this file
-# documents the intended structure.
-#
-# Inputs (from `tools/stage2.lock.cue` + CI):
-#   BASE_IMAGE         — kaitakuai/vllm digest pin (Stage 1)
-#   UPSTREAM_REPO      — gonka-ai/gonka
-#   UPSTREAM_COMMIT    — pinned SHA from stage2.lock.cue
-#   MLNODE_VERSION     — for tagging
+# Stage 2 build — kaitakuai/mlnode-base image.
 #
 # Pipeline:
-#   1. Clone upstream `gonka-ai/gonka` at pinned commit (separate stage, alpine/git)
-#   2. Apply `patches/*.patch` (currently: Content-Type middleware fix)
-#   3. Run upstream's mlnode/packages/api/Dockerfile via --build-context
-#      with BASE_IMAGE overridden to kaitakuai/vllm@digest
-#   4. Output: tagged image ready for ghcr.io/kaitakuai/mlnode-base push
+#   1. Clone upstream gonka-ai/gonka at pinned commit (Stage A: alpine/git)
+#   2. Apply patches/*.patch to source tree
+#   3. Embed upstream's mlnode/packages/api/Dockerfile logic:
+#        a. base: apt + OpenSSL 1.1.1u (Stage B)
+#        b. builder: poetry + venv install (Stage C)
+#        c. app: final image with mlnode source (Stage D)
+#
+# Inputs (from tools/stage2.lock.cue, set by CI):
+#   BASE_IMAGE      — Stage 1 image digest pin (kaitakuai/vllm@sha256:...)
+#   UPSTREAM_REPO   — gonka-ai/gonka
+#   UPSTREAM_COMMIT — 40-char SHA from stage2.lock.cue::upstream.commit
+#   MLNODE_VERSION  — for label
+#   VLLM_VERSION    — for label
 
 ARG BASE_IMAGE
 ARG UPSTREAM_REPO
 ARG UPSTREAM_COMMIT
 ARG MLNODE_VERSION
+ARG VLLM_VERSION
 
-# Stage A — fetch + patch upstream source
+################################################################################
+# Stage A — source preparation: clone upstream + apply patches
+################################################################################
 FROM alpine/git:latest AS src
 ARG UPSTREAM_REPO
 ARG UPSTREAM_COMMIT
 WORKDIR /work
-RUN git clone --depth 100 https://github.com/${UPSTREAM_REPO}.git . && \
+RUN git init -q && \
+    git remote add origin https://github.com/${UPSTREAM_REPO}.git && \
     git fetch --depth 1 origin ${UPSTREAM_COMMIT} && \
-    git checkout ${UPSTREAM_COMMIT}
+    git checkout FETCH_HEAD
+
 COPY patches/ /patches/
-RUN if [ -d /patches ] && [ "$(ls -A /patches)" ]; then \
+RUN if ls /patches/*.patch >/dev/null 2>&1; then \
         for p in /patches/*.patch; do \
-            echo "Applying $p" && git apply --3way "$p"; \
+            echo "==> Applying $p"; \
+            git apply --3way "$p" || (echo "Patch $p failed" >&2; exit 1); \
         done; \
     else \
-        echo "No patches to apply"; \
+        echo "==> No patches to apply"; \
     fi
 
-# Stage B — actual build (real implementation invokes upstream Dockerfile via --build-context)
-# For Phase 2 skeleton: just inherit BASE_IMAGE and exit. PR #2 wires the real build.
-FROM ${BASE_IMAGE} AS app
+################################################################################
+# Stage B — base: apt deps + OpenSSL 1.1.1u (mirrors upstream)
+################################################################################
+FROM ${BASE_IMAGE} AS base
+
+RUN --mount=type=cache,target=/var/lib/apt/lists \
+    --mount=type=cache,target=/root/.cache/pip \
+    apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        python3-pip \
+        build-essential \
+        checkinstall \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --upgrade "setuptools<81" wheel pip \
+    && curl -fLO https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1u/openssl-1.1.1u.tar.gz \
+    && tar -xzf openssl-1.1.1u.tar.gz \
+    && cd openssl-1.1.1u \
+    && ./config --prefix=/usr/local/openssl-1.1 \
+                --openssldir=/usr/local/openssl-1.1/ssl \
+    && make -j"$(nproc)" \
+    && make install \
+    && cd .. \
+    && rm -rf openssl-1.1.1u.tar.gz openssl-1.1.1u
+
+ENV PATH="/usr/local/openssl-1.1/bin:${PATH}" \
+    LD_LIBRARY_PATH="/usr/local/openssl-1.1/lib:$LD_LIBRARY_PATH"
+
+################################################################################
+# Stage C — builder: poetry + venv install (per-package poetry projects)
+################################################################################
+FROM base AS builder
+
+ENV POETRY_VERSION=2.0.1 \
+    PYTHONUNBUFFERED=1 \
+    POETRY_NO_INTERACTION=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+RUN pip install --upgrade pip && pip install "poetry==$POETRY_VERSION"
+
+WORKDIR /app
+
+COPY --from=src /work/mlnode/packages/pow/pyproject.toml \
+                /work/mlnode/packages/pow/poetry.lock \
+                /work/mlnode/packages/pow/README.md \
+    /app/packages/pow/
+COPY --from=src /work/mlnode/packages/train/pyproject.toml \
+                /work/mlnode/packages/train/poetry.lock \
+                /work/mlnode/packages/train/README.md \
+    /app/packages/train/
+COPY --from=src /work/mlnode/packages/api/pyproject.toml \
+                /work/mlnode/packages/api/poetry.lock \
+                /work/mlnode/packages/api/README.md \
+    /app/packages/api/
+COPY --from=src /work/mlnode/packages/common/pyproject.toml \
+                /work/mlnode/packages/common/poetry.lock \
+                /work/mlnode/packages/common/README.md \
+    /app/packages/common/
+
+COPY --from=src /work/mlnode/packages/train/third_party /app/packages/train/third_party
+
+# Create empty source packages so poetry install can resolve namespace
+RUN mkdir -p /app/packages/api/src/api && touch /app/packages/api/src/api/__init__.py && \
+    mkdir -p /app/packages/pow/src/pow && touch /app/packages/pow/src/pow/__init__.py && \
+    mkdir -p /app/packages/train/src/zeroband && touch /app/packages/train/src/zeroband/__init__.py && \
+    mkdir -p /app/packages/common/src/common && touch /app/packages/common/src/common/__init__.py
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=cache,target=/root/.cache/pypoetry \
+    python3 -m venv /app/packages/api/.venv \
+    && . /app/packages/api/.venv/bin/activate \
+    && cd /app/packages/api \
+    && poetry install --no-interaction
+
+# Note: flash-attn install from legacy Dockerfile removed — the v2.8.3 cu12torch2.9
+# wheel is ABI-incompatible with the new vllm 0.20 base (torch 2.11.0+cu128).
+# mlnode doesn't import flash_attn directly; FLASHINFER_MLA / FLASHINFER_FP8_MOE
+# kernels are already in the Stage 1 base image.
+
+################################################################################
+# Stage D — app: final image with copied venv + mlnode source
+################################################################################
+FROM base AS app
+
+COPY --from=builder /app/packages/api/.venv /app/packages/api/.venv
+
+COPY --from=src /work/mlnode/packages/api/src /app/packages/api/src
+COPY --from=src /work/mlnode/packages/pow/src /app/packages/pow/src
+COPY --from=src /work/mlnode/packages/pow/resources /app/packages/pow/resources
+COPY --from=src /work/mlnode/packages/pow/scripts /app/packages/pow/scripts
+COPY --from=src /work/mlnode/packages/train/src /app/packages/train/src
+COPY --from=src /work/mlnode/packages/train/scripts /app/packages/train/scripts
+COPY --from=src /work/mlnode/packages/train/resources /app/packages/train/resources
+COPY --from=src /work/mlnode/packages/common/src /app/packages/common/src
+
+COPY --from=src /work/mlnode/packages/api/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+ENV PYTHONPATH="/app:/app/packages/api/src" \
+    VLLM_ALLOW_INSECURE_SERIALIZATION=1 \
+    LD_LIBRARY_PATH="/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
+
+WORKDIR /app
 
 ARG MLNODE_VERSION
+ARG VLLM_VERSION
 LABEL gonka.kaitaku.stage="2" \
-      gonka.kaitaku.mlnode_version="${MLNODE_VERSION}" \
-      gonka.kaitaku.skeleton="true" \
+      gonka.mlnode.version="${MLNODE_VERSION}" \
+      gonka.vllm.version="${VLLM_VERSION}" \
       org.opencontainers.image.source="https://github.com/kaitakuai/mlnode-foundry" \
-      org.opencontainers.image.licenses="Apache-2.0"
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.description="kaitakuai/mlnode-base — Stage 2 (mlnode source + venv on kaitakuai/vllm PoC base)"
 
-# TODO(PR#2): COPY --from=src /work/mlnode /src/mlnode
-# TODO(PR#2): RUN cd /src/mlnode && \
-#     poetry install --no-dev (via upstream Dockerfile builder stage)
-# TODO(PR#2): introspect vLLM env vars → write state/_stage2-vllm-env.json
+ENTRYPOINT ["/app/entrypoint.sh"]

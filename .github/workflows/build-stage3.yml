@@ -1,0 +1,271 @@
+name: build-stage3
+
+# Builds and publishes Stage 3 per-(GPU, model) image for each profile.
+# Matrix expands across all profiles/*.cue files.
+#
+# Per profile:
+#   1. Resolve BASE_IMAGE from tools/stage2.lock.cue (or profile.base for overlay-mode)
+#   2. Compute profile_hash; skip if matching GHCR tag exists (skip-if-unchanged)
+#   3. Build via stage3/Dockerfile with hw-patches + runner-patch applied
+#   4. Push to GHCR
+#   5. Sign with cosign keyless
+#   6. Write + commit state/<package-tag>.json
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'profiles/**'
+      - 'tools/**'
+      - 'stage3/**'
+      - 'patches/**'
+      - 'mlnode_foundry/**'
+      - '.github/workflows/build-stage3.yml'
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Profile name (optional; build all if omitted)'
+        required: false
+        type: string
+      force:
+        description: 'Force rebuild even if profile_hash unchanged'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  id-token: write
+  packages: write
+  attestations: write
+
+concurrency:
+  # Allow parallel per-profile builds; serialize state commits per-profile
+  group: build-stage3-${{ github.ref }}-${{ matrix.profile || 'all' }}
+  cancel-in-progress: false
+
+jobs:
+  matrix:
+    # Compute matrix from profiles/*.cue (excluding schema, bases)
+    runs-on: ubuntu-latest
+    outputs:
+      profiles: ${{ steps.set.outputs.profiles }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set
+        run: |
+          if [ -n "${{ inputs.profile }}" ]; then
+            echo "profiles=[\"${{ inputs.profile }}\"]" >> "$GITHUB_OUTPUT"
+          else
+            PROFILES=$(ls profiles/*.cue | grep -v schema.cue | xargs -n1 basename | sed 's/\.cue$//' | jq -R . | jq -s -c .)
+            echo "profiles=$PROFILES" >> "$GITHUB_OUTPUT"
+            echo "Matrix profiles: $PROFILES"
+          fi
+
+  build:
+    needs: matrix
+    if: needs.matrix.outputs.profiles != '[]'
+    strategy:
+      max-parallel: 4
+      fail-fast: false
+      matrix:
+        profile: ${{ fromJson(needs.matrix.outputs.profiles) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: false
+
+      - name: Install mise + tools
+        uses: jdx/mise-action@v2
+        with:
+          version: 2026.3.17
+          install: true
+          cache: true
+
+      - name: Install mlnode-foundry CLI
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -e .
+
+      - name: Compute tag + hash
+        id: meta
+        run: |
+          PROFILE="${{ matrix.profile }}"
+          FULL_TAG=$(.venv/bin/mlnode-foundry tag "$PROFILE")
+          PROFILE_HASH=$(.venv/bin/mlnode-foundry hash "$PROFILE")
+          # Split into package and tag
+          PACKAGE_NAME="${FULL_TAG%:*}"
+          TAG="${FULL_TAG#*:}"
+          {
+            echo "profile=$PROFILE"
+            echo "package_name=$PACKAGE_NAME"
+            echo "tag=$TAG"
+            echo "full_tag=$FULL_TAG"
+            echo "profile_hash=$PROFILE_HASH"
+          } >> "$GITHUB_OUTPUT"
+          echo "=== Profile metadata ==="
+          echo "Profile: $PROFILE"
+          echo "Tag: $FULL_TAG"
+          echo "Hash: $PROFILE_HASH"
+
+      - name: Skip-if-unchanged
+        id: skip
+        if: ${{ !inputs.force }}
+        continue-on-error: true
+        run: |
+          # Check if image with matching profile_hash label exists
+          EXISTING_HASH=$(docker buildx imagetools inspect --raw "${{ steps.meta.outputs.full_tag }}" 2>/dev/null \
+            | jq -r '.. | objects | select(.["io.containerd.image.config"]? != null) | .["io.containerd.image.config"]["Labels"]["gonka.kaitaku.profile_hash"]' \
+            2>/dev/null | head -1 || echo "")
+          if [ "$EXISTING_HASH" = "${{ steps.meta.outputs.profile_hash }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "✓ Image with matching profile_hash already exists; skipping rebuild"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Existing hash: '$EXISTING_HASH', new: '${{ steps.meta.outputs.profile_hash }}' — rebuild needed"
+          fi
+
+      - name: Login to GHCR
+        if: steps.skip.outputs.skip != 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        if: steps.skip.outputs.skip != 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Render build-args
+        if: steps.skip.outputs.skip != 'true'
+        id: args
+        run: |
+          # Use Python CLI to compute build args, output as multi-line for build-push-action
+          BUILD_ARGS=$(.venv/bin/python -c "
+          from mlnode_foundry.render_bake import load_profile, render_build_args
+          from mlnode_foundry.render_name_tag import load_naming, render_package_and_tag
+          from mlnode_foundry.build_hash import compute_profile_hash
+          p = load_profile('${{ matrix.profile }}')
+          naming = load_naming()
+          pkg, tag = render_package_and_tag(p, naming)
+          ph = compute_profile_hash('${{ matrix.profile }}')
+          args = render_build_args(p, pkg, tag, ph)
+          for k, v in args.items():
+              print(f'{k}={v}')
+          ")
+          {
+            echo "build_args<<EOF"
+            echo "$BUILD_ARGS"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push Stage 3
+        if: steps.skip.outputs.skip != 'true'
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: stage3/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.full_tag }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=registry,ref=${{ steps.meta.outputs.package_name }}:buildcache
+          cache-to: type=registry,ref=${{ steps.meta.outputs.package_name }}:buildcache,mode=max
+          build-args: ${{ steps.args.outputs.build_args }}
+
+      - name: Install cosign
+        if: steps.skip.outputs.skip != 'true'
+        uses: sigstore/cosign-installer@v3
+
+      - name: Cosign keyless sign
+        if: steps.skip.outputs.skip != 'true'
+        run: |
+          cosign sign --yes ${{ steps.meta.outputs.package_name }}@${{ steps.build.outputs.digest }}
+
+      - name: Write state/<package-tag>.json
+        if: steps.skip.outputs.skip != 'true'
+        run: |
+          mkdir -p state
+          PACKAGE_BASENAME=$(echo "${{ steps.meta.outputs.package_name }}" | sed 's|.*/||')
+          STATE_FILE="state/${PACKAGE_BASENAME}-${{ steps.meta.outputs.tag }}.json"
+          jq -n \
+            --arg profile "profiles/${{ matrix.profile }}.cue" \
+            --arg profile_hash "${{ steps.meta.outputs.profile_hash }}" \
+            --arg package "${{ steps.meta.outputs.package_name }}" \
+            --arg tag "${{ steps.meta.outputs.tag }}" \
+            --arg digest "${{ steps.build.outputs.digest }}" \
+            --arg built_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg identity "https://github.com/${{ github.repository }}/.github/workflows/build-stage3.yml@${{ github.ref }}" \
+            '{
+              profile: $profile,
+              profile_hash: $profile_hash,
+              status: "draft",
+              image: {
+                package: $package,
+                tag: $tag,
+                digest: $digest,
+                built_at: $built_at,
+                cosign_identity: $identity
+              },
+              validation: {
+                build_smoke: { result: "pass", at: $built_at }
+              }
+            }' > "$STATE_FILE"
+          echo "=== $STATE_FILE ==="
+          cat "$STATE_FILE"
+          echo "state_file=$STATE_FILE" >> "$GITHUB_ENV"
+
+      - name: Validate state against schema
+        if: steps.skip.outputs.skip != 'true'
+        run: |
+          cue vet "$state_file" state/schema.cue
+
+      - name: Commit state file
+        if: steps.skip.outputs.skip != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase --autostash origin main || true
+          git add "$state_file"
+          if git diff --cached --quiet; then
+            echo "No state changes to commit"
+          else
+            git commit -m "state: ${{ matrix.profile }} → ${{ steps.meta.outputs.tag }}
+
+profile_hash: ${{ steps.meta.outputs.profile_hash }}
+digest: ${{ steps.build.outputs.digest }}
+Run: ${{ github.run_id }}"
+            # Retry push up to 3 times (other matrix jobs may push concurrently)
+            for i in 1 2 3; do
+              git pull --rebase --autostash origin main && git push origin HEAD:main && break
+              echo "Push attempt $i failed, retrying..."
+              sleep $((i * 5))
+            done
+          fi
+
+      - name: Summary
+        if: steps.skip.outputs.skip != 'true'
+        run: |
+          echo "### ${{ matrix.profile }} build summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag**: \`${{ steps.meta.outputs.full_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Digest**: \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **profile_hash**: \`${{ steps.meta.outputs.profile_hash }}\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Summary (skipped)
+        if: steps.skip.outputs.skip == 'true'
+        run: |
+          echo "### ${{ matrix.profile }} — SKIPPED (profile_hash unchanged)" >> $GITHUB_STEP_SUMMARY

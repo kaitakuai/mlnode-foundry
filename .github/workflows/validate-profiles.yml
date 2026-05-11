@@ -1,0 +1,89 @@
+name: validate-profiles
+
+# Tier 0 (static) + Tier 1 (build-only smoke) per ADR-0009.
+# Cheap checks: cue vet, pytest, ruff, mypy. No GPU, no push.
+
+on:
+  pull_request:
+    paths:
+      - 'profiles/**'
+      - 'tools/**'
+      - 'state/**'
+      - 'patches/**'
+      - 'stage3/**'
+      - 'mlnode_foundry/**'
+      - 'pyproject.toml'
+      - 'mise.toml'
+      - '.github/workflows/validate-profiles.yml'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write  # for render-dockerfile-diff bot comments (future)
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cue-vet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mise + tools
+        uses: jdx/mise-action@v2
+        with:
+          version: 2026.3.17
+          install: true
+          cache: true
+
+      - name: cue vet
+        run: cue vet ./...
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mise + tools
+        uses: jdx/mise-action@v2
+        with:
+          version: 2026.3.17
+          install: true
+          cache: true
+
+      - name: Install mlnode-foundry
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -e ".[dev]"
+
+      - name: ruff
+        run: .venv/bin/ruff check mlnode_foundry/
+
+      - name: mypy
+        run: .venv/bin/mypy mlnode_foundry/ || true   # mypy strict — relax until Phase 4
+        continue-on-error: true
+
+      - name: pytest
+        run: .venv/bin/pytest mlnode_foundry/tests/ -v
+
+      - name: validate b300-kimi-int4
+        run: .venv/bin/mlnode-foundry validate b300-kimi-int4
+
+      - name: validate h100-qwen
+        run: .venv/bin/mlnode-foundry validate h100-qwen
+
+      - name: tag both
+        run: |
+          .venv/bin/mlnode-foundry tag b300-kimi-int4
+          .venv/bin/mlnode-foundry tag h100-qwen
+
+      - name: hash determinism
+        run: |
+          H1=$(.venv/bin/mlnode-foundry hash b300-kimi-int4)
+          H2=$(.venv/bin/mlnode-foundry hash b300-kimi-int4)
+          [ "$H1" = "$H2" ] || { echo "Hash not deterministic: $H1 vs $H2"; exit 1; }
+          echo "✓ profile_hash: $H1"

@@ -8,25 +8,26 @@ Standard `git format-patch -1 <sha>` output, applied via `git apply --3way`.
 
 ## Current patches
 
-| File | Status | What it does |
-|------|--------|--------------|
-| `0001-content-type-middleware.patch.todo` | **Placeholder** | Adds `ContentTypeInjector` ASGI middleware injecting `Content-Type: application/json` for header-less POSTs from Go-http-client. Needed for vLLM 0.20 (Pydantic v2 strict mode). |
+| File | Files touched | What it does |
+|------|---------------|--------------|
+| `0001-content-type-middleware.patch` | `mlnode/packages/api/src/api/app.py`, `proxy.py` | Adds `ContentTypeInjector` ASGI middleware injecting `Content-Type: application/json` for header-less POSTs from Go-http-client. Needed for vLLM 0.20 (Pydantic v2 strict mode). |
 
-## Status: placeholder
+## Patch source / provenance
 
-The Content-Type middleware patch from legacy commit `827d5ffe401f0482c46090fbf79ec693b385a5b0` is currently **a metadata placeholder**, not a usable patch file. The legacy submodule was a sparse checkout without parent history, so `git format-patch` against it produces an unusable 4.6 M-line "add everything" diff.
+Patches are extracted from upstream commits and applied on top of a clean upstream checkout. They are NOT a fork — they're independently-versioned changes layered on `tools/stage2.lock.cue::upstream.commit`.
 
-**Resolution in Phase 3 (PR #2):**
+`0001-content-type-middleware.patch` was extracted from commit `827d5ffe401f0482c46090fbf79ec693b385a5b0` in `gonka-ai/gonka`. Verified end-to-end on production RTX PRO 6000 SE running vLLM 0.20.0 PoC v2.
 
-1. Do a full clone of `gonka-ai/gonka` with history
-2. `git format-patch -1 827d5ffe` produces a clean patch
-3. Replace `0001-content-type-middleware.patch.todo` with the real `.patch` file
-4. Update `tools/stage2.lock.cue::patches` list
+## Adding new patches
 
-Until Phase 3 lands real Stage 2, Stage 3 profiles use upstream `product-science/mlnode:3.0.13-alpha5` directly as `BASE_IMAGE` (bypassing Stage 2 entirely), so this patch is not yet load-bearing.
+```bash
+# Extract from any commit on any branch/fork
+git -C /path/to/gonka-ai-clone format-patch -1 <sha> --stdout > patches/000N-<short-name>.patch
 
-## Files touched by the patch (for reference)
+# Test apply
+git -C /path/to/gonka-ai-clone apply --3way --check patches/000N-<short-name>.patch
 
-- `mlnode/packages/api/src/api/app.py` — middleware class definition + registration
-- `mlnode/packages/api/src/api/proxy.py` — middleware usage
-- And related test/Dockerfile changes per commit message
+# Add to stage2.lock.cue patches list (in order applied)
+```
+
+Patches must be **commutative** — order shouldn't matter beyond standard `git apply --3way` 3-way-merge resolution.

@@ -1,0 +1,100 @@
+name: benchmark
+
+# Tier 2 / Tier 3 validation trigger (skeleton — agent integration in Phase 6).
+#
+# This workflow does NOT actually run the benchmark. It publishes a queue
+# entry (issue/comment/artifact) that the poc-benchmark agent consumes
+# out-of-band. The agent runs on vast.ai or ssh-host, writes results to
+# experiments/<YYYY-MM>/<package-tag>/, and opens auto-PR updating state/.json.
+#
+# See ADR-0009 (validation tiers) and docs/architecture.md §9 (bidirectional flow).
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Profile name (e.g., b300-kimi-int4)'
+        required: true
+        type: string
+      runner:
+        description: 'Runner name from tools/runners.cue (e.g., vast-b300-1x)'
+        required: true
+        type: string
+      tier:
+        description: 'Validation tier'
+        required: true
+        type: choice
+        options:
+          - gpu-smoke
+          - benchmark
+        default: gpu-smoke
+
+permissions:
+  contents: read
+  issues: write   # to post the queue entry
+
+jobs:
+  enqueue:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mise + CLI
+        uses: jdx/mise-action@v2
+        with:
+          version: 2026.3.17
+          install: true
+          cache: true
+
+      - name: Install mlnode-foundry
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -e .
+
+      - name: Validate profile + runner exist
+        run: |
+          .venv/bin/mlnode-foundry validate ${{ inputs.profile }}
+          .venv/bin/mlnode-foundry runner list | grep "^  ${{ inputs.runner }}" || {
+            echo "Runner '${{ inputs.runner }}' not registered in tools/runners.cue"
+            exit 1
+          }
+
+      - name: Resolve image digest
+        id: image
+        run: |
+          FULL_TAG=$(.venv/bin/mlnode-foundry tag ${{ inputs.profile }})
+          echo "full_tag=$FULL_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Post benchmark queue entry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment 7 --body "## Benchmark queue entry
+
+**Profile**: \`${{ inputs.profile }}\`
+**Tier**: \`${{ inputs.tier }}\`
+**Runner**: \`${{ inputs.runner }}\`
+**Image**: \`${{ steps.image.outputs.full_tag }}\`
+**Triggered by**: @${{ github.actor }} via [run #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+---
+
+poc-benchmark agent: pick this up via SSH/vast.ai, run benchmark, write to
+\`experiments/$(date +%Y-%m)/\`, and open auto-PR updating
+\`state/$(echo ${{ steps.image.outputs.full_tag }} | tr / -).json\`.
+
+Local trigger:
+\`\`\`bash
+# In your Claude Code session with poc-benchmark agent loaded:
+mlnode-foundry benchmark ${{ inputs.profile }} --runner ${{ inputs.runner }}
+\`\`\`"
+
+      - name: Summary
+        run: |
+          echo "### Benchmark queued" >> $GITHUB_STEP_SUMMARY
+          echo "- Profile: \`${{ inputs.profile }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Tier: \`${{ inputs.tier }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Runner: \`${{ inputs.runner }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Queue entry posted as comment on epic #7." >> $GITHUB_STEP_SUMMARY
