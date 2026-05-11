@@ -33,7 +33,8 @@ WORKDIR /work
 RUN git init -q && \
     git remote add origin https://github.com/${UPSTREAM_REPO}.git && \
     git fetch --depth 1 origin ${UPSTREAM_COMMIT} && \
-    git checkout FETCH_HEAD
+    git checkout FETCH_HEAD && \
+    git submodule update --init --recursive --depth 1
 
 COPY patches/ /patches/
 RUN if ls /patches/*.patch >/dev/null 2>&1; then \
