@@ -92,7 +92,10 @@ def build(
 
     typer.secho(f"✓ Build complete: {full_tag}", fg=typer.colors.GREEN)
     if not push:
-        typer.echo(f"  Inspect: docker run --rm --entrypoint /bin/sh {full_tag} -c 'env | grep VLLM'")
+        typer.echo(
+            f"  Inspect: docker run --rm --entrypoint /bin/sh {full_tag} "
+            "-c 'env | grep VLLM'"
+        )
 
 
 # --- `profile` subgroup ------------------------------------------------------
