@@ -10,17 +10,18 @@ from mlnode_foundry.validate import validate_profile
 
 def test_generated_profile_validates(tmp_path, monkeypatch) -> None:
     """A freshly-generated profile must pass `cue vet`."""
-    # Use the real profiles dir for generation (the bases exist there)
+    # Use a combo not in the migrated profile set (H100 + Kimi INT4 is realistic
+    # but currently absent — exercises both gpu and model+quant base resolution).
     path = profile_factory.generate_profile(
-        gpu="b200",
-        model="qwen",
+        gpu="h100",
+        model="kimi",
+        quant="int4",
         mlnode="0.2.13",
         vllm="0.20.0",
         rev=1,
     )
     try:
-        # Validate using the real validate_profile (resolves bases correctly)
-        validate_profile("b200-qwen")
+        validate_profile("h100-kimi-int4")
     finally:
         path.unlink(missing_ok=True)
 
