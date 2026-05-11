@@ -151,10 +151,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet state/_stage2-vllm-env.json; then
+          git add state/_stage2-vllm-env.json
+          if git diff --quiet --cached -- state/_stage2-vllm-env.json; then
             echo "No state changes to commit"
           else
-            git add state/_stage2-vllm-env.json
             git commit -m "state: update _stage2-vllm-env.json after stage2 build (digest ${{ steps.build.outputs.digest }}, run ${{ github.run_id }})"
             git push origin HEAD:main
           fi
