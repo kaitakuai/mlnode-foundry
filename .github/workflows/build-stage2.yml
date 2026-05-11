@@ -1,0 +1,170 @@
+name: build-stage2
+
+# Builds Stage 2 (kaitakuai/mlnode-base) image:
+#   1. Clone upstream gonka-ai/gonka at pinned commit
+#   2. Apply patches/*.patch to source tree
+#   3. Build via stage2/Dockerfile.patch-and-build with Stage 1 digest as BASE_IMAGE
+#   4. Push to ghcr.io/kaitakuai/mlnode-base
+#   5. Sign with cosign keyless via OIDC
+#   6. Introspect vLLM ENV vars, commit state/_stage2-vllm-env.json
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/stage2.lock.cue'
+      - 'patches/**'
+      - 'stage2/**'
+      - '.github/workflows/build-stage2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write       # commit state/_stage2-vllm-env.json
+  id-token: write       # cosign keyless OIDC
+  packages: write       # GHCR push
+  attestations: write   # SLSA provenance
+
+concurrency:
+  group: build-stage2-${{ github.ref }}
+  cancel-in-progress: false   # don't interrupt mid-publish
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false   # too slow
+          docker-images: false    # we'll prune our own
+
+      - name: Install mise + cue
+        uses: jdx/mise-action@v2
+        with:
+          version: 2026.3.17
+          install: true
+          cache: true
+
+      - name: Resolve stage2.lock.cue values
+        id: lock
+        run: |
+          # Use cue export to get JSON, then jq for field access
+          LOCK_JSON=$(cue export tools/stage2.lock.cue)
+          UPSTREAM_REPO=$(echo "$LOCK_JSON" | jq -r '.upstream.repo')
+          UPSTREAM_COMMIT=$(echo "$LOCK_JSON" | jq -r '.upstream.commit')
+          MLNODE_VERSION=$(echo "$LOCK_JSON" | jq -r '.upstream.mlnode_version')
+          STAGE1_IMAGE=$(echo "$LOCK_JSON" | jq -r '.stage1.image')
+          STAGE1_DIGEST=$(echo "$LOCK_JSON" | jq -r '.stage1.digest')
+          STAGE2_PACKAGE=$(echo "$LOCK_JSON" | jq -r '.stage2.package')
+          STAGE2_TAG=$(echo "$LOCK_JSON" | jq -r '.stage2.tag')
+          VLLM_VERSION=$(echo "$LOCK_JSON" | jq -r '.stage1.tag' | sed 's/-poc.*$//; s/^v//')
+          {
+            echo "upstream_repo=$UPSTREAM_REPO"
+            echo "upstream_commit=$UPSTREAM_COMMIT"
+            echo "mlnode_version=$MLNODE_VERSION"
+            echo "base_image=$STAGE1_IMAGE@$STAGE1_DIGEST"
+            echo "stage2_full_tag=$STAGE2_PACKAGE:$STAGE2_TAG"
+            echo "vllm_version=$VLLM_VERSION"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+
+      - name: Build and push Stage 2
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: stage2/Dockerfile.patch-and-build
+          push: true
+          tags: ${{ steps.lock.outputs.stage2_full_tag }}
+          target: app
+          provenance: mode=max
+          sbom: true
+          cache-from: type=registry,ref=${{ steps.lock.outputs.stage2_full_tag }}-buildcache
+          cache-to: type=registry,ref=${{ steps.lock.outputs.stage2_full_tag }}-buildcache,mode=max
+          build-args: |
+            BASE_IMAGE=${{ steps.lock.outputs.base_image }}
+            UPSTREAM_REPO=${{ steps.lock.outputs.upstream_repo }}
+            UPSTREAM_COMMIT=${{ steps.lock.outputs.upstream_commit }}
+            MLNODE_VERSION=${{ steps.lock.outputs.mlnode_version }}
+            VLLM_VERSION=${{ steps.lock.outputs.vllm_version }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Cosign keyless sign
+        run: |
+          cosign sign --yes ${{ steps.lock.outputs.stage2_full_tag }}@${{ steps.build.outputs.digest }}
+
+      - name: Introspect vLLM ENV vars
+        run: |
+          # Pull a fresh copy of our newly-published stage2 image
+          DIGEST="${{ steps.build.outputs.digest }}"
+          IMAGE="${{ steps.lock.outputs.stage2_full_tag }}@$DIGEST"
+          # Run a brief container to extract vllm.envs.__all__
+          ENVS_JSON=$(docker run --rm --entrypoint /bin/sh "$IMAGE" -c '
+            python3 -c "
+          import json
+          try:
+              from vllm import envs
+              names = sorted([n for n in dir(envs) if n.isupper() and not n.startswith(\"_\")])
+              print(json.dumps({\"vllm_env_names\": names, \"vllm_envs_count\": len(names)}))
+          except Exception as e:
+              print(json.dumps({\"error\": str(e), \"vllm_env_names\": [], \"vllm_envs_count\": 0}))
+          "
+          ') || echo '{"error": "container run failed", "vllm_env_names": [], "vllm_envs_count": 0}'
+          # Write state/_stage2-vllm-env.json with snapshot metadata
+          mkdir -p state
+          jq -n \
+            --arg stage2_image "${{ steps.lock.outputs.stage2_full_tag }}" \
+            --arg digest "$DIGEST" \
+            --arg built_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --argjson envs "$ENVS_JSON" \
+            '{
+              stage2_image: $stage2_image,
+              digest: $digest,
+              built_at: $built_at,
+              vllm: $envs
+            }' > state/_stage2-vllm-env.json
+          echo "=== state/_stage2-vllm-env.json ==="
+          cat state/_stage2-vllm-env.json
+
+      - name: Commit state/_stage2-vllm-env.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet state/_stage2-vllm-env.json; then
+            echo "No state changes to commit"
+          else
+            git add state/_stage2-vllm-env.json
+            git commit -m "state: update _stage2-vllm-env.json after stage2 build (digest ${{ steps.build.outputs.digest }}, run ${{ github.run_id }})"
+            git push origin HEAD:main
+          fi
+
+      - name: Summary
+        run: |
+          echo "### Stage 2 build summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: \`${{ steps.lock.outputs.stage2_full_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Digest**: \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Upstream commit**: \`${{ steps.lock.outputs.upstream_commit }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Stage 1 base**: \`${{ steps.lock.outputs.base_image }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Patches applied**: \`patches/0001-content-type-middleware.patch\`" >> $GITHUB_STEP_SUMMARY

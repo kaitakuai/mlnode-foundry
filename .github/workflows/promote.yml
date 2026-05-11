@@ -1,0 +1,51 @@
+name: promote
+
+# Manual workflow to re-sign / re-attest an already-published image.
+# Most signing happens inline in build-stage{2,3}.yml; this workflow is the
+# escape hatch for: cosign key rotation, manual re-attestation after policy
+# change, or signing of legacy images that were published before keyless flow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: 'Full image reference (e.g., ghcr.io/kaitakuai/mlnode-b300-kimi@sha256:...)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write      # cosign keyless OIDC
+  packages: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image
+        run: |
+          cosign sign --yes "${{ inputs.image }}"
+
+      - name: Verify signature
+        run: |
+          cosign verify "${{ inputs.image }}" \
+            --certificate-identity-regexp="https://github.com/${{ github.repository }}/.github/workflows/.*" \
+            --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
+
+      - name: Summary
+        run: |
+          echo "### Promoted: \`${{ inputs.image }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- ✓ Signed with cosign keyless" >> $GITHUB_STEP_SUMMARY
+          echo "- ✓ Signature verified" >> $GITHUB_STEP_SUMMARY

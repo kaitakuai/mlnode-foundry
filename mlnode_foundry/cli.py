@@ -64,15 +64,17 @@ def build(
         False, "--push/--no-push", help="Push to registry after build (default: no push)."
     ),
 ) -> None:
-    """Build a profile via docker buildx (Phase 2 spike skeleton)."""
+    """Build a profile via docker buildx."""
     typer.echo(f"→ Loading profile: {profile}")
     p = load_profile(profile)
     naming = load_naming()
     pkg, t = render_package_and_tag(p, naming)
     full_tag = f"{pkg}:{t}"
+    profile_hash = compute_profile_hash(profile)
     typer.echo(f"→ Tag: {full_tag}")
+    typer.echo(f"→ Hash: {profile_hash[:16]}...")
 
-    args = render_build_args(p, pkg, t)
+    args = render_build_args(p, pkg, t, profile_hash)
 
     cmd: list[str] = ["docker", "buildx", "build", "-f", str(REPO_ROOT / "stage3" / "Dockerfile")]
     cmd += ["-t", full_tag]
@@ -90,7 +92,10 @@ def build(
 
     typer.secho(f"✓ Build complete: {full_tag}", fg=typer.colors.GREEN)
     if not push:
-        typer.echo(f"  Inspect: docker run --rm --entrypoint /bin/sh {full_tag} -c 'env | grep VLLM'")
+        typer.echo(
+            f"  Inspect: docker run --rm --entrypoint /bin/sh {full_tag} "
+            "-c 'env | grep VLLM'"
+        )
 
 
 # --- `profile` subgroup ------------------------------------------------------

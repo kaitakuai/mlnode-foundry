@@ -1,30 +1,29 @@
 """Render profile → docker buildx build args.
 
-Profile loading + build-arg generation. Naming/tag rendering lives in
-`render_name_tag.py` (separated for testability and to keep concerns narrow).
+Resolves BASE_IMAGE per profile.mode:
+- `kaitakuai-base`: from tools/stage2.lock.cue (Stage 2 published image)
+- `upstream-overlay`: from profile.base (explicit image+digest)
+
+Falls back to SPIKE_BASE_IMAGE if Stage 2 hasn't been published yet (set
+via MLNODE_FOUNDRY_SPIKE_BASE env var; useful for local dev before CI runs
+build-stage2 for the first time).
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from .cue import cue_export
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# Phase 2 placeholder: Stage 2 not yet built. Stage 3 inherits from upstream
-# binary directly. Real BASE_IMAGE resolution from tools/stage2.lock.cue
-# lands in Phase 3 (PR #2).
+# Phase 1 spike base — used as fallback if MLNODE_FOUNDRY_SPIKE_BASE=1 in env.
 SPIKE_BASE_IMAGE = "ghcr.io/product-science/mlnode:3.0.13-alpha5"
 
 
 def load_profile(name: str) -> dict:
-    """Load profile by name; return resolved profile struct with schema applied.
-
-    Convention: profile filename `b300-kimi-int4.cue` exports a top-level field
-    named `b300_kimi_int4` (hyphens replaced by underscores). This avoids
-    package-level unification conflicts between sibling profiles in same dir.
-    """
+    """Load profile by name; return resolved profile struct with schema applied."""
     profile_path = REPO_ROOT / "profiles" / f"{name}.cue"
     schema_path = REPO_ROOT / "profiles" / "schema.cue"
     if not profile_path.exists():
@@ -39,20 +38,47 @@ def load_profile(name: str) -> dict:
     return data[key]
 
 
-def render_build_args(profile: dict, package: str, tag: str) -> dict[str, str]:
+def load_stage2_lock() -> dict:
+    """Load tools/stage2.lock.cue."""
+    return cue_export(REPO_ROOT / "tools" / "stage2.lock.cue")
+
+
+def resolve_base_image(profile: dict) -> str:
+    """Resolve BASE_IMAGE for a profile based on its mode."""
+    if os.environ.get("MLNODE_FOUNDRY_SPIKE_BASE") == "1":
+        return SPIKE_BASE_IMAGE
+
+    mode = profile["mode"]
+    if mode == "kaitakuai-base":
+        lock = load_stage2_lock()
+        s2 = lock["stage2"]
+        # Use tag reference; CI verifies digest separately.
+        # Phase 4 will switch to digest pinning once stage 2 publishes consistently.
+        return f"{s2['package']}:{s2['tag']}"
+    elif mode == "upstream-overlay":
+        base = profile.get("base", {})
+        digest = base.get("digest")
+        if digest:
+            return f"{base['image']}@{digest}"
+        return f"{base['image']}:{base.get('upstream_version', 'latest')}"
+    else:
+        raise ValueError(f"Unknown mode: {mode}")
+
+
+def render_build_args(profile: dict, package: str, tag: str, profile_hash: str) -> dict[str, str]:
     """Build args to pass to docker buildx (--build-arg KEY=VALUE)."""
     axes = profile["identity"]["axes"]
     args: dict[str, str] = {
-        "BASE_IMAGE":   SPIKE_BASE_IMAGE,
-        "GPU":          axes["gpu"],
-        "MODEL":        axes["model"],
-        "QUANT":        axes.get("quant", ""),
-        "PACKAGE_NAME": package,
-        "TAG":          tag,
+        "BASE_IMAGE":    resolve_base_image(profile),
+        "GPU":           axes["gpu"],
+        "MODEL":         axes["model"],
+        "QUANT":         axes.get("quant", ""),
+        "PACKAGE_NAME":  package,
+        "TAG":           tag,
+        "PROFILE_HASH":  profile_hash,
+        "RUNNER_PATCH":  profile.get("runner_patch", ""),
     }
-    # ENV from profile → docker --build-arg ENV_<KEY>=VALUE
-    # Dockerfile maps ENV_<KEY> ARG → ENV <KEY> for known keys.
-    # Phase 3 will replace this hardcoded mapping with dynamic ENV injection.
+    # ENV from profile.env → docker --build-arg ENV_<KEY>=VALUE
     for k, v in profile.get("env", {}).items():
         args[f"ENV_{k}"] = str(v)
     return args
