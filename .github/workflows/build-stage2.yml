@@ -153,12 +153,25 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          REMOTE="https://x-access-token:${STATE_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
           git add state/_stage2-vllm-env.json
           if git diff --quiet --cached -- state/_stage2-vllm-env.json; then
             echo "No state changes to commit"
           else
             git commit -m "state: update _stage2-vllm-env.json after stage2 build (digest ${{ steps.build.outputs.digest }}, run ${{ github.run_id }})"
-            git push "https://x-access-token:${STATE_PUSH_TOKEN}@github.com/${{ github.repository }}.git" HEAD:main
+            pushed=false
+            for i in 1 2 3; do
+              if git pull --rebase --autostash "$REMOTE" main && git push "$REMOTE" HEAD:main; then
+                pushed=true
+                break
+              fi
+              echo "Push attempt $i failed, retrying..."
+              sleep $((i * 5))
+            done
+            if [ "$pushed" != "true" ]; then
+              echo "::error::Failed to push state file after 3 attempts"
+              exit 1
+            fi
           fi
 
       - name: Summary
