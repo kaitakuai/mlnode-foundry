@@ -1,0 +1,50 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard"
+  ],
+  "timezone": "UTC",
+  "schedule": ["before 6am on Monday"],
+  "rangeStrategy": "pin",
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "Group GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "description": "Group Python dependencies",
+      "matchManagers": ["pip_requirements", "pip_setup", "pep621"],
+      "groupName": "Python"
+    },
+    {
+      "description": "Auto-merge minor/patch dev-deps after CI passes",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "Pin Stage 1 image digest in tools/stage2.lock.cue",
+      "customType": "regex",
+      "fileMatch": ["^tools/stage2\\.lock\\.cue$"],
+      "matchStrings": [
+        "image:\\s*\"(?<depName>[^\"]+)\"\\s*\\n\\s*tag:\\s*\"(?<currentValue>[^\"]+)\"\\s*\\n\\s*digest:\\s*\"(?<currentDigest>sha256:[a-f0-9]{64})\""
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "description": "Pin upstream gonka-ai/gonka commit in tools/stage2.lock.cue",
+      "customType": "regex",
+      "fileMatch": ["^tools/stage2\\.lock\\.cue$"],
+      "matchStrings": [
+        "upstream:\\s*\\{[^}]*repo:\\s*\"(?<depName>[^\"]+)\"[^}]*commit:\\s*\"(?<currentDigest>[a-f0-9]{40})\""
+      ],
+      "datasourceTemplate": "github-tags"
+    }
+  ]
+}

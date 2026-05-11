@@ -1,4 +1,8 @@
-"""Render profile + naming policy → docker buildx build args + image tag."""
+"""Render profile → docker buildx build args.
+
+Profile loading + build-arg generation. Naming/tag rendering lives in
+`render_name_tag.py` (separated for testability and to keep concerns narrow).
+"""
 
 from __future__ import annotations
 
@@ -8,73 +12,47 @@ from .cue import cue_export
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# Spike: Stage 2 not yet implemented; use upstream binary as base directly.
+# Phase 2 placeholder: Stage 2 not yet built. Stage 3 inherits from upstream
+# binary directly. Real BASE_IMAGE resolution from tools/stage2.lock.cue
+# lands in Phase 3 (PR #2).
 SPIKE_BASE_IMAGE = "ghcr.io/product-science/mlnode:3.0.13-alpha5"
 
 
 def load_profile(name: str) -> dict:
-    """Load profile by name; return resolved `profile` field with schema applied."""
+    """Load profile by name; return resolved profile struct with schema applied.
+
+    Convention: profile filename `b300-kimi-int4.cue` exports a top-level field
+    named `b300_kimi_int4` (hyphens replaced by underscores). This avoids
+    package-level unification conflicts between sibling profiles in same dir.
+    """
     profile_path = REPO_ROOT / "profiles" / f"{name}.cue"
     schema_path = REPO_ROOT / "profiles" / "schema.cue"
     if not profile_path.exists():
         raise FileNotFoundError(f"Profile not found: {profile_path}")
     data = cue_export(profile_path, schema_path)
-    if "profile" not in data:
-        raise ValueError(f"Profile file did not export 'profile' field: {profile_path}")
-    return data["profile"]
-
-
-def load_naming() -> dict:
-    """Load naming.cue policy."""
-    return cue_export(REPO_ROOT / "tools" / "naming.cue")
-
-
-def render_package_and_tag(profile: dict, naming: dict) -> tuple[str, str]:
-    """Compute (package_name, tag) from profile + naming policy."""
-    axes = profile["identity"]["axes"]
-    version = profile["identity"]["version"]
-    mode = profile["mode"]
-
-    # Package name: prefix + axes from naming.package.axes
-    pkg_axes = naming["package"]["axes"]
-    pkg_prefix = naming["package"]["prefix"]
-    name_parts = [axes[a] for a in pkg_axes]
-    package = f"{pkg_prefix}-{'-'.join(name_parts)}"
-
-    # Tag axes (axes that appear in the tag string)
-    tag_axes_order = naming["tag"]["axes_order"]
-    tag_axes_parts = []
-    for axis_name in tag_axes_order:
-        if axis_name in axes:
-            prefix = naming["axes"][axis_name]["prefix"]
-            value = axes[axis_name]
-            tag_axes_parts.append(f"-{prefix}.{value}")
-    tag_axes = "".join(tag_axes_parts)
-
-    # Tag template by mode
-    template = naming["tag"]["modes"][mode]
-    tag = template.format(
-        mlnode=version.get("mlnode", ""),
-        vllm=version.get("vllm", ""),
-        upstream=version.get("upstream", ""),
-        tag_axes=tag_axes,
-        rev=version["rev"],
-    )
-
-    return package, tag
+    key = name.replace("-", "_")
+    if key not in data:
+        raise ValueError(
+            f"Profile file did not export top-level field '{key}' "
+            f"(expected from filename {profile_path.name})"
+        )
+    return data[key]
 
 
 def render_build_args(profile: dict, package: str, tag: str) -> dict[str, str]:
     """Build args to pass to docker buildx (--build-arg KEY=VALUE)."""
+    axes = profile["identity"]["axes"]
     args: dict[str, str] = {
-        "BASE_IMAGE": SPIKE_BASE_IMAGE,
-        "GPU": profile["identity"]["axes"]["gpu"],
-        "MODEL": profile["identity"]["axes"]["model"],
-        "QUANT": profile["identity"]["axes"].get("quant", ""),
+        "BASE_IMAGE":   SPIKE_BASE_IMAGE,
+        "GPU":          axes["gpu"],
+        "MODEL":        axes["model"],
+        "QUANT":        axes.get("quant", ""),
         "PACKAGE_NAME": package,
-        "TAG": tag,
+        "TAG":          tag,
     }
-    # ENV vars from profile — passed as ENV_<KEY> build-args, mapped to ENV in Dockerfile
+    # ENV from profile → docker --build-arg ENV_<KEY>=VALUE
+    # Dockerfile maps ENV_<KEY> ARG → ENV <KEY> for known keys.
+    # Phase 3 will replace this hardcoded mapping with dynamic ENV injection.
     for k, v in profile.get("env", {}).items():
         args[f"ENV_{k}"] = str(v)
     return args

@@ -1,0 +1,31 @@
+827d5ffe401f0482c46090fbf79ec693b385a5b0
+Mykola Baichak <n.baychak@gmail.com>
+Fri, 1 May 2026 02:07:33 +0100
+
+fix(mlnode): inject Content-Type:application/json for header-less POSTs
+
+Network DAPI (Go-http-client/1.1) sends JSON bodies to
+/api/v1/inference/up and /api/v1/inference/pow/init/generate
+without setting Content-Type. Pydantic v2, shipped with the
+FastAPI/Starlette pin used by the vllm 0.20 base, requires
+Content-Type:application/json to interpret the body as JSON;
+without it the bytes are surfaced to model_validate as a
+string value, producing 422 model_attributes_type
+"Input should be a valid dictionary or object".
+
+The vllm 0.15.1 base predates Pydantic v2 strictness, which is
+why production mlnode-009 accepts the same DAPI request shape
+unchanged and only the vllm 0.20 mlnode image hits the regression.
+
+Add a tiny plain-ASGI ContentTypeInjector middleware that adds
+Content-Type:application/json to POST /api/* requests when the
+header is missing. Applied as outermost middleware so the header
+is in scope before any downstream parsing.
+
+Verified end-to-end on RTX PRO 6000 SE running vllm 0.20.0 PoC v2:
+- POST /api/v1/inference/up (no Content-Type): 422 -> 200 OK
+- POST /api/v1/inference/pow/init/generate (no Content-Type):
+  body parses; reaches vLLM backend
+- Live DAPI on network-002 transitions through inference/up,
+  stop, and pow/init/generate cleanly; PoC v2 generation runs.
+
