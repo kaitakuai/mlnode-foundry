@@ -14,8 +14,11 @@
 package tools
 
 upstream: {
-	repo:           "gonka-ai/gonka"
-	commit:         "827d5ffe401f0482c46090fbf79ec693b385a5b0"
+	repo: "gonka-ai/gonka"
+	// f3b38936 = parent of 827d5ffe. The 827d5ffe commit IS the Content-Type middleware
+	// fix; pinning here to its parent so patches/0001-content-type-middleware.patch
+	// applies cleanly (vs trying to apply a patch on top of an already-patched commit).
+	commit:         "f3b3893687d8a13a078955fad07879ea2b0ce2d0"
 	mlnode_version: "0.2.13"
 }
 
