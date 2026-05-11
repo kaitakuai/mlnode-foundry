@@ -40,8 +40,8 @@ permissions:
   attestations: write
 
 concurrency:
-  # Allow parallel per-profile builds; serialize state commits per-profile
-  group: build-stage3-${{ github.ref }}-${{ matrix.profile || 'all' }}
+  # Workflow-level concurrency; per-profile concurrency handled by job-level matrix.
+  group: build-stage3-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -243,11 +243,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No state changes to commit"
           else
-            git commit -m "state: ${{ matrix.profile }} → ${{ steps.meta.outputs.tag }}
-
-profile_hash: ${{ steps.meta.outputs.profile_hash }}
-digest: ${{ steps.build.outputs.digest }}
-Run: ${{ github.run_id }}"
+            git commit -m "state: ${{ matrix.profile }} → ${{ steps.meta.outputs.tag }} (hash ${{ steps.meta.outputs.profile_hash }}, digest ${{ steps.build.outputs.digest }}, run ${{ github.run_id }})"
             # Retry push up to 3 times (other matrix jobs may push concurrently)
             for i in 1 2 3; do
               git pull --rebase --autostash origin main && git push origin HEAD:main && break

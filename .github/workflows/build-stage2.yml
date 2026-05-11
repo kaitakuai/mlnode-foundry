@@ -155,10 +155,7 @@ jobs:
             echo "No state changes to commit"
           else
             git add state/_stage2-vllm-env.json
-            git commit -m "state: update _stage2-vllm-env.json after stage2 build
-
-Stage 2 digest: ${{ steps.build.outputs.digest }}
-Run: ${{ github.run_id }}"
+            git commit -m "state: update _stage2-vllm-env.json after stage2 build (digest ${{ steps.build.outputs.digest }}, run ${{ github.run_id }})"
             git push origin HEAD:main
           fi
 
