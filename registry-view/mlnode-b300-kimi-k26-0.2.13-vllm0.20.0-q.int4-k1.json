@@ -38,7 +38,7 @@
     "VLLM_USE_FLASHINFER_MOE_INT4=1": "+138% PoC throughput vs Marlin on Blackwell sm_100 (5120 nonces/min @ 4\u00d7B300)",
     "max_num_batched_tokens=131072": "Vision-encoder profile_run OOMs above 131072 on Kimi-K2.6 (verified on B200; same envelope used for B300)"
   },
-  "digest": "sha256:04d952d56f46e7946672525f914c7e88b8cf2ec5e8e9b1da4a20273f2d5cb463",
+  "digest": "sha256:9a850ccda39768014b55e95c868a66ad16276a892fe71cb5e56fec4a84c3cd25",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
   "slsa_attestation_url": "https://github.com/kaitakuai/mlnode-foundry/attestations",
   "report_url": "https://github.com/kaitakuai/experiments/2026-05/kimi_k26_b300_eager_flashinfer",
