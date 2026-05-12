@@ -7,7 +7,7 @@ package profiles
 import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
 
 // Top-level field name matches filename with `-` → `_`.
-h100_qwen: #BaseProfile & bases.H100 & bases.QWEN & {
+h100_qwen3_235b_a22b: #BaseProfile & bases.H100 & bases.QWEN & {
 	identity: {
 		axes: {
 			gpu:   "h100"

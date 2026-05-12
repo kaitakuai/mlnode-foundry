@@ -63,7 +63,7 @@ def test_report_url_none_when_no_url_notes() -> None:
 def test_render_registry_view_b300_kimi_int4() -> None:
     """End-to-end render: profile + model-registry + stage2.lock → dashboard JSON."""
     view = render_registry_view(
-        "b300-kimi-int4",
+        "b300-kimi-k2-6-int4",
         digest="sha256:" + "a" * 64,
         cosign_identity="https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
         size="42 GB",
@@ -79,7 +79,7 @@ def test_render_registry_view_b300_kimi_int4() -> None:
     assert view["size"] == "42 GB"
     assert "tensor_parallel_size=4" in view["flags"]
     assert "VLLM_USE_FLASHINFER_MOE_INT4=1" in view["flags"]
-    # b300-kimi-int4 has two tuning_notes (both info) → all in descriptions, none in warnings
+    # b300-kimi-k2-6-int4 has two tuning_notes (both info) → all in descriptions, none in warnings
     assert view["flag_warnings"] == {}
     assert "VLLM_USE_FLASHINFER_MOE_INT4=1" in view["flag_descriptions"]
     assert view["report_url"] is not None

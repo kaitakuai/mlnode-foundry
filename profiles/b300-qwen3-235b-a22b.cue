@@ -9,7 +9,7 @@ package profiles
 
 import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
 
-b300_qwen: #BaseProfile & bases.B300 & bases.QWEN & {
+b300_qwen3_235b_a22b: #BaseProfile & bases.B300 & bases.QWEN & {
 	identity: {
 		axes: {
 			gpu:   "b300"

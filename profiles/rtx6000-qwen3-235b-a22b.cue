@@ -8,7 +8,7 @@ package profiles
 
 import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
 
-rtx6000_qwen: #BaseProfile & bases.RTX6000 & bases.QWEN & {
+rtx6000_qwen3_235b_a22b: #BaseProfile & bases.RTX6000 & bases.QWEN & {
 	identity: {
 		axes: {
 			gpu:   "rtx6000"

@@ -6,18 +6,18 @@ from mlnode_foundry.build_hash import compute_profile_hash
 
 
 def test_hash_is_deterministic() -> None:
-    h1 = compute_profile_hash("b300-kimi-int4")
-    h2 = compute_profile_hash("b300-kimi-int4")
+    h1 = compute_profile_hash("b300-kimi-k2-6-int4")
+    h2 = compute_profile_hash("b300-kimi-k2-6-int4")
     assert h1 == h2
 
 
 def test_hash_is_64_hex_chars() -> None:
-    h = compute_profile_hash("b300-kimi-int4")
+    h = compute_profile_hash("b300-kimi-k2-6-int4")
     assert len(h) == 64
     assert all(c in "0123456789abcdef" for c in h)
 
 
 def test_hash_differs_between_profiles() -> None:
-    h1 = compute_profile_hash("b300-kimi-int4")
-    h2 = compute_profile_hash("h100-qwen")
+    h1 = compute_profile_hash("b300-kimi-k2-6-int4")
+    h2 = compute_profile_hash("h100-qwen3-235b-a22b")
     assert h1 != h2

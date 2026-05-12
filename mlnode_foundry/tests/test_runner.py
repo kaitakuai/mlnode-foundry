@@ -18,4 +18,4 @@ def test_list_runners_returns_registered() -> None:
 def test_select_runner_no_affinity_in_phase2() -> None:
     """Phase 2 profiles don't declare validation_targets; selection should fail."""
     with pytest.raises(ValueError, match="declares no runner affinity"):
-        select_runner("b300-kimi-int4", "smoke")
+        select_runner("b300-kimi-k2-6-int4", "smoke")
