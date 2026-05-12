@@ -1,18 +1,18 @@
 {
   "profile": "profiles/b200-qwen.cue",
-  "profile_hash": "b4eb4fe470dfc3ddb8a7b30e8cf73c8b3874c502fdf2450d5b679e6d99dda064",
+  "profile_hash": "087cbda9adf163990ca7fdda671929f51fd64a03ffa8d66179f2f9cf0e6ac3fd",
   "status": "draft",
   "image": {
     "package": "ghcr.io/kaitakuai/mlnode-b200-qwen-v3-235b",
     "tag": "0.2.13-vllm0.20.0-k1",
-    "digest": "sha256:15e2f7ad73f0e2abac82d5b72608622a47dabcbafaf34e30ad36207f8511ec94",
-    "built_at": "2026-05-12T01:38:27Z",
+    "digest": "sha256:4528202d863abb1b939e406bef6c5f0b5e7a581c1a0eeee1553b9d8ca7130689",
+    "built_at": "2026-05-12T02:15:55Z",
     "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main"
   },
   "validation": {
     "build_smoke": {
       "result": "pass",
-      "at": "2026-05-12T01:38:27Z"
+      "at": "2026-05-12T02:15:55Z"
     }
   }
 }
