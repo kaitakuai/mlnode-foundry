@@ -42,4 +42,20 @@ b300_kimi_int4: #BaseProfile & bases.B300 & bases.KIMI_INT4 & {
 		Why VLLM_USE_FLASHINFER_MOE_INT4=1: +138% throughput vs Marlin on Blackwell sm_100.
 		Phase 2 skeleton — real hw_patches application wires in Phase 3.
 		"""
+	// Provenance for every non-base tuning knob, baked into the
+	// gonka.kaitaku.tuning_notes OCI label.
+	tuning_notes: [
+		{
+			knob:     "VLLM_USE_FLASHINFER_MOE_INT4=1"
+			source:   "https://github.com/kaitakuai/experiments/2026-05/kimi_k26_b300_eager_flashinfer"
+			reason:   "+138% PoC throughput vs Marlin on Blackwell sm_100 (5120 nonces/min @ 4×B300)"
+			added_at: "2026-05-02"
+		},
+		{
+			knob:     "max_num_batched_tokens=131072"
+			source:   "https://github.com/kaitakuai/experiments/2026-05/kimi_k26_4xb200_b200-k5-kimi-1"
+			reason:   "Vision-encoder profile_run OOMs above 131072 on Kimi-K2.6 (verified on B200; same envelope used for B300)"
+			added_at: "2026-05-02"
+		},
+	]
 }

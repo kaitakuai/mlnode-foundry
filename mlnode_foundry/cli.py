@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from pathlib import Path
 
 import typer
 
@@ -57,6 +58,22 @@ def expand(profile: str) -> None:
     typer.echo(json.dumps(resolved, indent=2))
 
 
+@app.command("render-dockerfile")
+def render_dockerfile_cmd(
+    profile: str,
+    output: Path = typer.Option(  # noqa: B008
+        REPO_ROOT / "stage3" / "Dockerfile.rendered",
+        help="Where to write the rendered Dockerfile.",
+    ),
+) -> None:
+    """Render stage3/Dockerfile.tmpl for a profile (substitute ENV block + tuning label)."""
+    from .render_dockerfile import render_dockerfile
+
+    p = load_profile(profile)
+    path = render_dockerfile(p, output)
+    typer.secho(f"✓ Rendered: {path}", fg=typer.colors.GREEN)
+
+
 @app.command()
 def build(
     profile: str,
@@ -65,6 +82,8 @@ def build(
     ),
 ) -> None:
     """Build a profile via docker buildx."""
+    from .render_dockerfile import render_dockerfile
+
     typer.echo(f"→ Loading profile: {profile}")
     p = load_profile(profile)
     naming = load_naming()
@@ -74,9 +93,12 @@ def build(
     typer.echo(f"→ Tag: {full_tag}")
     typer.echo(f"→ Hash: {profile_hash[:16]}...")
 
+    rendered_path = render_dockerfile(p)
+    typer.echo(f"→ Rendered Dockerfile: {rendered_path}")
+
     args = render_build_args(p, pkg, t, profile_hash)
 
-    cmd: list[str] = ["docker", "buildx", "build", "-f", str(REPO_ROOT / "stage3" / "Dockerfile")]
+    cmd: list[str] = ["docker", "buildx", "build", "-f", str(rendered_path)]
     cmd += ["-t", full_tag]
     for k, v in args.items():
         cmd += ["--build-arg", f"{k}={v}"]

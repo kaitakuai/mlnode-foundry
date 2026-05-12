@@ -38,7 +38,8 @@ def compute_profile_hash(name: str) -> str:
         REPO_ROOT / "profiles" / "schema.cue",
         REPO_ROOT / "tools" / "naming.cue",
         REPO_ROOT / "tools" / "stage2.lock.cue",
-        REPO_ROOT / "stage3" / "Dockerfile",
+        REPO_ROOT / "tools" / "model-registry.cue",
+        REPO_ROOT / "stage3" / "Dockerfile.tmpl",
     ]
     # Include all bases (Phase 2: hash entire bases/ directory)
     bases_dir = REPO_ROOT / "profiles" / "bases"

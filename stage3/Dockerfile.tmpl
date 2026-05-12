@@ -1,0 +1,63 @@
+# syntax=docker/dockerfile:1.7
+#
+# Stage 3 Dockerfile TEMPLATE — rendered per profile by
+# `mlnode-foundry render-dockerfile <profile>` into `stage3/Dockerfile.rendered`.
+#
+# Inputs (passed via --build-arg):
+#   BASE_IMAGE        — Stage 2 image (mlnode-base@sha256:...) or upstream binary
+#   GPU, MODEL,
+#   MODEL_REVISION,
+#   QUANT             — identity axes (OCI labels)
+#   PACKAGE_NAME, TAG — for labels (actual --tag is set by CLI)
+#   PROFILE_HASH      — content hash of profile + naming + bases + this template
+#   RUNNER_PATCH      — basename of tools/runner-patches/<x>.py (empty = no-op)
+#
+# Profile-specific content baked at render time (no opt-in build-args):
+#   {{ENV_BLOCK}}     — ENV K=V for each profile.env entry
+#   {{TUNING_LABEL}}  — gonka.kaitaku.tuning_notes label (compact JSON)
+
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+# Identity (OCI labels)
+ARG GPU
+ARG MODEL
+ARG MODEL_REVISION
+ARG QUANT
+ARG PACKAGE_NAME
+ARG TAG
+ARG PROFILE_HASH
+
+# Apply hw-patches ------------------------------------------------------------
+COPY --link tools/hw-patches /tmp/hw-patches
+RUN <<'EOF' bash
+set -euxo pipefail
+echo "Stage 3: hw-patches applied via /tmp/hw-patches (resolution happens in CLI)"
+EOF
+
+# Apply runner-patch ----------------------------------------------------------
+COPY --link tools/runner-patches /tmp/runner-patches
+ARG RUNNER_PATCH=""
+RUN if [ -n "${RUNNER_PATCH}" ] && [ -f "/tmp/runner-patches/${RUNNER_PATCH}.py" ]; then \
+        echo "Applying runner-patch: ${RUNNER_PATCH}" && \
+        python3 "/tmp/runner-patches/${RUNNER_PATCH}.py" || \
+        echo "WARNING: runner-patch failed (may be no-op against this base); continuing"; \
+    else \
+        echo "No runner-patch to apply (RUNNER_PATCH=${RUNNER_PATCH:-unset})"; \
+    fi && \
+    rm -rf /tmp/runner-patches /tmp/hw-patches
+
+# ENV from profile.env (rendered) ---------------------------------------------
+{{ENV_BLOCK}}
+
+LABEL gonka.kaitaku.stage="3" \
+      gonka.kaitaku.gpu="${GPU}" \
+      gonka.kaitaku.model="${MODEL}" \
+      gonka.kaitaku.model_revision="${MODEL_REVISION}" \
+      gonka.kaitaku.quant="${QUANT}" \
+      gonka.kaitaku.package="${PACKAGE_NAME}" \
+      gonka.kaitaku.tag="${TAG}" \
+      gonka.kaitaku.profile_hash="${PROFILE_HASH}" \
+      {{TUNING_LABEL}} \
+      org.opencontainers.image.source="https://github.com/kaitakuai/mlnode-foundry" \
+      org.opencontainers.image.licenses="Apache-2.0"
