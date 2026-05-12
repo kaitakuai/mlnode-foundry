@@ -46,6 +46,15 @@ RUN if ls /patches/*.patch >/dev/null 2>&1; then \
         echo "==> No patches to apply"; \
     fi
 
+# Upstream-fix: the mistralai PyPI package was removed entirely (404 on every
+# version). It enters our dep graph only through bfcl (gorilla submodule used
+# for Berkeley function-call eval), and is NOT imported anywhere in mlnode
+# code. Strip it from bfcl/pyproject.toml here in Stage A; poetry.lock files
+# are regenerated in Stage C via `poetry lock --no-update` so they stay
+# in sync without touching any other locked version.
+RUN sed -i '/"mistralai==1.1.0",/d' \
+    mlnode/packages/train/third_party/gorilla/berkeley-function-call-leaderboard/pyproject.toml
+
 ################################################################################
 # Stage B — base: apt deps + OpenSSL 1.1.1u (mirrors upstream)
 ################################################################################
@@ -118,6 +127,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m venv /app/packages/api/.venv \
     && . /app/packages/api/.venv/bin/activate \
     && cd /app/packages/api \
+    && poetry lock --no-update \
     && poetry install --no-interaction
 
 # Note: flash-attn install from legacy Dockerfile removed — the v2.8.3 cu12torch2.9
