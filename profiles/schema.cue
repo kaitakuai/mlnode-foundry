@@ -35,9 +35,14 @@ package profiles
 // The CI bakes the array as compact JSON into the gonka.kaitaku.tuning_notes
 // OCI label so it travels with the image.
 #TuningNote: {
-	knob:     string                 // e.g., "VLLM_ATTENTION_BACKEND=FLASHINFER"
-	source:   string                 // experiment id, PR link, or decision-log entry
-	reason:   string                 // one-line why
+	knob:     string                       // e.g., "VLLM_ATTENTION_BACKEND=FLASHINFER"
+	source:   string                       // experiment id, PR link, or decision-log entry
+	reason:   string                       // one-line why
+	// severity drives dashboard rendering: "warning" shows the triangle icon,
+	// "info" is a neutral tooltip. Default "info"; flip to "warning" when the
+	// knob represents a constraint/trade-off operators need to notice
+	// (e.g., max_model_len cut below model native context).
+	severity: *"info" | "warning"
 	added_at: =~"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
 }
 

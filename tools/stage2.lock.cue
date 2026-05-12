@@ -26,6 +26,7 @@ stage1: {
 	image:  "ghcr.io/kaitakuai/vllm"
 	tag:    "0.20.0-pocv2"  // existing kaitakuai/vllm tag (will retag to 0.20.0-poc-k1 in a separate kaitakuai/vllm PR)
 	digest: "sha256:2025cd0dfd682bd66327959493e47ddcc45ec3c9dd9660e93086c9056e3fb819"
+	cuda:   "13.0"          // CUDA toolkit shipped inside Stage 1 (vLLM PoC base); used by dashboard renderer
 }
 
 stage2: {

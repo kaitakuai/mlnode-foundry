@@ -235,7 +235,28 @@ jobs:
         run: |
           cue vet "$state_file" state/schema.cue
 
-      - name: Commit state file
+      - name: Write registry-view/<package-tag>.json (dashboard)
+        if: steps.skip.outputs.skip != 'true'
+        run: |
+          # Get image size from buildx imagetools (humanized GB)
+          SIZE_BYTES=$(docker buildx imagetools inspect --raw "${{ steps.meta.outputs.package_name }}@${{ steps.build.outputs.digest }}" \
+            | jq '[.. | objects | select(.size? != null) | .size] | add' 2>/dev/null || echo "0")
+          if [ "$SIZE_BYTES" -gt 0 ]; then
+            SIZE_GB=$(awk -v b="$SIZE_BYTES" 'BEGIN { printf "%.0f GB", b/1024/1024/1024 }')
+          else
+            SIZE_GB=""
+          fi
+          .venv/bin/mlnode-foundry registry-view "${{ matrix.profile }}" \
+            --digest "${{ steps.build.outputs.digest }}" \
+            --cosign-identity "https://github.com/${{ github.repository }}/.github/workflows/build-stage3.yml@${{ github.ref }}" \
+            --size "$SIZE_GB"
+          PACKAGE_BASENAME=$(echo "${{ steps.meta.outputs.package_name }}" | sed 's|.*/||')
+          REGISTRY_FILE="registry-view/${PACKAGE_BASENAME}-${{ steps.meta.outputs.tag }}.json"
+          echo "registry_file=$REGISTRY_FILE" >> "$GITHUB_ENV"
+          echo "=== $REGISTRY_FILE ==="
+          cat "$REGISTRY_FILE"
+
+      - name: Commit state + registry-view
         if: steps.skip.outputs.skip != 'true'
         env:
           STATE_PUSH_TOKEN: ${{ secrets.STATE_PUSH_TOKEN }}
@@ -244,7 +265,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           REMOTE="https://x-access-token:${STATE_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
           git pull --rebase --autostash "$REMOTE" main || true
-          git add "$state_file"
+          git add "$state_file" "$registry_file"
           if git diff --cached --quiet; then
             echo "No state changes to commit"
           else
@@ -259,7 +280,7 @@ jobs:
               sleep $((i * 5))
             done
             if [ "$pushed" != "true" ]; then
-              echo "::error::Failed to push state file after 3 attempts"
+              echo "::error::Failed to push state + registry-view after 3 attempts"
               exit 1
             fi
           fi
