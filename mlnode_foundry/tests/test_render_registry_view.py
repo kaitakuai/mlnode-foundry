@@ -71,7 +71,7 @@ def test_render_registry_view_b300_kimi_int4() -> None:
     assert view["line"] == "mlnode"
     assert view["gpu"] == "b300"
     assert view["model_family"] == "kimi"
-    assert view["model_revision"] == "k26"
+    assert view["model_revision"] == "k2-6"
     assert view["quant"] == "int4"
     assert view["model"] == "moonshotai/Kimi-K2.6"
     assert view["model_short"] == "Moonshot Kimi-K2.6"

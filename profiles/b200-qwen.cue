@@ -12,8 +12,8 @@ b200_qwen: #BaseProfile & bases.B200 & bases.QWEN & {
 	identity: {
 		axes: {
 			gpu:   "b200"
-			model: "qwen"
-			model_revision: "v3-235b"
+			model: "qwen3"
+			model_revision: "235b-a22b"
 		}
 		version: {
 			mlnode: "0.2.13"

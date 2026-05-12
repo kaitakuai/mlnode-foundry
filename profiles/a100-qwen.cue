@@ -10,8 +10,8 @@ a100_qwen: #BaseProfile & bases.A100 & bases.QWEN & {
 	identity: {
 		axes: {
 			gpu:   "a100"
-			model: "qwen"
-			model_revision: "v3-235b"
+			model: "qwen3"
+			model_revision: "235b-a22b"
 		}
 		version: {
 			mlnode: "0.2.13"

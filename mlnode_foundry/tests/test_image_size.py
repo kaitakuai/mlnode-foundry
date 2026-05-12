@@ -93,10 +93,10 @@ def test_fetch_size_multi_platform_index(monkeypatch: pytest.MonkeyPatch) -> Non
     runner, calls = _fake_run(index, platform_manifest)
     monkeypatch.setattr(subprocess, "run", runner)
 
-    size = fetch_image_compressed_size("ghcr.io/kaitakuai/mlnode-b300-kimi-k26:test")
+    size = fetch_image_compressed_size("ghcr.io/kaitakuai/mlnode-b300-kimi-k2-6:test")
     assert size == 10_000 + 1_000_000_000 + 500_000_000
     # Verified the second call used the platform digest from the index.
-    assert calls[1][-1] == "ghcr.io/kaitakuai/mlnode-b300-kimi-k26@sha256:platformdigest"
+    assert calls[1][-1] == "ghcr.io/kaitakuai/mlnode-b300-kimi-k2-6@sha256:platformdigest"
 
 
 def test_fetch_size_direct_manifest(monkeypatch: pytest.MonkeyPatch) -> None:

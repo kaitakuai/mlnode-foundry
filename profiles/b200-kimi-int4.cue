@@ -12,7 +12,7 @@ b200_kimi_int4: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
 		axes: {
 			gpu:   "b200"
 			model: "kimi"
-			model_revision: "k26"
+			model_revision: "k2-6"
 			quant: "int4"
 		}
 		version: {
