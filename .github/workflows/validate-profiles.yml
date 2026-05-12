@@ -93,20 +93,26 @@ jobs:
       - name: pytest
         run: .venv/bin/pytest mlnode_foundry/tests/ -v
 
-      - name: validate b300-kimi-int4
-        run: .venv/bin/mlnode-foundry validate b300-kimi-int4
-
-      - name: validate h100-qwen
-        run: .venv/bin/mlnode-foundry validate h100-qwen
+      - name: validate all profiles
+        run: |
+          shopt -s nullglob
+          fail=0
+          for f in profiles/*.cue; do
+            base=$(basename "$f" .cue)
+            [ "$base" = "schema" ] && continue
+            echo "→ $base"
+            .venv/bin/mlnode-foundry validate "$base" || fail=$((fail+1))
+          done
+          [ "$fail" -eq 0 ] || { echo "::error::$fail profile(s) failed validation"; exit 1; }
 
       - name: tag both
         run: |
-          .venv/bin/mlnode-foundry tag b300-kimi-int4
-          .venv/bin/mlnode-foundry tag h100-qwen
+          .venv/bin/mlnode-foundry tag b300-kimi-k2-6-int4
+          .venv/bin/mlnode-foundry tag h100-qwen3-235b-a22b
 
       - name: hash determinism
         run: |
-          H1=$(.venv/bin/mlnode-foundry hash b300-kimi-int4)
-          H2=$(.venv/bin/mlnode-foundry hash b300-kimi-int4)
+          H1=$(.venv/bin/mlnode-foundry hash b300-kimi-k2-6-int4)
+          H2=$(.venv/bin/mlnode-foundry hash b300-kimi-k2-6-int4)
           [ "$H1" = "$H2" ] || { echo "Hash not deterministic: $H1 vs $H2"; exit 1; }
           echo "✓ profile_hash: $H1"
