@@ -1,0 +1,18 @@
+{
+  "profile": "profiles/h200-qwen.cue",
+  "profile_hash": "ad690b1840c7d0989d9b6734672d2fbec05cf9303a0ec2a00976d31ef5472376",
+  "status": "draft",
+  "image": {
+    "package": "ghcr.io/kaitakuai/mlnode-h200-qwen-v3-235b",
+    "tag": "0.2.13-vllm0.20.0-k1",
+    "digest": "sha256:5da9eb861b530ab0b23ffb70228e34acf4fac7abe37d5bb51fb9f43fb2b1e7e5",
+    "built_at": "2026-05-12T01:48:12Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main"
+  },
+  "validation": {
+    "build_smoke": {
+      "result": "pass",
+      "at": "2026-05-12T01:48:12Z"
+    }
+  }
+}
