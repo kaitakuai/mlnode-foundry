@@ -13,8 +13,8 @@
 #   RUNNER_PATCH      — basename of tools/runner-patches/<x>.py (empty = no-op)
 #
 # Profile-specific content baked at render time (no opt-in build-args):
-#   {{ENV_BLOCK}}     — ENV K=V for each profile.env entry
-#   {{TUNING_LABEL}}  — gonka.kaitaku.tuning_notes label (compact JSON)
+#   - ENV K=V for each profile.env entry (rendered ENV directive below)
+#   - gonka.kaitaku.tuning_notes label (compact JSON, rendered LABEL line below)
 
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
