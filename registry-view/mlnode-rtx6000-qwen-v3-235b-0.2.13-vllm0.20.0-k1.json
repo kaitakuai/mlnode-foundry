@@ -18,7 +18,7 @@
   "model_context_max": 262144,
   "model_license": "Apache-2.0",
   "cuda": "13.0",
-  "size": "0 GB",
+  "size": "12 GB",
   "runtime": "docker run -d --gpus all -p 8080:8080 ghcr.io/kaitakuai/mlnode-rtx6000-qwen-v3-235b:0.2.13-vllm0.20.0-k1",
   "flags": [
     "POC_BATCH_SIZE_DEFAULT=32",
@@ -29,7 +29,7 @@
   ],
   "flag_warnings": {},
   "flag_descriptions": {},
-  "digest": "sha256:b59bccfe0b23919b8ad176bb78a96c47edeefa67f9d0f78d2c7891bee2d64334",
+  "digest": "sha256:6c315ff7c0fab5d5c0f955aded44e56b9e0863641c1adc43b70fd38da6e46680",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
   "slsa_attestation_url": "https://github.com/kaitakuai/mlnode-foundry/attestations",
   "report_url": null,
