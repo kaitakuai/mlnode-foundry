@@ -9,12 +9,14 @@ from mlnode_foundry.validate import validate_profile
 
 
 def test_generated_profile_validates(tmp_path, monkeypatch) -> None:
-    """A freshly-generated profile must pass `cue vet`."""
-    # Use a combo not in the migrated profile set (H100 + Kimi INT4 is realistic
-    # but currently absent — exercises both gpu and model+quant base resolution).
+    """A freshly-generated profile must pass `cue vet` AND registry cross-check."""
+    # Use a combo not in the migrated profile set (H100 + Kimi K2.6 INT4 is
+    # realistic but currently absent — exercises gpu + model+quant base resolution
+    # and the (kimi, k26) registry pair.
     path = profile_factory.generate_profile(
         gpu="h100",
         model="kimi",
+        model_revision="k26",
         quant="int4",
         mlnode="0.2.13",
         vllm="0.20.0",
@@ -26,10 +28,32 @@ def test_generated_profile_validates(tmp_path, monkeypatch) -> None:
         path.unlink(missing_ok=True)
 
 
+def test_unknown_model_revision_rejected() -> None:
+    """Profile with a (model, model_revision) tuple not in registry must fail validation."""
+    from mlnode_foundry.validate import ModelRegistryError
+
+    path = profile_factory.generate_profile(
+        gpu="h100",
+        model="kimi",
+        model_revision="k99",  # fake revision, not in registry
+        quant="int4",
+        mlnode="0.2.13",
+        vllm="0.20.0",
+        rev=1,
+    )
+    try:
+        with pytest.raises(ModelRegistryError):
+            validate_profile("h100-kimi-int4")
+    finally:
+        path.unlink(missing_ok=True)
+
+
 def test_generate_refuses_overwrite() -> None:
     """Generation MUST refuse to overwrite an existing profile."""
     with pytest.raises(FileExistsError):
-        profile_factory.generate_profile(gpu="b300", model="kimi", quant="int4")
+        profile_factory.generate_profile(
+            gpu="b300", model="kimi", model_revision="k26", quant="int4"
+        )
 
 
 def test_filename_convention() -> None:

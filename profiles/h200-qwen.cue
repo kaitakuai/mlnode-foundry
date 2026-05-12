@@ -12,6 +12,7 @@ h200_qwen: #BaseProfile & bases.H200 & bases.QWEN & {
 		axes: {
 			gpu:   "h200"
 			model: "qwen"
+			model_revision: "v3-235b"
 		}
 		version: {
 			mlnode: "0.2.13"

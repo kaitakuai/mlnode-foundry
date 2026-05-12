@@ -32,6 +32,11 @@ axes: model: {
 	name_axis_only: true
 	description:    "Model family (qwen, kimi, minimax, deepseek, ...)"
 }
+axes: model_revision: {
+	type:           "identity"
+	name_axis_only: true
+	description:    "Model revision (k26, v3-235b, m27, ...); cross-checked vs tools/model-registry.cue"
+}
 
 // Tag-axes (in tag, prefixed by .prefix).
 axes: quant: {
@@ -66,7 +71,7 @@ axes: transform: {
 // Global naming policy — compose axes into package name and tag.
 package: {
 	prefix: "ghcr.io/kaitakuai/mlnode"
-	axes: ["gpu", "model"]  // → mlnode-<gpu>-<model>
+	axes: ["gpu", "model", "model_revision"]  // → mlnode-<gpu>-<model>-<model_revision>
 }
 
 tag: {
