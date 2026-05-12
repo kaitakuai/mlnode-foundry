@@ -18,7 +18,7 @@
   "model_context_max": 262144,
   "model_license": "MIT",
   "cuda": "13.0",
-  "size": "0 GB",
+  "size": "12 GB",
   "runtime": "docker run -d --gpus all -p 8080:8080 ghcr.io/kaitakuai/mlnode-b200-kimi-k26:0.2.13-vllm0.20.0-q.int4-k1",
   "flags": [
     "POC_BATCH_SIZE_DEFAULT=64",
@@ -35,7 +35,7 @@
   ],
   "flag_warnings": {},
   "flag_descriptions": {},
-  "digest": "sha256:4e3f97e66a91bb81d0752f18bd7f57258e4f65efb2e96267a188f96f52d38dcf",
+  "digest": "sha256:1a088ec6d713e51b5c6fa121ff863e38a9fb465b652adb5955c867caebbb6b9a",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
   "slsa_attestation_url": "https://github.com/kaitakuai/mlnode-foundry/attestations",
   "report_url": null,
