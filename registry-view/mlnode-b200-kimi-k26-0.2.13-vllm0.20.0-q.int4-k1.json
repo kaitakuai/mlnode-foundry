@@ -35,7 +35,7 @@
   ],
   "flag_warnings": {},
   "flag_descriptions": {},
-  "digest": "sha256:1a088ec6d713e51b5c6fa121ff863e38a9fb465b652adb5955c867caebbb6b9a",
+  "digest": "sha256:35254b2f4bce3919a24365e1c3f4f8eafef10d86cdb5a06b3f909969bfe9c74d",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
   "slsa_attestation_url": "https://github.com/kaitakuai/mlnode-foundry/attestations",
   "report_url": null,
