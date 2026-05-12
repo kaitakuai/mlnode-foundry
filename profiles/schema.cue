@@ -13,11 +13,15 @@ package profiles
 
 #Identity: {
 	axes: {
-		gpu:        =~"^[a-z][a-z0-9]+$"
-		model:      =~"^[a-z][a-z0-9]+$"
-		quant?:     "int4" | "fp8" | "nvfp4" | "awq4bit" | "mxfp4"
-		framework?: "vllm" | "sglang" | "trtllm"
-		transform?: "full" | "slim"
+		gpu:            =~"^[a-z][a-z0-9]+$"
+		model:          =~"^[a-z][a-z0-9]+$"
+		// Required since model_revision PR. Disambiguates Kimi-K2.5 vs K2.6,
+		// Qwen3-235B vs Qwen3-72B, etc. Cross-checked against tools/model-registry.cue
+		// by the Python validator (Cue cannot import across packages at vet time).
+		model_revision: =~"^[a-z][a-z0-9-]*$"
+		quant?:         "int4" | "fp8" | "nvfp4" | "awq4bit" | "mxfp4"
+		framework?:     "vllm" | "sglang" | "trtllm"
+		transform?:     "full" | "slim"
 	}
 	version: {
 		rev: int & >=1

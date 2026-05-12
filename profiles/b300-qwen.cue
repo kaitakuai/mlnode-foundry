@@ -14,6 +14,7 @@ b300_qwen: #BaseProfile & bases.B300 & bases.QWEN & {
 		axes: {
 			gpu:   "b300"
 			model: "qwen"
+			model_revision: "v3-235b"
 		}
 		version: {
 			mlnode: "0.2.13"

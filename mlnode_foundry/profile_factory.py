@@ -26,8 +26,9 @@ import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
 {key}: #BaseProfile{bases_chain} & {{
 \tidentity: {{
 \t\taxes: {{
-\t\t\tgpu:   "{gpu}"
-\t\t\tmodel: "{model}"{quant_axis}
+\t\t\tgpu:            "{gpu}"
+\t\t\tmodel:          "{model}"
+\t\t\tmodel_revision: "{model_revision}"{quant_axis}
 \t\t}}
 \t\tversion: {{
 \t\t\tmlnode: "{mlnode}"
@@ -77,6 +78,7 @@ def generate_profile(
     *,
     gpu: str,
     model: str,
+    model_revision: str,
     quant: str | None = None,
     mlnode: str = "0.2.13",
     vllm: str = "0.20.0",
@@ -87,7 +89,7 @@ def generate_profile(
     path = PROFILES_DIR / f"{filename}.cue"
     if path.exists():
         raise FileExistsError(f"Profile already exists: {path}")
-    description = f"{gpu.upper()} + {model.capitalize()}"
+    description = f"{gpu.upper()} + {model.capitalize()}-{model_revision}"
     if quant:
         description += f" {quant.upper()}"
     description += " — generated profile, tune before use"
@@ -96,7 +98,8 @@ def generate_profile(
         key=_key(gpu, model, quant),
         gpu=gpu,
         model=model,
-        quant_axis=(f'\n\t\t\tquant: "{quant}"' if quant else ""),
+        model_revision=model_revision,
+        quant_axis=(f'\n\t\t\tquant:          "{quant}"' if quant else ""),
         mlnode=mlnode,
         vllm=vllm,
         rev=rev,
@@ -110,6 +113,7 @@ def generate_profile(
 def bulk_add_model(
     *,
     model: str,
+    model_revision: str,
     gpus: list[str],
     quant: str | None = None,
     mlnode: str = "0.2.13",
@@ -118,7 +122,15 @@ def bulk_add_model(
 ) -> list[Path]:
     """Generate profiles for `model` across multiple GPUs."""
     return [
-        generate_profile(gpu=g.strip(), model=model, quant=quant, mlnode=mlnode, vllm=vllm, rev=rev)
+        generate_profile(
+            gpu=g.strip(),
+            model=model,
+            model_revision=model_revision,
+            quant=quant,
+            mlnode=mlnode,
+            vllm=vllm,
+            rev=rev,
+        )
         for g in gpus
         if g.strip()
     ]
@@ -127,14 +139,21 @@ def bulk_add_model(
 def bulk_add_gpu(
     *,
     gpu: str,
-    models: list[str],
+    models: list[tuple[str, str]],
     mlnode: str = "0.2.13",
     vllm: str = "0.20.0",
     rev: int = 1,
 ) -> list[Path]:
-    """Generate profiles for `gpu` across multiple models (one profile per model)."""
+    """Generate profiles for `gpu` across multiple (model, revision) tuples."""
     return [
-        generate_profile(gpu=gpu, model=m.strip(), mlnode=mlnode, vllm=vllm, rev=rev)
-        for m in models
+        generate_profile(
+            gpu=gpu,
+            model=m.strip(),
+            model_revision=r.strip(),
+            mlnode=mlnode,
+            vllm=vllm,
+            rev=rev,
+        )
+        for m, r in models
         if m.strip()
     ]
