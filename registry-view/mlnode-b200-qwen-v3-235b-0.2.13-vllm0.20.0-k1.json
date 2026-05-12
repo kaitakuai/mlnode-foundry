@@ -18,7 +18,7 @@
   "model_context_max": 262144,
   "model_license": "Apache-2.0",
   "cuda": "13.0",
-  "size": "0 GB",
+  "size": "12 GB",
   "runtime": "docker run -d --gpus all -p 8080:8080 ghcr.io/kaitakuai/mlnode-b200-qwen-v3-235b:0.2.13-vllm0.20.0-k1",
   "flags": [
     "VLLM_USE_FLASHINFER_MOE_FP8=0",
@@ -28,7 +28,7 @@
   ],
   "flag_warnings": {},
   "flag_descriptions": {},
-  "digest": "sha256:4528202d863abb1b939e406bef6c5f0b5e7a581c1a0eeee1553b9d8ca7130689",
+  "digest": "sha256:43baffef3db94e851191628205fd28a621ca5bfe469fd72329ce06383b648c80",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
   "slsa_attestation_url": "https://github.com/kaitakuai/mlnode-foundry/attestations",
   "report_url": null,
