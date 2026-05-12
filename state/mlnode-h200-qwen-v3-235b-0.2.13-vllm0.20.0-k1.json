@@ -5,14 +5,14 @@
   "image": {
     "package": "ghcr.io/kaitakuai/mlnode-h200-qwen-v3-235b",
     "tag": "0.2.13-vllm0.20.0-k1",
-    "digest": "sha256:d0376fa82eb69ac4ec6bb6634b40f7784097fe71452736ef4f6bc271739bb650",
-    "built_at": "2026-05-12T02:25:51Z",
+    "digest": "sha256:3ef89afa489c447e00b3073d212bc88c902ed39529a9bc7b98ea772232993b5d",
+    "built_at": "2026-05-12T08:29:51Z",
     "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main"
   },
   "validation": {
     "build_smoke": {
       "result": "pass",
-      "at": "2026-05-12T02:25:51Z"
+      "at": "2026-05-12T08:29:51Z"
     }
   }
 }
