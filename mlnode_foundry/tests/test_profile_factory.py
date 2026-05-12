@@ -23,7 +23,7 @@ def test_generated_profile_validates(tmp_path, monkeypatch) -> None:
         rev=1,
     )
     try:
-        validate_profile("h100-kimi-int4")
+        validate_profile("h100-kimi-k2-6-int4")
     finally:
         path.unlink(missing_ok=True)
 
@@ -43,7 +43,7 @@ def test_unknown_model_revision_rejected() -> None:
     )
     try:
         with pytest.raises(ModelRegistryError):
-            validate_profile("h100-kimi-int4")
+            validate_profile("h100-kimi-k99-int4")
     finally:
         path.unlink(missing_ok=True)
 
@@ -54,6 +54,41 @@ def test_generate_refuses_overwrite() -> None:
         profile_factory.generate_profile(
             gpu="b300", model="kimi", model_revision="k2-6", quant="int4"
         )
+
+
+def test_filename_mismatch_rejected(tmp_path) -> None:
+    """Renaming a profile file without updating its axes is REJECTED.
+
+    Strict invariant: filename ↔ axes is 1:1. If the file is renamed to
+    something other than <gpu>-<model>-<revision>[-<quant>], validation
+    must raise FilenameMismatchError.
+    """
+    from mlnode_foundry.profile_factory import PROFILES_DIR
+    from mlnode_foundry.validate import FilenameMismatchError
+
+    # Generate a valid profile, then copy it to a wrong-name location.
+    path = profile_factory.generate_profile(
+        gpu="h100",
+        model="kimi",
+        model_revision="k2-6",
+        quant="int4",
+        mlnode="0.2.13",
+        vllm="0.20.0",
+        rev=1,
+    )
+    misnamed = PROFILES_DIR / "h100-kimi-int4.cue"  # missing -k2-6
+    try:
+        # Copy content but keep top-level key matching the new (wrong) filename
+        # so cue vet passes — we want the explicit filename check to fire.
+        body = path.read_text().replace(
+            "h100_kimi_k2_6_int4:", "h100_kimi_int4:"
+        )
+        misnamed.write_text(body)
+        with pytest.raises(FilenameMismatchError):
+            validate_profile("h100-kimi-int4")
+    finally:
+        path.unlink(missing_ok=True)
+        misnamed.unlink(missing_ok=True)
 
 
 def test_filename_convention() -> None:

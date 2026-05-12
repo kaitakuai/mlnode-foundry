@@ -13,6 +13,16 @@ class ModelRegistryError(ValueError):
     """Profile references (model, model_revision) tuple not in tools/model-registry.cue."""
 
 
+class FilenameMismatchError(ValueError):
+    """Profile filename does not encode the axes declared inside the profile.
+
+    Strict 1:1 invariant: the .cue file's stem MUST equal
+    <gpu>-<model>-<model_revision>[-<quant>] so that filename ↔ image
+    package name is unambiguous (no two profiles can hide under the same
+    short name, no profile can claim axes that contradict its filename).
+    """
+
+
 def load_model_registry() -> list[dict]:
     """Load tools/model-registry.cue and return its models list."""
     data = cue_export(REPO_ROOT / "tools" / "model-registry.cue")
@@ -45,10 +55,31 @@ def validate_model_revision(profile_name: str, profile: dict) -> None:
         )
 
 
-def validate_profile(name: str) -> None:
-    """Validate a profile against the schema AND the model registry.
+def _expected_filename(axes: dict) -> str:
+    """Derive the canonical profile filename stem from identity.axes."""
+    parts = [axes["gpu"], axes["model"], axes["model_revision"]]
+    if "quant" in axes:
+        parts.append(axes["quant"])
+    return "-".join(parts)
 
-    Raises CueError on schema failure, ModelRegistryError on unknown model pair.
+
+def validate_filename_matches_axes(profile_name: str, profile: dict) -> None:
+    """Strict 1:1 check: filename stem MUST equal derived axes tuple."""
+    expected = _expected_filename(profile["identity"]["axes"])
+    if profile_name != expected:
+        raise FilenameMismatchError(
+            f"Profile filename '{profile_name}.cue' does not encode its axes. "
+            f"Expected filename based on (gpu, model, model_revision[, quant]): "
+            f"'{expected}.cue'. Rename the file (and the top-level Cue field "
+            f"with `-` → `_`) so filename ↔ image package name stays 1:1."
+        )
+
+
+def validate_profile(name: str) -> None:
+    """Validate a profile against the schema AND the model registry AND filename.
+
+    Raises CueError on schema failure, ModelRegistryError on unknown model pair,
+    FilenameMismatchError when filename doesn't encode its declared axes.
     """
     profile_path = REPO_ROOT / "profiles" / f"{name}.cue"
     schema_path = REPO_ROOT / "profiles" / "schema.cue"
@@ -60,6 +91,7 @@ def validate_profile(name: str) -> None:
     profile_data = cue_export(profile_path, schema_path)
     key = name.replace("-", "_")
     if key in profile_data:
+        validate_filename_matches_axes(name, profile_data[key])
         validate_model_revision(name, profile_data[key])
 
 

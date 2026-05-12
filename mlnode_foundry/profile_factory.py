@@ -45,15 +45,21 @@ import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
 """
 
 
-def _filename(gpu: str, model: str, quant: str | None) -> str:
-    parts = [gpu, model]
+def _filename(gpu: str, model: str, model_revision: str, quant: str | None) -> str:
+    """Profile filename = <gpu>-<model>-<model_revision>[-<quant>].
+
+    Must match what tools/naming.cue produces for the package name (modulo
+    the 'mlnode-' prefix and tag axes) so that filename ↔ package is 1:1.
+    Enforced at validation time by validate.validate_filename_matches_axes.
+    """
+    parts = [gpu, model, model_revision]
     if quant:
         parts.append(quant)
     return "-".join(parts)
 
 
-def _key(gpu: str, model: str, quant: str | None) -> str:
-    return _filename(gpu, model, quant).replace("-", "_")
+def _key(gpu: str, model: str, model_revision: str, quant: str | None) -> str:
+    return _filename(gpu, model, model_revision, quant).replace("-", "_")
 
 
 def _bases_chain(gpu: str, model: str, quant: str | None) -> str:
@@ -85,7 +91,7 @@ def generate_profile(
     rev: int = 1,
 ) -> Path:
     """Generate a new profile .cue file. Returns path. Refuses to overwrite."""
-    filename = _filename(gpu, model, quant)
+    filename = _filename(gpu, model, model_revision, quant)
     path = PROFILES_DIR / f"{filename}.cue"
     if path.exists():
         raise FileExistsError(f"Profile already exists: {path}")
@@ -95,7 +101,7 @@ def generate_profile(
     description += " — generated profile, tune before use"
     content = _TEMPLATE.format(
         description=description,
-        key=_key(gpu, model, quant),
+        key=_key(gpu, model, model_revision, quant),
         gpu=gpu,
         model=model,
         model_revision=model_revision,

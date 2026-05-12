@@ -7,7 +7,7 @@ package profiles
 
 import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
 
-b200_kimi_int4: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
+b200_kimi_k2_6_int4: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
 	identity: {
 		axes: {
 			gpu:   "b200"

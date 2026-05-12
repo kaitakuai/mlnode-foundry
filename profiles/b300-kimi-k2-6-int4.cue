@@ -9,7 +9,7 @@ import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
 // Top-level field name matches filename with `-` → `_`.
 // This avoids package-level unification conflicts between profiles.
 // Python CLI reads file, derives key from filename.
-b300_kimi_int4: #BaseProfile & bases.B300 & bases.KIMI_INT4 & {
+b300_kimi_k2_6_int4: #BaseProfile & bases.B300 & bases.KIMI_INT4 & {
 	identity: {
 		axes: {
 			gpu:   "b300"
