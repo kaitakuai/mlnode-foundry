@@ -1,0 +1,18 @@
+{
+  "profile": "profiles/rtx6000-qwen.cue",
+  "profile_hash": "a7b2a0d73902dff6e71d90a3fa09b5c5d65b835c1cdd9307906b929137cb079e",
+  "status": "draft",
+  "image": {
+    "package": "ghcr.io/kaitakuai/mlnode-rtx6000-qwen3-235b-a22b",
+    "tag": "0.2.13-vllm0.20.0-k1",
+    "digest": "sha256:03cd80ec34873906b2e9835b2daa35768c19108a00291aad7a1d62a9365abedb",
+    "built_at": "2026-05-12T11:40:29Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main"
+  },
+  "validation": {
+    "build_smoke": {
+      "result": "pass",
+      "at": "2026-05-12T11:40:29Z"
+    }
+  }
+}
