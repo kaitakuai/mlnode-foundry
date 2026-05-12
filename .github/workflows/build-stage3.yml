@@ -233,7 +233,7 @@ jobs:
       - name: Validate state against schema
         if: steps.skip.outputs.skip != 'true'
         run: |
-          cue vet "$state_file" state/schema.cue
+          cue vet "$state_file" state/schema.cue -d "#State"
 
       - name: Write registry-view/<package-tag>.json (dashboard)
         if: steps.skip.outputs.skip != 'true'
@@ -251,6 +251,11 @@ jobs:
           echo "registry_file=$REGISTRY_FILE" >> "$GITHUB_ENV"
           echo "=== $REGISTRY_FILE ==="
           cat "$REGISTRY_FILE"
+
+      - name: Validate registry-view against schema
+        if: steps.skip.outputs.skip != 'true'
+        run: |
+          cue vet "$registry_file" registry-view/schema.cue -d "#RegistryView"
 
       - name: Commit state + registry-view
         if: steps.skip.outputs.skip != 'true'

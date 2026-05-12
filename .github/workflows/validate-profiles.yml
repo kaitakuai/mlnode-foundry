@@ -39,8 +39,31 @@ jobs:
           install: true
           cache: true
 
-      - name: cue vet
+      - name: cue vet (all packages)
         run: cue vet ./...
+
+      - name: cue vet — stage2.lock against schema
+        run: cue vet tools/stage2.lock.cue tools/stage2.lock.schema.cue
+
+      - name: cue vet — existing registry-view JSON files against #RegistryView
+        run: |
+          shopt -s nullglob
+          for f in registry-view/*.json; do
+            echo "→ $f"
+            cue vet "$f" registry-view/schema.cue -d "#RegistryView"
+          done
+
+      - name: cue vet — existing state JSON files against #State
+        run: |
+          shopt -s nullglob
+          for f in state/*.json; do
+            # _stage2-vllm-env.json has a different shape (no #State); skip
+            case "$f" in
+              state/_*) echo "  (skip $f — meta file, not #State-shaped)"; continue ;;
+            esac
+            echo "→ $f"
+            cue vet "$f" state/schema.cue -d "#State"
+          done
 
   python:
     runs-on: ubuntu-latest

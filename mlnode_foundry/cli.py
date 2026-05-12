@@ -60,11 +60,14 @@ def expand(profile: str) -> None:
 
 @app.command("image-size")
 def image_size_cmd(ref: str) -> None:
-    """Print compressed image size for the linux/amd64 platform (e.g. '15 GB')."""
+    """Print compressed image size for linux/amd64 (e.g. '15 GB'), empty if unknown."""
     from .image_size import fetch_image_compressed_size, humanize_bytes
 
     n = fetch_image_compressed_size(ref)
-    typer.echo(humanize_bytes(n))
+    # Suppress "0 B" so the workflow + renderer fall back to null
+    # (avoids registry-view `"size": "0 GB"` placeholder lies).
+    if n > 0:
+        typer.echo(humanize_bytes(n))
 
 
 @app.command("registry-view")
