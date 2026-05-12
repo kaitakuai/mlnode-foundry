@@ -105,7 +105,9 @@ def build(
 def profile_new(
     gpu: str = typer.Option(..., help="GPU axis value (e.g., b300)"),
     model: str = typer.Option(..., help="Model family (e.g., kimi)"),
-    model_revision: str = typer.Option(..., help="Model revision (e.g., k26); must exist in tools/model-registry.cue"),
+    model_revision: str = typer.Option(
+        ..., help="Model revision (e.g., k26); must exist in tools/model-registry.cue"
+    ),
     quant: str | None = typer.Option(None, help="Quantization (e.g., int4); omit for none"),
     mlnode: str = typer.Option("0.2.13", help="mlnode version"),
     vllm: str = typer.Option("0.20.0", help="vLLM version"),
@@ -130,7 +132,9 @@ def profile_new(
 @profile_app.command("add-model")
 def profile_add_model(
     model: str = typer.Argument(..., help="Model family (e.g., deepseek)"),
-    model_revision: str = typer.Option(..., help="Model revision (e.g., v3); applied to all generated profiles"),
+    model_revision: str = typer.Option(
+        ..., help="Model revision (e.g., v3); applied to all generated profiles"
+    ),
     gpus: str = typer.Option("b300,h100", help="Comma-separated GPUs to bulk-generate"),
     quant: str | None = typer.Option(None),
 ) -> None:
@@ -159,7 +163,10 @@ def profile_add_gpu(
     """Bulk-generate profiles for `gpu` across multiple (model, revision) pairs."""
     from .profile_factory import bulk_add_gpu
 
-    pairs = [tuple(p.split(":", 1)) for p in models.split(",")]
+    pairs: list[tuple[str, str]] = []
+    for p in models.split(","):
+        m, r = p.split(":", 1)
+        pairs.append((m, r))
     paths = bulk_add_gpu(gpu=gpu, models=pairs)
     typer.secho(f"✓ Created {len(paths)} profile(s):", fg=typer.colors.GREEN)
     for p in paths:
