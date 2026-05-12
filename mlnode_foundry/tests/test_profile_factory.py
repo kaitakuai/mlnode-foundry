@@ -12,11 +12,11 @@ def test_generated_profile_validates(tmp_path, monkeypatch) -> None:
     """A freshly-generated profile must pass `cue vet` AND registry cross-check."""
     # Use a combo not in the migrated profile set (H100 + Kimi K2.6 INT4 is
     # realistic but currently absent — exercises gpu + model+quant base resolution
-    # and the (kimi, k26) registry pair.
+    # and the (kimi, k2-6) registry pair.
     path = profile_factory.generate_profile(
         gpu="h100",
         model="kimi",
-        model_revision="k26",
+        model_revision="k2-6",
         quant="int4",
         mlnode="0.2.13",
         vllm="0.20.0",
@@ -52,7 +52,7 @@ def test_generate_refuses_overwrite() -> None:
     """Generation MUST refuse to overwrite an existing profile."""
     with pytest.raises(FileExistsError):
         profile_factory.generate_profile(
-            gpu="b300", model="kimi", model_revision="k26", quant="int4"
+            gpu="b300", model="kimi", model_revision="k2-6", quant="int4"
         )
 
 

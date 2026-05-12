@@ -30,8 +30,10 @@ package profiles
 		// Specific revision within the model family. Disambiguates Kimi-K2.5 vs K2.6,
 		// Qwen3-235B vs Qwen3-72B, etc. Lowercase + digits + hyphens; NO dots
 		// (would break GHCR package names which require [a-z0-9_-]).
+		// May start with a digit (Qwen3 → "235b-a22b") since the family name
+		// (e.g., "qwen3") carries the architecture-generation context.
 		// Required since the model_revision PR. Cross-checked against the registry.
-		model_revision: =~"^[a-z][a-z0-9-]*$"
+		model_revision: =~"^[a-z0-9][a-z0-9-]*$"
 
 		// Quantization scheme. Omit when the deployment uses the model's native
 		// precision (typically FP8 for production); set when an explicit quant

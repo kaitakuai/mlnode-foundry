@@ -29,7 +29,7 @@ def test_naming_loads(naming: dict) -> None:
 def test_b300_kimi_int4_tag(naming: dict) -> None:
     profile = load_profile("b300-kimi-int4")
     pkg, tag = render_package_and_tag(profile, naming)
-    assert pkg == "ghcr.io/kaitakuai/mlnode-b300-kimi-k26"
+    assert pkg == "ghcr.io/kaitakuai/mlnode-b300-kimi-k2-6"
     assert tag == "0.2.13-vllm0.20.0-q.int4-k1"
 
 
@@ -37,7 +37,7 @@ def test_h100_qwen_tag_omits_default_axes(naming: dict) -> None:
     """h100-qwen has no quant set; tag should omit q.* segment."""
     profile = load_profile("h100-qwen")
     pkg, tag = render_package_and_tag(profile, naming)
-    assert pkg == "ghcr.io/kaitakuai/mlnode-h100-qwen-v3-235b"
+    assert pkg == "ghcr.io/kaitakuai/mlnode-h100-qwen3-235b-a22b"
     assert tag == "0.2.13-vllm0.20.0-k1"
     assert "q." not in tag
     assert "f." not in tag
@@ -48,7 +48,7 @@ def test_render_package_uses_naming_package_axes(naming: dict) -> None:
     profile = load_profile("b300-kimi-int4")
     pkg = render_package(profile, naming)
     # naming.package.axes is ["gpu", "model", "model_revision"]
-    assert pkg.endswith("-b300-kimi-k26")
+    assert pkg.endswith("-b300-kimi-k2-6")
     assert pkg.startswith("ghcr.io/kaitakuai/mlnode")
 
 

@@ -12,8 +12,8 @@ rtx6000_qwen: #BaseProfile & bases.RTX6000 & bases.QWEN & {
 	identity: {
 		axes: {
 			gpu:   "rtx6000"
-			model: "qwen"
-			model_revision: "v3-235b"
+			model: "qwen3"
+			model_revision: "235b-a22b"
 		}
 		version: {
 			mlnode: "0.2.13"

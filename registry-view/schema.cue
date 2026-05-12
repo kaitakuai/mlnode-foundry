@@ -30,7 +30,7 @@ package registry_view
 	// the same regex as in profiles/schema.cue::#Identity to stay consistent.
 	gpu:            =~"^[a-z][a-z0-9]+$"
 	model_family:   =~"^[a-z][a-z0-9]+$"
-	model_revision: =~"^[a-z][a-z0-9-]*$"
+	model_revision: =~"^[a-z0-9][a-z0-9-]*$"
 	quant:          null | "int4" | "fp8" | "nvfp4" | "awq4bit" | "mxfp4"
 
 	// Full GHCR package path (no tag). MUST match the package name policy

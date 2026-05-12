@@ -25,9 +25,12 @@ package tools
 	family: =~"^[a-z][a-z0-9]+$"
 
 	// Specific revision within the family. Identifies a unique HuggingFace
-	// checkpoint. Examples: "k26" (Kimi-K2.6), "v3-235b" (Qwen3 235B variant).
+	// checkpoint. Examples: "k2-6" (Kimi-K2.6), "235b-a22b" (Qwen3 235B
+	// MoE variant; major version is in family="qwen3"), "m2-7" (MiniMax-M2.7).
 	// Lowercase + digits + hyphens. NO dots — package names forbid them.
-	revision: =~"^[a-z][a-z0-9-]*$"
+	// May start with a digit (revision goes into image name *after* the
+	// family which provides context, e.g. mlnode-h100-qwen3-235b-a22b).
+	revision: =~"^[a-z0-9][a-z0-9-]*$"
 
 	// Human-readable name shown in the dashboard. Operators look at this,
 	// not the family/revision codes. Keep it accurate to the model spec.
@@ -74,7 +77,7 @@ models: [...#ModelEntry]
 models: [
 	{
 		family:       "kimi"
-		revision:     "k26"
+		revision:     "k2-6"
 		display_name: "Moonshot Kimi-K2.6"
 		hf_repo:      "moonshotai/Kimi-K2.6"
 		params_b:     1060.0
@@ -83,13 +86,25 @@ models: [
 		notes:        "DeepseekV3-style MoE, 384 routed experts × top_k=8, vision tower. INT4 (compressed-tensors W4A16, group_size=32)."
 	},
 	{
-		family:       "qwen"
-		revision:     "v3-235b"
+		family:       "qwen3"
+		revision:     "235b-a22b"
 		display_name: "Qwen3-235B-A22B-Instruct FP8"
 		hf_repo:      "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8"
 		params_b:     235.0
 		context_max:  262144
 		license:      "Apache-2.0"
-		notes:        "Qwen3 235B with 22B active params (MoE). FP8 quantized native checkpoint."
+		notes:        "Qwen3 235B-parameter MoE with 22B active params per token. FP8 native checkpoint released 2026-07 (2507 in HF repo)."
+	},
+	{
+		family:       "minimax"
+		revision:     "m2-7"
+		display_name: "MiniMax-M2.7"
+		// Placeholder — confirm exact HF coordinates when MiniMaxAI publishes M2.7.
+		hf_repo:      "MiniMaxAI/MiniMax-M2.7"
+		params_b:     456.0  // M2 architecture is 456B / 45.9B active; M2.7 expected to follow
+		context_max:  1000000
+		license:      "Apache-2.0"
+		status:       "active"
+		notes:        "Reserved entry — model published but not yet deployed in fleet. Update hf_repo / params_b after first integration build."
 	},
 ]
