@@ -58,6 +58,34 @@ def expand(profile: str) -> None:
     typer.echo(json.dumps(resolved, indent=2))
 
 
+@app.command("registry-view")
+def registry_view_cmd(
+    profile: str,
+    digest: str = typer.Option("", help="Image digest (sha256:...); empty for local preview"),
+    cosign_identity: str = typer.Option("", help="Cosign signing identity (workflow URL)"),
+    size: str = typer.Option("", help="Humanized image size, e.g. '15 GB'"),
+    output: Path = typer.Option(  # noqa: B008
+        Path(""),
+        help="Output JSON path. Defaults to registry-view/<package-basename>-<tag>.json",
+    ),
+) -> None:
+    """Render dashboard-compatible registry-view JSON for a profile."""
+    from .render_registry_view import render_registry_view
+
+    view = render_registry_view(
+        profile,
+        digest=digest or None,
+        cosign_identity=cosign_identity or None,
+        size=size or None,
+    )
+    if str(output) == "" or str(output) == ".":
+        package_basename = view["name"].rsplit("/", 1)[-1]
+        output = REPO_ROOT / "registry-view" / f"{package_basename}-{view['tag']}.json"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(view, indent=2) + "\n")
+    typer.secho(f"✓ Wrote: {output}", fg=typer.colors.GREEN)
+
+
 @app.command("render-dockerfile")
 def render_dockerfile_cmd(
     profile: str,
@@ -186,13 +214,13 @@ def profile_add_gpu(
     from .profile_factory import bulk_add_gpu
 
     pairs: list[tuple[str, str]] = []
-    for p in models.split(","):
-        m, r = p.split(":", 1)
+    for pair in models.split(","):
+        m, r = pair.split(":", 1)
         pairs.append((m, r))
     paths = bulk_add_gpu(gpu=gpu, models=pairs)
     typer.secho(f"✓ Created {len(paths)} profile(s):", fg=typer.colors.GREEN)
-    for p in paths:
-        typer.echo(f"  {p}")
+    for path in paths:
+        typer.echo(f"  {path}")
 
 
 # --- `runner` subgroup -------------------------------------------------------
