@@ -58,6 +58,15 @@ def expand(profile: str) -> None:
     typer.echo(json.dumps(resolved, indent=2))
 
 
+@app.command("image-size")
+def image_size_cmd(ref: str) -> None:
+    """Print compressed image size for the linux/amd64 platform (e.g. '15 GB')."""
+    from .image_size import fetch_image_compressed_size, humanize_bytes
+
+    n = fetch_image_compressed_size(ref)
+    typer.echo(humanize_bytes(n))
+
+
 @app.command("registry-view")
 def registry_view_cmd(
     profile: str,
