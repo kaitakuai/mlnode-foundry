@@ -148,11 +148,13 @@ jobs:
         if: steps.skip.outputs.skip != 'true'
         uses: docker/setup-buildx-action@v3
 
-      - name: Render build-args
+      - name: Render Stage 3 Dockerfile + build-args
         if: steps.skip.outputs.skip != 'true'
         id: args
         run: |
-          # Use Python CLI to compute build args, output as multi-line for build-push-action
+          # Render stage3/Dockerfile.rendered with profile-specific ENV + tuning label.
+          .venv/bin/mlnode-foundry render-dockerfile "${{ matrix.profile }}"
+          # Compute build-args (identity + base image; ENV is baked into rendered Dockerfile).
           BUILD_ARGS=$(.venv/bin/python -c "
           from mlnode_foundry.render_bake import load_profile, render_build_args
           from mlnode_foundry.render_name_tag import load_naming, render_package_and_tag
@@ -177,7 +179,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: stage3/Dockerfile
+          file: stage3/Dockerfile.rendered
           push: true
           tags: ${{ steps.meta.outputs.full_tag }}
           provenance: mode=max

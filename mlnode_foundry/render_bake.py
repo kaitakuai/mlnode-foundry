@@ -66,19 +66,21 @@ def resolve_base_image(profile: dict) -> str:
 
 
 def render_build_args(profile: dict, package: str, tag: str, profile_hash: str) -> dict[str, str]:
-    """Build args to pass to docker buildx (--build-arg KEY=VALUE)."""
+    """Build args to pass to docker buildx (--build-arg KEY=VALUE).
+
+    Note: profile.env values are baked into the *rendered* Dockerfile by
+    render_dockerfile.py (no longer passed as build-args). This function
+    only emits identity + base image args.
+    """
     axes = profile["identity"]["axes"]
-    args: dict[str, str] = {
-        "BASE_IMAGE":    resolve_base_image(profile),
-        "GPU":           axes["gpu"],
-        "MODEL":         axes["model"],
-        "QUANT":         axes.get("quant", ""),
-        "PACKAGE_NAME":  package,
-        "TAG":           tag,
-        "PROFILE_HASH":  profile_hash,
-        "RUNNER_PATCH":  profile.get("runner_patch", ""),
+    return {
+        "BASE_IMAGE":     resolve_base_image(profile),
+        "GPU":            axes["gpu"],
+        "MODEL":          axes["model"],
+        "MODEL_REVISION": axes["model_revision"],
+        "QUANT":          axes.get("quant", ""),
+        "PACKAGE_NAME":   package,
+        "TAG":            tag,
+        "PROFILE_HASH":   profile_hash,
+        "RUNNER_PATCH":   profile.get("runner_patch", ""),
     }
-    # ENV from profile.env → docker --build-arg ENV_<KEY>=VALUE
-    for k, v in profile.get("env", {}).items():
-        args[f"ENV_{k}"] = str(v)
-    return args
