@@ -238,18 +238,14 @@ jobs:
       - name: Write registry-view/<package-tag>.json (dashboard)
         if: steps.skip.outputs.skip != 'true'
         run: |
-          # Get image size from buildx imagetools (humanized GB)
-          SIZE_BYTES=$(docker buildx imagetools inspect --raw "${{ steps.meta.outputs.package_name }}@${{ steps.build.outputs.digest }}" \
-            | jq '[.. | objects | select(.size? != null) | .size] | add' 2>/dev/null || echo "0")
-          if [ "$SIZE_BYTES" -gt 0 ]; then
-            SIZE_GB=$(awk -v b="$SIZE_BYTES" 'BEGIN { printf "%.0f GB", b/1024/1024/1024 }')
-          else
-            SIZE_GB=""
-          fi
+          # Compressed image size for linux/amd64 platform (walks index → manifest → layers).
+          SIZE=$(.venv/bin/mlnode-foundry image-size \
+            "${{ steps.meta.outputs.package_name }}@${{ steps.build.outputs.digest }}" \
+            2>/dev/null || echo "")
           .venv/bin/mlnode-foundry registry-view "${{ matrix.profile }}" \
             --digest "${{ steps.build.outputs.digest }}" \
             --cosign-identity "https://github.com/${{ github.repository }}/.github/workflows/build-stage3.yml@${{ github.ref }}" \
-            --size "$SIZE_GB"
+            --size "$SIZE"
           PACKAGE_BASENAME=$(echo "${{ steps.meta.outputs.package_name }}" | sed 's|.*/||')
           REGISTRY_FILE="registry-view/${PACKAGE_BASENAME}-${{ steps.meta.outputs.tag }}.json"
           echo "registry_file=$REGISTRY_FILE" >> "$GITHUB_ENV"
