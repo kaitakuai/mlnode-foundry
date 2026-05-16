@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 """Idempotently patch the vLLM package installed in the Stage 1 base image.
 
-Two small edits derived from the 2026-05 MiniMax-M2.7 PoC v2 experiments:
+Two edits derived from the 2026-05 MiniMax-M2.7 PoC v2 experiments:
 
-  1. vllm/poc/poc_model_runner.py — when model config dtype is uint8/int8,
-     cast to bfloat16 before building input embeddings. Otherwise the PoC
-     reuses uint8-storage KV cache as inputs_embeds and feeds a Byte tensor
-     to per_token_group_quant — crash on FP8 KV cache models (MiniMax-M2.7).
+  1. vllm/poc/poc_model_runner.py — kv_scratch dtype skip.
+     For FP8 KV cache models (--kv-cache-dtype fp8 → uint8/float8_e4m3fn
+     storage), the PoC fast-path reuses a KV cache slab as inputs_embeds
+     scratch. Pre-patch code did NOT check the slab's dtype: the byte/fp8
+     buffer became `inputs_embeds`, downstream per_token_group_quant kernel
+     received a non-float tensor and crashed.
+
+     Patch: when iterating kv_caches looking for a slab to reuse, SKIP slabs
+     whose dtype is uint8/int8/float8_e4m3fn/float8_e5m2. If no eligible
+     slab is found, the else-branch's gen_fn allocates a fresh bf16 tensor
+     (correct dtype, slight perf hit relative to in-place reuse, but only
+     for FP8-KV models — bf16/fp16 KV models hit the fast path unchanged).
 
   2. vllm/poc/gpu_random.py — decorate apply_householder with
      @torch.compile(dynamic=False, fullgraph=True) — product-science/vllm
@@ -44,25 +52,44 @@ def _resolve_vllm_root() -> Path:
     return root
 
 
-_POC_RUNNER_MARKER = "if dtype in (torch.uint8, torch.int8):"
+_POC_RUNNER_MARKER = "if kv.dtype in (torch.uint8, torch.int8"
 _POC_RUNNER_PATCH = """\
-    if dtype in (torch.uint8, torch.int8):
-        dtype = torch.bfloat16
+            if kv.dtype in (torch.uint8, torch.int8, torch.float8_e4m3fn, torch.float8_e5m2):
+                continue  # FP8 KV cache; reusing as inputs_embeds crashes per_token_group_quant
 """
 
 _HOUSEHOLDER_DECORATOR = "@torch.compile(dynamic=False, fullgraph=True)\n"
 
 
 def _patch_poc_runner(path: Path) -> str:
-    """Insert int8/uint8 dtype guard right after dtype is read from worker.model_config."""
+    """In the `for kv in kv_caches:` scratch-search loop, skip uint8/int8/fp8 slabs.
+
+    Anchors on the `for kv in kv_caches:` loop body which contains the
+    `if kv.numel() >= needed_elems:` check — we insert the dtype skip
+    immediately above that check.
+    """
     src = path.read_text()
     if _POC_RUNNER_MARKER in src:
         return "skip (already patched)"
-    anchor_re = re.compile(r"(dtype = worker\.model_config\.dtype\n)")
-    new_src, n = anchor_re.subn(r"\1" + _POC_RUNNER_PATCH, src, count=1)
-    if n != 1:
-        sys.exit(f"ERROR: model_config.dtype anchor not found in {path}; "
+    # Anchor: the first line in the loop body checking kv.numel(). Capture
+    # its leading whitespace to keep indentation consistent.
+    anchor_re = re.compile(
+        r"(for kv in kv_caches:\n)(?P<indent>\s+)(if kv\.numel\(\) >= needed_elems:)",
+    )
+    m = anchor_re.search(src)
+    if m is None:
+        sys.exit(f"ERROR: kv_caches scratch loop anchor not found in {path}; "
                  "vLLM upstream moved? Verify against tools/stage2.lock.cue.")
+    indent = m.group("indent")
+    # Re-render the inserted block with the discovered indentation so the
+    # patch works regardless of whether the loop is at 8 / 12 / 16-space level.
+    insertion = (
+        f"{indent}if kv.dtype in (torch.uint8, torch.int8, "
+        f"torch.float8_e4m3fn, torch.float8_e5m2):\n"
+        f"{indent}    continue  # FP8 KV cache; reusing as inputs_embeds "
+        f"crashes per_token_group_quant\n"
+    )
+    new_src = anchor_re.sub(r"\1" + insertion + r"\g<indent>\3", src, count=1)
     path.write_text(new_src)
     return "patched"
 
