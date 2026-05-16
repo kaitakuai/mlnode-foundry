@@ -18,6 +18,7 @@ on:
       - 'profiles/**'
       - 'tools/**'
       - 'stage3/**'
+      - 'stage2/**'           # Stage 2 content invalidates Stage 3 profile_hash too
       - 'patches/**'
       - 'mlnode_foundry/**'
       - '.github/workflows/build-stage3.yml'

@@ -1,0 +1,37 @@
+From 73a87a00982ac16590f0a23713e11d024f4100c7 Mon Sep 17 00:00:00 2001
+From: mlnode-foundry <mlnode-foundry@kaitaku.ai>
+Date: Sat, 16 May 2026 20:14:15 +0100
+Subject: [PATCH] fix(api): raise MAX_UNHEALTHY_COUNT from 3 to 9999
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+3-strike auto-shutdown was tuned for early-network conditions where a hung
+manager pointed at corrupt state. With v0.2.13 + PoC v2 streaming workloads
+on large MoE models, intermittent transient unhealth (cold-start warmup,
+brief network blips) trips the kill-switch too often.
+
+Raising to 9999 effectively disables the auto-shutdown — operators reset
+manually via container restart when truly stuck. Same value used in every
+2026-04 / 2026-05 PoC v2 experiment on MiniMax-M2.7, Kimi-K2.6, and
+Qwen3-235B.
+---
+ mlnode/packages/api/src/api/watcher.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mlnode/packages/api/src/api/watcher.py b/mlnode/packages/api/src/api/watcher.py
+index 67e401b..12fde90 100644
+--- a/mlnode/packages/api/src/api/watcher.py
++++ b/mlnode/packages/api/src/api/watcher.py
+@@ -11,7 +11,7 @@ from common.logger import create_logger
+ 
+ logger = create_logger(__name__)
+ 
+-MAX_UNHEALTHY_COUNT = 3
++MAX_UNHEALTHY_COUNT = 9999
+ 
+ 
+ async def watch_managers(
+-- 
+2.48.1
+

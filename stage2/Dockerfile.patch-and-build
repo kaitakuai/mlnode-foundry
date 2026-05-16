@@ -84,6 +84,15 @@ RUN --mount=type=cache,target=/var/lib/apt/lists \
 ENV PATH="/usr/local/openssl-1.1/bin:${PATH}" \
     LD_LIBRARY_PATH="/usr/local/openssl-1.1/lib:$LD_LIBRARY_PATH"
 
+# vLLM PoC runtime patches (kaitakuai/vllm PR #8 kv_scratch dtype guard +
+# product-science/vllm PR #36 apply_householder torch.compile). Required for
+# FP8-KV / NVFP4 / int8-quantized models (MiniMax-M2.7, future int8 deploys);
+# no-op for fp16/bf16/fp32. Applied here in Stage B so every Stage 3 image
+# inherits the patched vLLM — avoids duplicating the edit across per-profile
+# hw-patches. Idempotent; safe to re-run.
+COPY stage2/scripts/patch-vllm-poc-runtime.py /tmp/
+RUN python3 /tmp/patch-vllm-poc-runtime.py && rm /tmp/patch-vllm-poc-runtime.py
+
 ################################################################################
 # Stage C — builder: poetry + venv install (per-package poetry projects)
 ################################################################################
