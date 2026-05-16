@@ -99,12 +99,17 @@ models: [
 		family:       "minimax"
 		revision:     "m2-7"
 		display_name: "MiniMax-M2.7"
-		// Placeholder — confirm exact HF coordinates when MiniMaxAI publishes M2.7.
 		hf_repo:      "MiniMaxAI/MiniMax-M2.7"
-		params_b:     456.0  // M2 architecture is 456B / 45.9B active; M2.7 expected to follow
-		context_max:  1000000
+		// Pinned by the upstream chain governance model at v0.2.13 upgrade
+		// (inference-chain/app/upgrades/v0_2_13/upgrades.go:minimaxGovernanceModel).
+		// Operators that drift from this commit will fail chain validation.
+		hf_revision:  "d494266a4affc0d2995ba1fa35c8481cbd84294b"
+		params_b:     230.0
+		// Chain governance `--max-model-len 180000`. Larger contexts are truncated
+		// (operators previously ran 131072 in PoC experiments; production cap = 180000).
+		context_max:  180000
 		license:      "Apache-2.0"
 		status:       "active"
-		notes:        "Reserved entry — model published but not yet deployed in fleet. Update hf_repo / params_b after first integration build."
+		notes:        "Activates on chain at epoch 271 (v0.2.13 upgrade). vLLM args mandated by chain: --enable-auto-tool-choice --kv-cache-dtype fp8 --tool-call-parser minimax_m2 --reasoning-parser minimax_m2_append_think. PoC seq_len=1024, ThroughputPerNonce=5000, VRam=320 GB total."
 	},
 ]
