@@ -24,7 +24,10 @@ on:
   workflow_dispatch:
     inputs:
       profile:
-        description: 'Profile name (optional; build all if omitted)'
+        description: |
+          Profile selector: empty = all; or exact name (`b300-kimi-k2-6-int4`);
+          or comma-separated list (`b200-minimax-m2-7,h200-minimax-m2-7`);
+          or glob (`*-minimax-m2-7`); or any mix (`*-kimi-*,b300-qwen3-235b-a22b`).
         required: false
         type: string
       force:
@@ -54,13 +57,38 @@ jobs:
       - uses: actions/checkout@v4
       - id: set
         run: |
+          set -euo pipefail
+          shopt -s nullglob
           if [ -n "${{ inputs.profile }}" ]; then
-            echo "profiles=[\"${{ inputs.profile }}\"]" >> "$GITHUB_OUTPUT"
+            # Selector: comma-separated patterns, each may be exact name or glob.
+            # Only top-level profiles/*.cue are scanned (bases/ subdir excluded).
+            IFS=',' read -ra PATTERNS <<< "${{ inputs.profile }}"
+            declare -a matched=()
+            for raw in "${PATTERNS[@]}"; do
+              pat="${raw#"${raw%%[![:space:]]*}"}"; pat="${pat%"${pat##*[![:space:]]}"}"
+              [ -z "$pat" ] && continue
+              hit=0
+              for f in profiles/${pat}.cue; do
+                # nullglob suppresses unmatched globs but a literal path with no
+                # wildcards still iterates over its literal value — check existence.
+                [ -f "$f" ] || continue
+                base=$(basename "$f" .cue)
+                [ "$base" = "schema" ] && continue
+                matched+=("$base")
+                hit=1
+              done
+              [ "$hit" -eq 0 ] && echo "::warning::Pattern '$pat' matched 0 profiles"
+            done
+            if [ ${#matched[@]} -eq 0 ]; then
+              echo "::error::Profile selector '${{ inputs.profile }}' matched 0 profiles"
+              exit 1
+            fi
+            PROFILES=$(printf '%s\n' "${matched[@]}" | sort -u | jq -R . | jq -s -c .)
           else
             PROFILES=$(ls profiles/*.cue | grep -v schema.cue | xargs -n1 basename | sed 's/\.cue$//' | jq -R . | jq -s -c .)
-            echo "profiles=$PROFILES" >> "$GITHUB_OUTPUT"
-            echo "Matrix profiles: $PROFILES"
           fi
+          echo "profiles=$PROFILES" >> "$GITHUB_OUTPUT"
+          echo "Matrix profiles: $PROFILES"
 
   build:
     needs: matrix
