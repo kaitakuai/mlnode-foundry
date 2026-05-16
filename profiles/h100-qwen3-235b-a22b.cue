@@ -4,7 +4,11 @@
 // TRITON MoE backend per ADR.
 package profiles
 
-import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
+import (
+	"list"
+
+	"github.com/kaitakuai/mlnode-foundry/profiles/bases"
+)
 
 // Top-level field name matches filename with `-` → `_`.
 h100_qwen3_235b_a22b: #BaseProfile & bases.H100 & bases.QWEN & {
@@ -21,6 +25,7 @@ h100_qwen3_235b_a22b: #BaseProfile & bases.H100 & bases.QWEN & {
 		}
 	}
 	mode:         "kaitakuai-base"
+	hw_patches:  list.Concat([bases.H100.hw_patches, ["poc-householder-compile"]])
 	runner_patch: "h100"
 	env: {}
 	runtime_defaults: {

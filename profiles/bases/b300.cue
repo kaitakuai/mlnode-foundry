@@ -3,13 +3,13 @@
 package bases
 
 B300: {
-	hw_patches: [
+	hw_patches: *[
 		"triton-ptxas-from-system-cuda",
 		"flashinfer-jit-uninstall",
 		"libcuda-compat-580-driver",
 		"nvidia-headers-symlinks",
 		"cold-start-tolerance",
-	]
+	] | [...string]
 	env: {
 		VLLM_USE_V1:                  "1"
 		VLLM_RUNNER_TIMEOUT:          "3600"

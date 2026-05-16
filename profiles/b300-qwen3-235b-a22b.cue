@@ -7,7 +7,11 @@
 // Blackwell FP8 path enabled via VLLM_USE_FLASHINFER_MOE_FP8=1 (overrides QWEN base).
 package profiles
 
-import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
+import (
+	"list"
+
+	"github.com/kaitakuai/mlnode-foundry/profiles/bases"
+)
 
 b300_qwen3_235b_a22b: #BaseProfile & bases.B300 & bases.QWEN & {
 	identity: {
@@ -23,6 +27,7 @@ b300_qwen3_235b_a22b: #BaseProfile & bases.B300 & bases.QWEN & {
 		}
 	}
 	mode:         "kaitakuai-base"
+	hw_patches:  list.Concat([bases.B300.hw_patches, ["poc-householder-compile"]])
 	runner_patch: "b300"
 	env: {
 		// Overrides QWEN base default of "0" — Blackwell FP8 MoE backend.

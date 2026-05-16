@@ -6,7 +6,11 @@
 // Memory: GPUHub snapshot vllm0.20.0-sm120-fi-attn-v1 — 576 nonces/min @ batch=32.
 package profiles
 
-import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
+import (
+	"list"
+
+	"github.com/kaitakuai/mlnode-foundry/profiles/bases"
+)
 
 rtx6000_qwen3_235b_a22b: #BaseProfile & bases.RTX6000 & bases.QWEN & {
 	identity: {
@@ -22,6 +26,7 @@ rtx6000_qwen3_235b_a22b: #BaseProfile & bases.RTX6000 & bases.QWEN & {
 		}
 	}
 	mode:         "kaitakuai-base"
+	hw_patches:  list.Concat([bases.RTX6000.hw_patches, ["poc-householder-compile"]])
 	runner_patch: ""
 	env: {
 		POC_BATCH_SIZE_DEFAULT: "32"

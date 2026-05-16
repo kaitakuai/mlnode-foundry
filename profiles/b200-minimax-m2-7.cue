@@ -4,7 +4,11 @@
 // Activates on chain at epoch 271 (v0.2.13 upgrade).
 package profiles
 
-import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
+import (
+	"list"
+
+	"github.com/kaitakuai/mlnode-foundry/profiles/bases"
+)
 
 b200_minimax_m2_7: #BaseProfile & bases.B200 & bases.MINIMAX_M2_7 & {
 	identity: {
@@ -20,6 +24,7 @@ b200_minimax_m2_7: #BaseProfile & bases.B200 & bases.MINIMAX_M2_7 & {
 		}
 	}
 	mode:         "kaitakuai-base"
+	hw_patches:  list.Concat([bases.B200.hw_patches, ["poc-householder-compile"]])
 	runner_patch: ""
 	env: {}
 	runtime_defaults: {

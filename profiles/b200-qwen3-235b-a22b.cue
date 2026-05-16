@@ -6,7 +6,11 @@
 // has perf regressions on early driver builds — revisit per benchmark).
 package profiles
 
-import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
+import (
+	"list"
+
+	"github.com/kaitakuai/mlnode-foundry/profiles/bases"
+)
 
 b200_qwen3_235b_a22b: #BaseProfile & bases.B200 & bases.QWEN & {
 	identity: {
@@ -22,6 +26,7 @@ b200_qwen3_235b_a22b: #BaseProfile & bases.B200 & bases.QWEN & {
 		}
 	}
 	mode:         "kaitakuai-base"
+	hw_patches:  list.Concat([bases.B200.hw_patches, ["poc-householder-compile"]])
 	runner_patch: ""
 	env: {}
 	runtime_defaults: {
