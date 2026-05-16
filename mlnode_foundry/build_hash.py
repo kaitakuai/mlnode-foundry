@@ -32,7 +32,15 @@ def _hash_file(path: Path) -> bytes:
 
 
 def compute_profile_hash(name: str) -> str:
-    """Compute SHA-256 hex of all inputs that affect this profile's build."""
+    """Compute SHA-256 hex of all inputs that affect this profile's build.
+
+    Includes both Stage 3 inputs (profile, schema, naming, Dockerfile.tmpl,
+    bases/) AND the Stage 2 lineage (Dockerfile.patch-and-build, patches/*,
+    stage2/scripts/*). Without the Stage 2 inputs, a vLLM patch added in
+    Stage 2 would silently fail to invalidate Stage 3 skip-if-unchanged,
+    because Stage 3 pulls Stage 2 by TAG (not digest) so the BASE_IMAGE
+    build-arg stays the same while the underlying image content changes.
+    """
     inputs = [
         REPO_ROOT / "profiles" / f"{name}.cue",
         REPO_ROOT / "profiles" / "schema.cue",
@@ -40,17 +48,27 @@ def compute_profile_hash(name: str) -> str:
         REPO_ROOT / "tools" / "stage2.lock.cue",
         REPO_ROOT / "tools" / "model-registry.cue",
         REPO_ROOT / "stage3" / "Dockerfile.tmpl",
+        REPO_ROOT / "stage2" / "Dockerfile.patch-and-build",
     ]
-    # Include all bases (Phase 2: hash entire bases/ directory)
     bases_dir = REPO_ROOT / "profiles" / "bases"
     if bases_dir.is_dir():
         inputs.extend(sorted(bases_dir.glob("*.cue")))
+
+    # Source-level patches applied in Stage 2 Stage A (alpine/git container).
+    patches_dir = REPO_ROOT / "patches"
+    if patches_dir.is_dir():
+        inputs.extend(sorted(patches_dir.glob("*.patch")))
+
+    # In-image vLLM patchers run in Stage 2 Stage B (after Stage 1 inheritance).
+    stage2_scripts = REPO_ROOT / "stage2" / "scripts"
+    if stage2_scripts.is_dir():
+        inputs.extend(sorted(stage2_scripts.glob("*.py")))
 
     aggregator = hashlib.sha256()
     for p in inputs:
         if not p.exists():
             raise FileNotFoundError(f"hash input missing: {p}")
-        # Include path in hash so file additions/removals are visible
+        # Include path in hash so file additions/removals are visible.
         aggregator.update(str(p.relative_to(REPO_ROOT)).encode())
         aggregator.update(b"\0")
         aggregator.update(_hash_file(p))
