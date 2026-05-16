@@ -1,31 +1,27 @@
 #!/usr/bin/env python3
 """Idempotently patch the vLLM package installed in the Stage 1 base image.
 
-Three small edits, all derived from kaitakuai/vllm PR #8 (kv_scratch dtype
-guard) and product-science/vllm PR #36 (apply_householder torch.compile):
+Two small edits derived from the 2026-05 MiniMax-M2.7 PoC v2 experiments:
 
-  1. vllm/model_executor/layers/layernorm.py — guard rms_norm() against
-     uint8/int8 input dtypes by casting to bfloat16. NVFP4 / int8 quantized
-     models pass integer tensors that ops.rms_norm cannot handle.
+  1. vllm/poc/poc_model_runner.py — when model config dtype is uint8/int8,
+     cast to bfloat16 before building input embeddings. Otherwise the PoC
+     reuses uint8-storage KV cache as inputs_embeds and feeds a Byte tensor
+     to per_token_group_quant — crash on FP8 KV cache models (MiniMax-M2.7).
 
-  2. vllm/poc/poc_model_runner.py — same guard in execute_poc_forward():
-     when the model config dtype is uint8/int8, cast to bfloat16 before
-     building input embeddings. Otherwise the PoC reuses uint8-storage KV
-     cache as inputs_embeds and feeds a Byte tensor to per_token_group_quant.
+  2. vllm/poc/gpu_random.py — decorate apply_householder with
+     @torch.compile(dynamic=False, fullgraph=True) — product-science/vllm
+     PR #36. +10-12% PoC throughput (measured 2026-05). Safe no-op on
+     first call; applies to every PoC v2 profile regardless of GPU.
 
-  3. vllm/poc/gpu_random.py — decorate apply_householder with
-     @torch.compile(dynamic=False, fullgraph=True). +10-12% PoC throughput
-     (measured in 2026-05 PoC v2 experiments). Safe no-op on all models.
+Not patched here:
+  - layernorm.py: kaitakuai/vllm PR #8 targeted a refactored-out
+    `def rms_norm()` that no longer exists in 0.20.0-pocv2 (now methods on
+    an Op class with multiple forward variants). The guard there is needed
+    only for NVFP4/int8 *weight* quant, which we don't deploy today.
 
-Run unconditionally; the script detects already-patched files and skips.
-Required for any FP8-KV-cache, NVFP4, or int8-quantized model (MiniMax-M2.7,
-Kimi-K2.6-INT4 with FP8 KV experiments, future int8 deployments). Harmless
-for fp16 / bf16 / fp32 models.
-
-Why baked here, not at Stage 3: same patches apply to every PoC v2 profile
-regardless of GPU. Doing it once in Stage 2 (after Stage 1 base inherits
-vLLM into the image) avoids duplicating five-line edits across every Stage 3
-hw-patch list.
+Script is idempotent (detects already-patched files); anchors are exact
+regexes — if vLLM upstream moves them, the script exits 1 with a clear
+pointer back to tools/stage2.lock.cue.
 """
 
 from __future__ import annotations
@@ -48,12 +44,6 @@ def _resolve_vllm_root() -> Path:
     return root
 
 
-_LAYERNORM_MARKER = "if x.dtype in (torch.uint8, torch.int8):"
-_LAYERNORM_PATCH = """\
-    if x.dtype in (torch.uint8, torch.int8):
-        x = x.to(torch.bfloat16)
-"""
-
 _POC_RUNNER_MARKER = "if dtype in (torch.uint8, torch.int8):"
 _POC_RUNNER_PATCH = """\
     if dtype in (torch.uint8, torch.int8):
@@ -61,26 +51,6 @@ _POC_RUNNER_PATCH = """\
 """
 
 _HOUSEHOLDER_DECORATOR = "@torch.compile(dynamic=False, fullgraph=True)\n"
-
-
-def _patch_layernorm(path: Path) -> str:
-    """Insert int8/uint8 dtype guard before the rms_norm() ops call.
-
-    Anchors on the `if envs.VLLM_BATCH_INVARIANT:` line because the surrounding
-    function body is short and stable across recent vLLM releases.
-    """
-    src = path.read_text()
-    if _LAYERNORM_MARKER in src:
-        return "skip (already patched)"
-    anchor_re = re.compile(
-        r"(if envs\.VLLM_BATCH_INVARIANT:\n\s+return rms_norm_batch_invariant\([^)]+\)\n)"
-    )
-    new_src, n = anchor_re.subn(r"\1" + _LAYERNORM_PATCH, src, count=1)
-    if n != 1:
-        sys.exit(f"ERROR: rms_norm anchor not found in {path}; vLLM upstream moved? "
-                 "Verify against the version pinned in tools/stage2.lock.cue.")
-    path.write_text(new_src)
-    return "patched"
 
 
 def _patch_poc_runner(path: Path) -> str:
@@ -117,7 +87,6 @@ def _patch_gpu_random(path: Path) -> str:
 def main() -> None:
     root = _resolve_vllm_root()
     targets = [
-        (root / "model_executor" / "layers" / "layernorm.py", _patch_layernorm),
         (root / "poc" / "poc_model_runner.py", _patch_poc_runner),
         (root / "poc" / "gpu_random.py", _patch_gpu_random),
     ]
