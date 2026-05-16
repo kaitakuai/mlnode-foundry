@@ -1,0 +1,50 @@
+// Profile base: MiniMax-M2.7 common tunings.
+//
+// Two sources of truth converge here:
+//
+// 1. Chain governance (v0.2.13 `minimaxGovernanceModel`) MANDATES these vLLM
+//    args. A node that omits them will produce outputs that fail cross-node
+//    PoC validation:
+//
+//      --enable-auto-tool-choice
+//      --max-model-len 180000
+//      --kv-cache-dtype fp8
+//      --tool-call-parser minimax_m2
+//      --reasoning-parser minimax_m2_append_think
+//
+//    (See inference-chain/app/upgrades/v0_2_13/upgrades.go in gonka-ai/gonka.)
+//
+// 2. PoC v2 experiments (kaitakuai/experiments/2026-05/minimax-m27-fp8-*) found
+//    a stable common set across B200 / H200 / H100 / A100 of:
+//
+//      gpu_memory_utilization=0.92, max_num_seqs=128,
+//      logprobs_mode=processed_logprobs, trust_remote_code=true,
+//      max_model_len=131072 (NOT 180000 — see warning below).
+//
+// MoE backend / TP differ PER GPU — those land in the leaf profile, not here.
+//
+// **Known gap**: experiments validated `--max-model-len 131072`, but chain
+//   governance demands `180000`. We declare 180000 (chain wins) and surface a
+//   warning tuning_note in each leaf. The first MiniMax production deployment
+//   under real load is what proves 180000 stable end-to-end.
+package bases
+
+MINIMAX_M2_7: {
+	env: {
+		VLLM_USE_V1: "1"
+	}
+	runtime_defaults: {
+		// From chain governance v0.2.13 (mandatory — outputs must match).
+		max_model_len:           180000
+		kv_cache_dtype:          "fp8"
+		enable_auto_tool_choice: true
+		tool_call_parser:        "minimax_m2"
+		reasoning_parser:        "minimax_m2_append_think"
+
+		// From experiments (common across all FP8 PoC v2 measurements).
+		gpu_memory_utilization: *0.92 | number
+		max_num_seqs:           *128 | int
+		logprobs_mode:          "processed_logprobs"
+		trust_remote_code:      true
+	}
+}
