@@ -31,7 +31,11 @@ stage1: {
 
 stage2: {
 	package: "ghcr.io/kaitakuai/mlnode-base"
-	tag:     "0.2.13-vllm0.20.0-k1"
+	// k2 = k1 + CommonAttentionMetadata.seq_lens_cpu_upper_bound restore in
+	// poc_model_runner.py (kwarg lost in Stage 1 0.20.0-pocv2 rebase; without
+	// it MLA backends hit `assert seq_lens_cpu is not None` and every PoC
+	// step on Kimi-K2.6 + B200 (CUTLASS_MLA / FLASHINFER_MLA) crashes).
+	tag: "0.2.13-vllm0.20.0-k2"
 }
 
 patches: [
