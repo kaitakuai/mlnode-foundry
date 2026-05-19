@@ -7,10 +7,10 @@
 package bases
 
 RTX6000: {
-	hw_patches: [
+	hw_patches: *[
 		"flashinfer-jit-uninstall",
 		"nvidia-headers-symlinks",
-	]
+	] | [...string]
 	env: {
 		VLLM_USE_V1: "1"
 	}

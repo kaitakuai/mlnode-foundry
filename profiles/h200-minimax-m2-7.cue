@@ -5,7 +5,11 @@
 // via FlashInfer MoE has perf regressions on Hopper in vLLM 0.20).
 package profiles
 
-import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
+import (
+	"list"
+
+	"github.com/kaitakuai/mlnode-foundry/profiles/bases"
+)
 
 h200_minimax_m2_7: #BaseProfile & bases.H200 & bases.MINIMAX_M2_7 & {
 	identity: {
@@ -21,6 +25,7 @@ h200_minimax_m2_7: #BaseProfile & bases.H200 & bases.MINIMAX_M2_7 & {
 		}
 	}
 	mode:         "kaitakuai-base"
+	hw_patches:  list.Concat([bases.H200.hw_patches, ["poc-householder-compile"]])
 	runner_patch: ""
 	env: {}
 	runtime_defaults: {

@@ -5,7 +5,11 @@
 // FlashInfer FP8 / DeepGEMM both reject the device.
 package profiles
 
-import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
+import (
+	"list"
+
+	"github.com/kaitakuai/mlnode-foundry/profiles/bases"
+)
 
 a100_minimax_m2_7: #BaseProfile & bases.A100 & bases.MINIMAX_M2_7 & {
 	identity: {
@@ -21,6 +25,7 @@ a100_minimax_m2_7: #BaseProfile & bases.A100 & bases.MINIMAX_M2_7 & {
 		}
 	}
 	mode:         "kaitakuai-base"
+	hw_patches:  list.Concat([bases.A100.hw_patches, ["poc-householder-compile"]])
 	runner_patch: ""
 	env: {}
 	runtime_defaults: {

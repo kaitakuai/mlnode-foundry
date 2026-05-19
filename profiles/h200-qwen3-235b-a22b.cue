@@ -5,7 +5,11 @@
 // without dropping into CPU offload.
 package profiles
 
-import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
+import (
+	"list"
+
+	"github.com/kaitakuai/mlnode-foundry/profiles/bases"
+)
 
 h200_qwen3_235b_a22b: #BaseProfile & bases.H200 & bases.QWEN & {
 	identity: {
@@ -21,6 +25,7 @@ h200_qwen3_235b_a22b: #BaseProfile & bases.H200 & bases.QWEN & {
 		}
 	}
 	mode:         "kaitakuai-base"
+	hw_patches:  list.Concat([bases.H200.hw_patches, ["poc-householder-compile"]])
 	runner_patch: ""
 	env: {}
 	runtime_defaults: {

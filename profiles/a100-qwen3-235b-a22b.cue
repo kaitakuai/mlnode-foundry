@@ -4,7 +4,11 @@
 // FP8 quant runs through Marlin kernels (no native FP8 tensor cores on A100).
 package profiles
 
-import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
+import (
+	"list"
+
+	"github.com/kaitakuai/mlnode-foundry/profiles/bases"
+)
 
 a100_qwen3_235b_a22b: #BaseProfile & bases.A100 & bases.QWEN & {
 	identity: {
@@ -20,6 +24,7 @@ a100_qwen3_235b_a22b: #BaseProfile & bases.A100 & bases.QWEN & {
 		}
 	}
 	mode:         "kaitakuai-base"
+	hw_patches:  list.Concat([bases.A100.hw_patches, ["poc-householder-compile"]])
 	runner_patch: ""
 	env: {}
 	runtime_defaults: {
