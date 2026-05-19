@@ -52,11 +52,11 @@
     "enable-expert-parallel": "Adds EP=4 over the TP=4 sharding. Legacy B300 Kimi config showed +5% EP gain; replicate on B200 here.",
     "max-num-batched-tokens=32768,max-num-seqs=32,max-model-len=120000": "Smaller batch envelope is required when cudagraph captures large shapes; 131072 baseline OOMs cudagraph FULL on Kimi MLA on B200."
   },
-  "digest": "sha256:f8f3eca423138260830d444479dff12ffa52ec1caafac5dcb0408aed1f547af8",
+  "digest": "sha256:43943c0b478808383cdbb1f95ee405f63bd8b52b3eab5e1ab1037bda12cdd914",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
   "slsa_attestation_url": "https://github.com/kaitakuai/mlnode-foundry/attestations",
   "report_url": null,
-  "uploaded_by": "Mykola Baichak",
+  "uploaded_by": "github-actions[bot]",
   "nonces": null,
   "weight": null
 }
