@@ -23,10 +23,20 @@ upstream: {
 }
 
 stage1: {
-	image:  "ghcr.io/kaitakuai/vllm"
-	tag:    "0.20.0-pocv2"  // existing kaitakuai/vllm tag (will retag to 0.20.0-poc-k1 in a separate kaitakuai/vllm PR)
-	digest: "sha256:2025cd0dfd682bd66327959493e47ddcc45ec3c9dd9660e93086c9056e3fb819"
-	cuda:   "13.0"          // CUDA toolkit shipped inside Stage 1 (vLLM PoC base); used by dashboard renderer
+	image: "ghcr.io/kaitakuai/vllm"
+	// 0.20.0-pocv2 is the mutable tag; build chain pins by digest below.
+	// Image rebuilt by kaitakuai/vllm build-stage1 CI on 2026-05-19 from
+	// branch mb/feat/port-pocv2-vllm-0.20 HEAD = ccbe7cd8d (merge of PRs #9 + #10):
+	//   - kaitakuai/vllm#9: restore seq_lens_cpu_upper_bound in
+	//     _create_v1_attn_metadata; without it MLA backends crash on the
+	//     first PoC step with `assert seq_lens_cpu is not None` (reported
+	//     by Паша on b200-kimi-k2-6 0.2.13-q.int4-k2 image).
+	//   - kaitakuai/vllm#10: actions/workflows/build-stage1.yml — makes
+	//     future Stage 1 rebuilds reproducible CI artifacts (cosign, SLSA,
+	//     SBOM) instead of manual `docker push` from a laptop.
+	tag:    "0.20.0-pocv2"
+	digest: "sha256:7955b84635f3138ec61bd612d682ad73588305113ed7f3291f34b786f4bb14df"
+	cuda:   "13.0" // CUDA toolkit shipped inside Stage 1 (vLLM PoC base); used by dashboard renderer
 }
 
 stage2: {
