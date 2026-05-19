@@ -16,7 +16,12 @@ KIMI_INT4: {
 		WATCHER_GRACE_FIRST_HEALTHY: "1"
 	}
 	runtime_defaults: {
-		compilation_mode: 0
-		cudagraph_mode:   "NONE"
+		// Defaults established by 2026-04 / 2026-05 production experiments
+		// (cudagraph FULL blocks batch≥128 on Kimi MLA → eager mode).
+		// Defaultable so leaves can override when later A/B finds a different
+		// optimum for their (GPU, batch) tuple — e.g., b200-kimi rev=2
+		// flips to mode=3 + FULL_AND_PIECEWISE for an experimental tune.
+		compilation_mode: *0 | int
+		cudagraph_mode:   *"NONE" | string
 	}
 }
