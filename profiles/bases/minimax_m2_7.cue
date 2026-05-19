@@ -32,6 +32,12 @@ package bases
 MINIMAX_M2_7: {
 	env: {
 		VLLM_USE_V1: "1"
+		// MiniMax-M2.7 cold-start with FP8 KV + 180000 max-model-len is slow
+		// on production TPs. Grace window suppresses the 3-strike kill-threshold
+		// UNTIL the manager first reports healthy=True in an active session;
+		// after that, normal post-startup crash detection is restored.
+		// See patches/0002-api-watcher-grace.patch.
+		WATCHER_GRACE_FIRST_HEALTHY: "1"
 	}
 	runtime_defaults: {
 		// From chain governance v0.2.13 (mandatory — outputs must match).

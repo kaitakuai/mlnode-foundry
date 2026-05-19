@@ -1,0 +1,112 @@
+From 6e351c38d31374c596f34d75f0f019e6c3dfa039 Mon Sep 17 00:00:00 2001
+From: mlnode-foundry <mlnode-foundry@kaitaku.ai>
+Date: Sat, 16 May 2026 21:35:51 +0100
+Subject: [PATCH] feat(api): session-aware watcher grace window
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Replace 3-strike auto-shutdown with a session-aware grace window that
+preserves post-startup crash-restart semantics while tolerating slow
+cold-start of large MoE models on big-TP topologies.
+
+Two env knobs:
+  WATCHER_MAX_UNHEALTHY_COUNT   (default 3)
+      Number of consecutive unhealthy reports before mlnode self-terminates.
+      Same kill-threshold as upstream; just env-overridable so operators
+      can tune per deploy without rebuilding the image.
+
+  WATCHER_GRACE_FIRST_HEALTHY   (default 0)
+      When set to '1', unhealthy reports do NOT count toward the kill
+      threshold UNTIL the manager has reported healthy=True at least
+      once IN AN ACTIVE SESSION (state != STOPPED). Once that happens,
+      the normal kill-threshold becomes live. Re-armed on every
+      STOPPED→active transition, so each new session gets its own
+      cold-start window.
+
+Why session-aware: IManager.is_healthy() returns True when not in an
+active session (trivial STOPPED-shortcut), so naive 'wait for any
+healthy' would burn the grace window before the model even starts.
+We only count first-healthy when in_session=True.
+
+Original 3-strike behavior is preserved for production use: post-cold
+crash-restart still works exactly as before. The grace is opt-in
+per profile via env.
+---
+ mlnode/packages/api/src/api/watcher.py | 41 ++++++++++++++++++++++++--
+ 1 file changed, 38 insertions(+), 3 deletions(-)
+
+diff --git a/mlnode/packages/api/src/api/watcher.py b/mlnode/packages/api/src/api/watcher.py
+index 67e401b..eacc190 100644
+--- a/mlnode/packages/api/src/api/watcher.py
++++ b/mlnode/packages/api/src/api/watcher.py
+@@ -11,7 +11,17 @@ from common.logger import create_logger
+ 
+ logger = create_logger(__name__)
+ 
+-MAX_UNHEALTHY_COUNT = 3
++MAX_UNHEALTHY_COUNT = int(os.environ.get("WATCHER_MAX_UNHEALTHY_COUNT", "3"))
++# When "1", grants a 'first-healthy grace' window per session: until a
++# manager has reported is_healthy()=True at least once IN AN ACTIVE
++# session (state != STOPPED), unhealthy reports do NOT count toward
++# MAX_UNHEALTHY_COUNT — only logged. Once any first-active-healthy
++# is seen, normal kill-threshold behavior kicks back in. Re-armed on
++# each STOPPED→active session transition. Lets long cold-starts
++# (e.g. 8×B300 4× TP=2 with mode=1, ~22 min) complete without
++# mlnode terminating itself, while preserving fast crash-restart
++# semantics for post-startup failures.
++GRACE_FIRST_HEALTHY = os.environ.get("WATCHER_GRACE_FIRST_HEALTHY", "0") == "1"
+ 
+ 
+ async def watch_managers(
+@@ -20,20 +30,45 @@ async def watch_managers(
+     interval: int = 2
+ ):
+     unhealthy_counts = {manager: 0 for manager in managers}
+-    
++    # Session-aware first-healthy grace tracking. `ever_healthy` flips
++    # to True only when a manager is healthy AND in an active session
++    # (state != STOPPED), and resets when the manager returns to
++    # STOPPED. This way the trivial STOPPED-shortcut healthy reported
++    # by IManager.is_healthy() (returns True when `not _is_active`)
++    # does not consume the grace window.
++    ever_healthy = {manager: False for manager in managers}
++    prev_in_session = {manager: False for manager in managers}
++
+     while True:
+         await asyncio.sleep(interval)
+         for manager in managers:
++            in_session = manager.get_state().name != "STOPPED"
++
++            # Session-end transition (active → STOPPED): re-arm the grace
++            # window so the next up/async gets its own cold-start grace.
++            if prev_in_session[manager] and not in_session and ever_healthy[manager]:
++                logger.info(f"Manager {manager.__class__.__name__} returned to STOPPED — resetting cold-start grace for next session")
++                ever_healthy[manager] = False
++            prev_in_session[manager] = in_session
++
+             if not manager.is_healthy():
++                if GRACE_FIRST_HEALTHY and not ever_healthy[manager]:
++                    logger.info(f"Manager {manager.__class__.__name__} not yet healthy (cold-start grace; kill threshold inactive until first healthy in active session)")
++                    continue
+                 unhealthy_counts[manager] += 1
+                 logger.error(f"Manager {manager.__class__.__name__} is unhealthy (count: {unhealthy_counts[manager]}/{MAX_UNHEALTHY_COUNT})")
+-                
++
+                 if unhealthy_counts[manager] >= MAX_UNHEALTHY_COUNT:
+                     logger.critical(f"Manager {manager.__class__.__name__} has been unhealthy {MAX_UNHEALTHY_COUNT} times in a row. Shutting down the application.")
+                     # Use the proper stop() interface for all managers
+                     manager.stop()
+                     os._exit(1)
+             else:
++                # Only count first-healthy when manager is actually in an
++                # active session — skip the trivial STOPPED-shortcut.
++                if in_session and not ever_healthy[manager]:
++                    ever_healthy[manager] = True
++                    logger.info(f"Manager {manager.__class__.__name__} reached healthy state in active session — MAX_UNHEALTHY_COUNT={MAX_UNHEALTHY_COUNT} kill threshold now active")
+                 if unhealthy_counts[manager] > 0:
+                     logger.info(f"Manager {manager.__class__.__name__} is healthy again, resetting unhealthy count")
+                     unhealthy_counts[manager] = 0
+-- 
+2.48.1
+
