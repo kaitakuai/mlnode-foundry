@@ -1,0 +1,18 @@
+{
+  "profile": "profiles/h100-minimax-m2-7.cue",
+  "profile_hash": "e5b7482f88769cdcfdf5f055516d9d1f01098b010caee91fba8dc7ef833cbad3",
+  "status": "draft",
+  "image": {
+    "package": "ghcr.io/kaitakuai/mlnode-h100-minimax-m2-7",
+    "tag": "0.2.13-vllm0.20.0-k1",
+    "digest": "sha256:2fffb79e4471096a3a22a9112222857a4b588cfb0b47a4a73ad9f12800284b6f",
+    "built_at": "2026-05-20T17:53:34Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main"
+  },
+  "validation": {
+    "build_smoke": {
+      "result": "pass",
+      "at": "2026-05-20T17:53:34Z"
+    }
+  }
+}
