@@ -1,7 +1,19 @@
 name: build-stage3
 
 # Builds and publishes Stage 3 per-(GPU, model) image for each profile.
-# Matrix expands across all profiles/*.cue files.
+#
+# Matrix selection rules:
+#   - push (default): ONLY leaf profiles whose `profiles/<name>.cue` changed
+#     in this push are rebuilt. Changes to profiles/bases/, stage2/, tools/,
+#     stage3/, patches/, mlnode_foundry/, or the workflow itself do NOT
+#     trigger auto-rebuild — by design — even though they may invalidate
+#     the profile_hash of every profile. Operator must explicitly
+#     `workflow_dispatch` with empty `profile` to do a full-matrix rebuild
+#     in those cases.
+#   - workflow_dispatch + non-empty `profile`: pattern-matched subset
+#     (exact name, comma list, or glob — e.g. `*-minimax-m2-7`).
+#   - workflow_dispatch + empty `profile`: full matrix (explicit
+#     operator intent to rebuild everything).
 #
 # Per profile:
 #   1. Resolve BASE_IMAGE from tools/stage2.lock.cue (or profile.base for overlay-mode)
@@ -14,21 +26,22 @@ name: build-stage3
 on:
   push:
     branches: [main]
+    # Narrowed to ONLY paths whose change can be auto-mapped to a specific
+    # leaf profile. Other paths (bases, stage2, tools, etc.) can still
+    # invalidate profile_hashes, but rebuilding on them is gated behind
+    # explicit `workflow_dispatch` so push noise doesn't trigger the full
+    # 12-profile matrix unintentionally. See module header for rationale.
     paths:
-      - 'profiles/**'
-      - 'tools/**'
-      - 'stage3/**'
-      - 'stage2/**'           # Stage 2 content invalidates Stage 3 profile_hash too
-      - 'patches/**'
-      - 'mlnode_foundry/**'
+      - 'profiles/*.cue'
       - '.github/workflows/build-stage3.yml'
   workflow_dispatch:
     inputs:
       profile:
         description: |
-          Profile selector: empty = all; or exact name (`b300-kimi-k2-6-int4`);
-          or comma-separated list (`b200-minimax-m2-7,h200-minimax-m2-7`);
-          or glob (`*-minimax-m2-7`); or any mix (`*-kimi-*,b300-qwen3-235b-a22b`).
+          Profile selector: empty = ALL profiles (full matrix); or exact name
+          (`b300-kimi-k2-6-int4`); or comma-separated list
+          (`b200-minimax-m2-7,h200-minimax-m2-7`); or glob (`*-minimax-m2-7`);
+          or any mix (`*-kimi-*,b300-qwen3-235b-a22b`).
         required: false
         type: string
       force:
@@ -50,44 +63,101 @@ concurrency:
 
 jobs:
   matrix:
-    # Compute matrix from profiles/*.cue (excluding schema, bases)
+    # Compute matrix from event:
+    #   - push           → only leaf profiles whose `profiles/<name>.cue` changed in the push
+    #   - dispatch + sel → pattern-matched subset (exact / comma / glob)
+    #   - dispatch + ∅   → ALL profiles (full matrix)
     runs-on: ubuntu-latest
     outputs:
       profiles: ${{ steps.set.outputs.profiles }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so `git diff $before $after` works on the push event.
+          fetch-depth: 0
       - id: set
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PROFILE_INPUT: ${{ inputs.profile }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.event.after }}
         run: |
           set -euo pipefail
           shopt -s nullglob
-          if [ -n "${{ inputs.profile }}" ]; then
-            # Selector: comma-separated patterns, each may be exact name or glob.
-            # Only top-level profiles/*.cue are scanned (bases/ subdir excluded).
-            IFS=',' read -ra PATTERNS <<< "${{ inputs.profile }}"
-            declare -a matched=()
-            for raw in "${PATTERNS[@]}"; do
-              pat="${raw#"${raw%%[![:space:]]*}"}"; pat="${pat%"${pat##*[![:space:]]}"}"
-              [ -z "$pat" ] && continue
-              hit=0
-              for f in profiles/${pat}.cue; do
-                # nullglob suppresses unmatched globs but a literal path with no
-                # wildcards still iterates over its literal value — check existence.
-                [ -f "$f" ] || continue
-                base=$(basename "$f" .cue)
-                [ "$base" = "schema" ] && continue
-                matched+=("$base")
-                hit=1
-              done
-              [ "$hit" -eq 0 ] && echo "::warning::Pattern '$pat' matched 0 profiles"
-            done
-            if [ ${#matched[@]} -eq 0 ]; then
-              echo "::error::Profile selector '${{ inputs.profile }}' matched 0 profiles"
+
+          ls_all_profiles() {
+            ls profiles/*.cue 2>/dev/null \
+              | grep -v '^profiles/schema\.cue$' \
+              | sed 's|^profiles/||; s|\.cue$||'
+          }
+
+          case "$EVENT_NAME" in
+            workflow_dispatch)
+              if [ -n "$PROFILE_INPUT" ]; then
+                # Mode: explicit pattern selector (exact name, comma list, glob).
+                # Only top-level profiles/*.cue are scanned (bases/ excluded).
+                IFS=',' read -ra PATTERNS <<< "$PROFILE_INPUT"
+                declare -a matched=()
+                for raw in "${PATTERNS[@]}"; do
+                  pat="${raw#"${raw%%[![:space:]]*}"}"; pat="${pat%"${pat##*[![:space:]]}"}"
+                  [ -z "$pat" ] && continue
+                  hit=0
+                  for f in profiles/${pat}.cue; do
+                    # nullglob suppresses unmatched globs but a literal path with no
+                    # wildcards still iterates over its literal value — check existence.
+                    [ -f "$f" ] || continue
+                    base=$(basename "$f" .cue)
+                    [ "$base" = "schema" ] && continue
+                    matched+=("$base")
+                    hit=1
+                  done
+                  [ "$hit" -eq 0 ] && echo "::warning::Pattern '$pat' matched 0 profiles"
+                done
+                if [ ${#matched[@]} -eq 0 ]; then
+                  echo "::error::Profile selector '$PROFILE_INPUT' matched 0 profiles"
+                  exit 1
+                fi
+                PROFILES=$(printf '%s\n' "${matched[@]}" | sort -u | jq -R . | jq -s -c .)
+                echo "Mode: workflow_dispatch with selector '$PROFILE_INPUT'"
+              else
+                # Mode: dispatch + empty input = explicit "rebuild all".
+                PROFILES=$(ls_all_profiles | jq -R . | jq -s -c .)
+                echo "Mode: workflow_dispatch with empty profile input (rebuild ALL)"
+              fi
+              ;;
+
+            push)
+              # Mode: only leaf profiles whose `profiles/<name>.cue` changed in this push.
+              if [ -z "$PUSH_BEFORE" ] || [ "$PUSH_BEFORE" = "0000000000000000000000000000000000000000" ]; then
+                echo "::warning::Push event has no 'before' SHA (initial branch push?); cannot compute diff. Use workflow_dispatch to build profiles explicitly."
+                PROFILES="[]"
+              else
+                # Restrict diff to profiles/ dir; post-filter to top-level *.cue,
+                # excluding schema. Bases (profiles/bases/*.cue) are intentionally
+                # excluded — base changes affect many profiles and require an
+                # explicit dispatch.
+                set +o pipefail
+                CHANGED=$(git diff --name-only "$PUSH_BEFORE" "$PUSH_AFTER" -- profiles/ \
+                  | grep -E '^profiles/[^/]+\.cue$' \
+                  | grep -v '^profiles/schema\.cue$' \
+                  | sed 's|^profiles/||; s|\.cue$||')
+                set -o pipefail
+                if [ -z "$CHANGED" ]; then
+                  echo "::notice::Push touched watched paths but no leaf profile .cue changed. To rebuild after bases/, stage2/, tools/, patches/, or mlnode_foundry/ changes, run workflow_dispatch with empty 'profile' input."
+                  PROFILES="[]"
+                else
+                  PROFILES=$(printf '%s\n' $CHANGED | sort -u | jq -R . | jq -s -c .)
+                fi
+                echo "Mode: push — changed-leaf only (diff $PUSH_BEFORE..$PUSH_AFTER)"
+              fi
+              ;;
+
+            *)
+              echo "::error::Unsupported event_name: $EVENT_NAME"
               exit 1
-            fi
-            PROFILES=$(printf '%s\n' "${matched[@]}" | sort -u | jq -R . | jq -s -c .)
-          else
-            PROFILES=$(ls profiles/*.cue | grep -v schema.cue | xargs -n1 basename | sed 's/\.cue$//' | jq -R . | jq -s -c .)
-          fi
+              ;;
+          esac
+
           echo "profiles=$PROFILES" >> "$GITHUB_OUTPUT"
           echo "Matrix profiles: $PROFILES"
 
