@@ -37,8 +37,13 @@ h100_minimax_m2_7: #BaseProfile & bases.H100 & bases.MINIMAX_M2_7 & {
 	description: "H100 Hopper SXM (4×) + MiniMax-M2.7 FP8 (TP=4, TRITON MoE)"
 	notes: """
 		Throughput proven on 4×H100 SXM5 (shadecloud orion, vLLM 0.20 PoC v2):
-		2368 nonces/min @ batch=32 — matches 2×B200 within margin, Hopper SXM5
-		is genuinely competitive on this model.
+		2368 nonces/min @ batch=32 — matches 2×B200 (2624) within margin;
+		Hopper SXM5 is genuinely competitive on this model.
+		8-GPU normalized (2 × 4-GPU instances): 4 736 nonces/min.
+		+42% vs published 2026-04 baseline (1664 → 2368), attributed to
+		PR#36 (apply_householder torch.compile) + TRITON MoE forced
+		(vs FLASHINFER_CUTLASS auto) + FLASHINFER attention forced
+		(vs FLASH_ATTN auto) + shadecloud H100 hardware (NV18 NVLink mesh).
 		"""
 	tuning_notes: [
 		{
@@ -50,14 +55,27 @@ h100_minimax_m2_7: #BaseProfile & bases.H100 & bases.MINIMAX_M2_7 & {
 		},
 		{
 			knob:     "moe_backend=triton"
-			source:   "https://github.com/kaitakuai/experiments/2026-05/minimax-m27-fp8-4xh100"
-			reason:   "FlashInfer FP8 MoE paths underperform on Hopper sm_90 in vLLM 0.20; TRITON is the chosen production backend."
+			source:   "https://github.com/kaitakuai/experiments/blob/main/2026-05/minimax-m27-fp8-4xh100/README.md"
+			reason:   "FlashInfer FP8 MoE paths (FLASHINFER_CUTLASS) underperform on Hopper sm_90 in vLLM 0.20 — auto-select picks them and silently regresses. TRITON forced explicitly so the 2368 nonces/min measurement is reproducible across vLLM versions."
+			added_at: "2026-05-25"
+		},
+		{
+			knob:     "attention_backend=FLASHINFER"
+			source:   "https://github.com/kaitakuai/experiments/blob/main/2026-05/minimax-m27-fp8-4xh100/README.md"
+			reason:   "vLLM auto-default on Hopper is FLASH_ATTN; FLASHINFER measured faster on the 2026-05 sweep. Pinning explicitly prevents the auto-selector heuristic from silently regressing this profile across vLLM releases."
 			added_at: "2026-05-25"
 		},
 		{
 			knob:     "tensor_parallel_size=4"
-			source:   "https://github.com/kaitakuai/experiments/2026-05/minimax-m27-fp8-4xh100"
-			reason:   "4×H100 = 320 GB HBM exactly matches chain VRam=320 GB requirement. Best at batch=32 (2368 nonces/min); batch=64 OOMs the PoC engine."
+			source:   "https://github.com/kaitakuai/experiments/blob/main/2026-05/minimax-m27-fp8-4xh100/README.md"
+			reason:   "4×H100 = 320 GB HBM exactly matches chain VRam=320 GB requirement. Phase 3 batch sweep: 2→888, 8→2048, 16→2240, 32→2368 (best), 64→hang. shadecloud orion, 2026-05."
+			added_at: "2026-05-25"
+		},
+		{
+			knob:     "max_num_seqs=128 (batch_size=64 hard ceiling)"
+			source:   "https://github.com/kaitakuai/experiments/blob/main/2026-05/minimax-m27-fp8-4xh100/README.md"
+			reason:   "Phase 3 sweep observed batch_size=64 hangs the PoC engine (OOM-stuck, not crash — engine never recovers). max_num_seqs=128 from MINIMAX_M2_7 base is safe because vLLM runtime caps actual batch by KV cache; the hazard is operator-supplied PoC batch override. Same failure mode as b200-minimax-m2-7 and the flashinfer_moe_int4_blackwell.md memory entry."
+			severity: "warning"
 			added_at: "2026-05-25"
 		},
 	]
