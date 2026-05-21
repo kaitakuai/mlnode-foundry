@@ -73,6 +73,12 @@ b200_kimi_k2_6_int4: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
 		"""
 	tuning_notes: [
 		{
+			knob:     "validation-report"
+			source:   "https://github.com/kaitakuai/experiments/blob/main/2026-05/kimi_k26_int4_4xb200_q-int4-k2/README.md"
+			reason:   "Hardware validation report — 4×B200 (Vast.ai), PoC nonces flowing, no MLA assert after kaitakuai/vllm#9 (seq_lens_cpu_upper_bound restore in Stage 1). First tuning_note with an experiments URL → picked up by render_registry_view._report_url as the image's report_url (dashboard ‘verified’ chip)."
+			added_at: "2026-05-21"
+		},
+		{
 			knob:     "compilation-config.mode=3,cudagraph_mode=FULL_AND_PIECEWISE"
 			source:   "operator iteration 2026-05-19 (handoff to colleague for benchmark)"
 			reason:   "Replaces rev=1 mode=0/NONE eager defaults with compiled+cudagraph path. Throughput claim untested; this image is the test."
