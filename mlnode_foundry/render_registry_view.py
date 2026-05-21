@@ -118,10 +118,14 @@ def render_registry_view(
     line = "mlnode-overlay" if is_overlay else "mlnode"
 
     full_tag = f"{pkg}:{tag}"
-    repo_slug = "kaitakuai/mlnode-foundry"
-    slsa_attestation_url = (
-        f"https://github.com/{repo_slug}/attestations" if digest else None
-    )
+    # SLSA L3 attestation lives INSIDE the OCI manifest (BuildKit
+    # `provenance: mode=max` + `sbom: true` in build-stage3.yml). Verifiable
+    # via `cosign verify-attestation` or `docker buildx imagetools inspect`.
+    # We do NOT use `actions/attest-build-provenance`, so the GitHub
+    # /attestations page is not populated for our repo. Schema keeps the
+    # field for future use (e.g., if Gonka governance ever requires a
+    # publishable attestation URL alongside the in-manifest provenance).
+    slsa_attestation_url = None
 
     return {
         "$schema": "./schema.json",

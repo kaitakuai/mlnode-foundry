@@ -54,7 +54,7 @@
   },
   "digest": "sha256:43943c0b478808383cdbb1f95ee405f63bd8b52b3eab5e1ab1037bda12cdd914",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
-  "slsa_attestation_url": "https://github.com/kaitakuai/mlnode-foundry/attestations",
+  "slsa_attestation_url": null,
   "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-05/kimi_k26_int4_4xb200_q-int4-k2/README.md",
   "uploaded_by": "github-actions[bot]",
   "nonces": null,
