@@ -89,17 +89,38 @@ def _render_hw_patches_block(hw_patches: list[str] | None) -> str:
     return "\n".join(chunks)
 
 
+def _replace_unique(template: str, placeholder: str, value: str) -> str:
+    """str.replace but assert placeholder appears EXACTLY once.
+
+    If a placeholder is mentioned in a comment alongside its real location,
+    str.replace silently substitutes BOTH — content meant for line 50 also
+    appears in a comment on line 10, and the Dockerfile breaks in ways that
+    are hard to diagnose (e.g., `FROM` vanishes if a multi-line replacement
+    lands inside a comment block). Fail loud here.
+    """
+    count = template.count(placeholder)
+    if count != 1:
+        raise ValueError(
+            f"Stage 3 template expects exactly one occurrence of "
+            f"{placeholder!r}, found {count}. Check stage3/Dockerfile.tmpl "
+            f"for stale mentions in comments / doc headers."
+        )
+    return template.replace(placeholder, value)
+
+
 def render_dockerfile(profile: dict, output_path: Path = DEFAULT_OUTPUT) -> Path:
     """Render the Stage 3 Dockerfile template for `profile` to `output_path`."""
     template = TEMPLATE_PATH.read_text()
     env = profile.get("env", {})
     tuning_notes = profile.get("tuning_notes")
     hw_patches = profile.get("hw_patches")
-    rendered = (
-        template
-        .replace("{{HW_PATCHES_BLOCK}}", _render_hw_patches_block(hw_patches))
-        .replace("{{ENV_BLOCK}}", _render_env_block(env))
-        .replace("{{TUNING_LABEL}}", _render_tuning_label(tuning_notes))
+    rendered = template
+    rendered = _replace_unique(
+        rendered, "{{HW_PATCHES_BLOCK}}", _render_hw_patches_block(hw_patches)
+    )
+    rendered = _replace_unique(rendered, "{{ENV_BLOCK}}", _render_env_block(env))
+    rendered = _replace_unique(
+        rendered, "{{TUNING_LABEL}}", _render_tuning_label(tuning_notes)
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(rendered)
