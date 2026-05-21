@@ -13,7 +13,8 @@
 #   RUNNER_PATCH      — basename of tools/runner-patches/<x>.py (empty = no-op)
 #
 # Profile-specific content baked at render time (no opt-in build-args):
-#   - hw-patches fragments INLINED at {{HW_PATCHES_BLOCK}} (per profile.hw_patches)
+#   - hw-patches fragments INLINED below at the hw-patches block
+#     (per profile.hw_patches, in declared order)
 #   - ENV K=V for each profile.env entry (rendered ENV directive below)
 #   - gonka.kaitaku.tuning_notes label (compact JSON, rendered LABEL line below)
 
