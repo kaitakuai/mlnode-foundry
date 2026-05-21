@@ -5,13 +5,15 @@ The hash covers everything that influences the resulting image:
   - schema.cue (changes invalidate validation logic)
   - all bases referenced via `bases.X` (resolved by `cue export`)
   - naming.cue (changes invalidate tag computation)
-  - stage3/Dockerfile (template changes)
+  - stage3/Dockerfile.tmpl (template changes)
   - tools/stage2.lock.cue (Stage 2 pin)
-  - hw-patches files referenced (Phase 3 — placeholder for now)
-  - runner-patch file referenced (Phase 3 — placeholder)
+  - patches/*.patch + stage2/scripts/*.py (Stage 2 lineage)
+  - tools/hw-patches/<name>.dockerfile for each name in profile.hw_patches
+  - tools/runner-patches/<name>.py if profile.runner_patch is non-empty
 
-Phase 2 implementation hashes the static set above. Phase 3 will add
-hw-patches / runner-patches resolution from the profile.
+A patch the profile does NOT opt into is NOT hashed — editing it must not
+invalidate unrelated profile_hashes (otherwise every patch edit triggers
+a full 12-profile matrix rebuild, defeating skip-if-unchanged).
 """
 
 from __future__ import annotations
@@ -19,7 +21,7 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from .render_bake import REPO_ROOT
+from .render_bake import REPO_ROOT, load_profile
 
 
 def _hash_file(path: Path) -> bytes:
@@ -63,6 +65,20 @@ def compute_profile_hash(name: str) -> str:
     stage2_scripts = REPO_ROOT / "stage2" / "scripts"
     if stage2_scripts.is_dir():
         inputs.extend(sorted(stage2_scripts.glob("*.py")))
+
+    # Per-profile hw-patches the profile actually opts into (resolved via cue export).
+    # Editing a fragment a given profile DOESN'T use must NOT invalidate that
+    # profile's hash — otherwise every patch edit triggers a full matrix rebuild.
+    profile = load_profile(name)
+    hw_patches = profile.get("hw_patches") or []
+    hw_patches_dir = REPO_ROOT / "tools" / "hw-patches"
+    for patch_name in hw_patches:
+        inputs.append(hw_patches_dir / f"{patch_name}.dockerfile")
+
+    # Runner-patch (single python script) if the profile declares one.
+    runner_patch = (profile.get("runner_patch") or "").strip()
+    if runner_patch:
+        inputs.append(REPO_ROOT / "tools" / "runner-patches" / f"{runner_patch}.py")
 
     aggregator = hashlib.sha256()
     for p in inputs:

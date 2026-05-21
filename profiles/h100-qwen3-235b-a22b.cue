@@ -26,7 +26,13 @@ h100_qwen3_235b_a22b: #BaseProfile & bases.H100 & bases.QWEN & {
 	}
 	mode:         "kaitakuai-base"
 	hw_patches:  list.Concat([bases.H100.hw_patches, ["poc-householder-compile"]])
-	runner_patch: "h100"
+	// runner_patch left empty — no `tools/runner-patches/h100.py` ever existed.
+	// Previously declared "h100" was a vestigial reference: the runtime
+	// gracefully skipped when the file was missing, so no image actually got
+	// an h100 runner-patch. With the new build_hash that hashes the
+	// runner-patch file contents, a non-empty value MUST resolve to an
+	// existing file.
+	runner_patch: ""
 	env: {}
 	runtime_defaults: {
 		gpu_memory_utilization: 0.90
