@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from mlnode_foundry.render_bake import load_profile
 import pytest
 
+from mlnode_foundry.render_bake import load_profile
 from mlnode_foundry.render_dockerfile import (
     _render_env_block,
     _render_hw_patches_block,
@@ -99,7 +99,8 @@ def test_hw_patches_block_single_patch_includes_fragment() -> None:
     # Separator header names the patch and the source file
     assert "# --- hw-patch: poc-householder-compile" in block
     assert "tools/hw-patches/poc-householder-compile.dockerfile" in block
-    # Actual content from the fragment file is inlined (the python heredoc that wraps apply_householder)
+    # Actual content from the fragment file is inlined
+    # (the python heredoc that wraps apply_householder)
     assert "apply_householder" in block
     assert "torch.compile" in block
     assert "RUN python3" in block
