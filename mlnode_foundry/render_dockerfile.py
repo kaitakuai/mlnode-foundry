@@ -1,13 +1,27 @@
 """Render stage3/Dockerfile.tmpl → concrete stage3/Dockerfile.rendered per profile.
 
-Substitutes:
-  {{ENV_BLOCK}}    — `ENV K1=V1 \\\n    K2=V2 \\\n    ...` from profile.env
-  {{TUNING_LABEL}} — `gonka.kaitaku.tuning_notes="<compact-json>"` from profile.tuning_notes
-                     (omitted if profile has no tuning_notes; renders as empty placeholder)
+Substitutes three placeholders:
+
+  {{HW_PATCHES_BLOCK}} — concatenated Dockerfile fragments from
+                         tools/hw-patches/<name>.dockerfile for each name in
+                         profile.hw_patches, in declared order. Each fragment
+                         is idempotent and self-contained (see
+                         tools/hw-patches/README.md).
+
+  {{ENV_BLOCK}}        — `ENV K1=V1 \\\n    K2=V2 \\\n    ...` from profile.env.
+
+  {{TUNING_LABEL}}     — `gonka.kaitaku.tuning_notes="<compact-json>"` from
+                         profile.tuning_notes (omitted if empty; renders as
+                         a harmless count=0 label to keep the LABEL chain
+                         syntactically valid).
 
 This removes the fixed-list ENV ARG/ENV block that lived in the old static
 Dockerfile, so any profile can introduce arbitrary ENV vars without editing
-the template.
+the template. Per-profile hw-patches selection (opt-in via the .cue
+profile's `hw_patches: [...]` list) is honoured here — fragments declared
+by a profile end up inlined into that profile's Stage 3 image; fragments
+not declared are absent entirely (no /tmp/hw-patches dir, no leftover
+scripts).
 """
 
 from __future__ import annotations
@@ -19,6 +33,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 TEMPLATE_PATH = REPO_ROOT / "stage3" / "Dockerfile.tmpl"
 DEFAULT_OUTPUT = REPO_ROOT / "stage3" / "Dockerfile.rendered"
+HW_PATCHES_DIR = REPO_ROOT / "tools" / "hw-patches"
 
 
 def _render_env_block(env: dict[str, str]) -> str:
@@ -43,13 +58,46 @@ def _render_tuning_label(tuning_notes: list[dict] | None) -> str:
     return f'gonka.kaitaku.tuning_notes="{payload}"'
 
 
+def _render_hw_patches_block(hw_patches: list[str] | None) -> str:
+    """Inline hw-patch Dockerfile fragments in declared order.
+
+    Each name in `hw_patches` must correspond to an existing
+    `tools/hw-patches/<name>.dockerfile`. Missing files raise
+    FileNotFoundError at render time — this is a profile authoring bug
+    (typo in the patch name) that should fail loud, not silently produce
+    an image missing a patch.
+
+    Fragments are joined with a separator comment that names which patch
+    contributed each block, so the rendered Dockerfile remains readable.
+
+    An empty/missing `hw_patches` renders to a single placeholder comment,
+    keeping the build deterministic.
+    """
+    if not hw_patches:
+        return "# (profile.hw_patches empty — no hardware-specific fragments to inline)"
+    chunks: list[str] = []
+    for name in hw_patches:
+        fragment = HW_PATCHES_DIR / f"{name}.dockerfile"
+        if not fragment.exists():
+            raise FileNotFoundError(
+                f"hw-patch fragment not found: {fragment} "
+                f"(referenced from profile.hw_patches as {name!r}). "
+                f"Either add the file under tools/hw-patches/ or correct the typo."
+            )
+        chunks.append(f"# --- hw-patch: {name} (from tools/hw-patches/{name}.dockerfile) ---")
+        chunks.append(fragment.read_text().rstrip("\n"))
+    return "\n".join(chunks)
+
+
 def render_dockerfile(profile: dict, output_path: Path = DEFAULT_OUTPUT) -> Path:
     """Render the Stage 3 Dockerfile template for `profile` to `output_path`."""
     template = TEMPLATE_PATH.read_text()
     env = profile.get("env", {})
     tuning_notes = profile.get("tuning_notes")
+    hw_patches = profile.get("hw_patches")
     rendered = (
         template
+        .replace("{{HW_PATCHES_BLOCK}}", _render_hw_patches_block(hw_patches))
         .replace("{{ENV_BLOCK}}", _render_env_block(env))
         .replace("{{TUNING_LABEL}}", _render_tuning_label(tuning_notes))
     )

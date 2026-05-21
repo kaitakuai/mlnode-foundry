@@ -13,6 +13,7 @@
 #   RUNNER_PATCH      — basename of tools/runner-patches/<x>.py (empty = no-op)
 #
 # Profile-specific content baked at render time (no opt-in build-args):
+#   - hw-patches fragments INLINED at {{HW_PATCHES_BLOCK}} (per profile.hw_patches)
 #   - ENV K=V for each profile.env entry (rendered ENV directive below)
 #   - gonka.kaitaku.tuning_notes label (compact JSON, rendered LABEL line below)
 
@@ -29,11 +30,10 @@ ARG TAG
 ARG PROFILE_HASH
 
 # Apply hw-patches ------------------------------------------------------------
-COPY --link tools/hw-patches /tmp/hw-patches
-RUN <<'EOF' bash
-set -euxo pipefail
-echo "Stage 3: hw-patches applied via /tmp/hw-patches (resolution happens in CLI)"
-EOF
+# Fragments below are inlined by render_dockerfile.py from tools/hw-patches/<name>.dockerfile
+# for each name in profile.hw_patches, in declared order. Each fragment is
+# idempotent and self-contained (uses RUN python3 <<'EOF' ... EOF style).
+{{HW_PATCHES_BLOCK}}
 
 # Apply runner-patch ----------------------------------------------------------
 COPY --link tools/runner-patches /tmp/runner-patches
@@ -45,7 +45,7 @@ RUN if [ -n "${RUNNER_PATCH}" ] && [ -f "/tmp/runner-patches/${RUNNER_PATCH}.py"
     else \
         echo "No runner-patch to apply (RUNNER_PATCH=${RUNNER_PATCH:-unset})"; \
     fi && \
-    rm -rf /tmp/runner-patches /tmp/hw-patches
+    rm -rf /tmp/runner-patches
 
 # ENV from profile.env (rendered) ---------------------------------------------
 {{ENV_BLOCK}}
