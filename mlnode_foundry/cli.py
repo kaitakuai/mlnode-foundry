@@ -70,6 +70,47 @@ def image_size_cmd(ref: str) -> None:
         typer.echo(humanize_bytes(n))
 
 
+def _preserve_hand_edited_metrics(view: dict, output_path: Path) -> dict:
+    """Carry forward hand-edited nonces/weight from an existing registry-view JSON.
+
+    Plan B benchmark workflow:
+      1. CI builds the image (this command runs; view["nonces"] = view["weight"] = None).
+      2. Operator tests the image on real hardware, measures throughput.
+      3. Operator opens a small PR editing only `registry-view/<file>.json` to set
+         `"nonces": <8-GPU-normalized-count>` (no profile change, no rebuild).
+      4. Some later commit triggers Stage 3 rebuild of this profile. This
+         function reads the EXISTING registry-view JSON before overwriting,
+         finds the hand-edited number, and carries it forward into the
+         fresh render — so the rebuild does NOT regress the dashboard chip
+         back to "no measurement".
+
+    Validation is strict:
+      - existing value MUST be int/float >= 0 (silently ignored otherwise)
+      - already-set view fields (from explicit CLI args, future use) win
+
+    Failure modes (corrupt JSON, IO error) → silent fallback to nulls. The
+    rebuild still succeeds; the operator just needs to re-set the number.
+    """
+    if not output_path.exists():
+        return view
+    try:
+        existing = json.loads(output_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return view
+    for field in ("nonces", "weight"):
+        existing_val = existing.get(field)
+        if existing_val is None:
+            continue
+        if not isinstance(existing_val, int | float) or isinstance(existing_val, bool):
+            continue
+        if existing_val < 0:
+            continue
+        if view.get(field) is not None:
+            continue  # explicit caller value beats preservation
+        view[field] = existing_val
+    return view
+
+
 @app.command("registry-view")
 def registry_view_cmd(
     profile: str,
@@ -93,6 +134,7 @@ def registry_view_cmd(
     if str(output) == "" or str(output) == ".":
         package_basename = view["name"].rsplit("/", 1)[-1]
         output = REPO_ROOT / "registry-view" / f"{package_basename}-{view['tag']}.json"
+    view = _preserve_hand_edited_metrics(view, output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(view, indent=2) + "\n")
     typer.secho(f"✓ Wrote: {output}", fg=typer.colors.GREEN)
