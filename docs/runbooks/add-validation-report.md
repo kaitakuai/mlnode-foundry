@@ -80,7 +80,39 @@ For immediate dashboard pickup, also edit the JSON in this same PR:
 This is safe: the next Stage 3 build will regenerate the same value
 deterministically from the profile change in step 2.
 
-### 4. Open the PR + merge
+### 4. Record measured throughput as `nonces` (8-GPU normalized)
+
+The report's TL;DR usually states a `nonces/min` figure for the actually-measured
+hardware (e.g. 2368 nonces/min @ 4×H100 single instance) AND an 8-GPU normalized
+figure (e.g. 4 736 nonces/min via 2 × 4-GPU instances). The dashboard chip wants
+**the 8-GPU normalized number** — it's what an operator should expect from a
+production 8-GPU host.
+
+Edit the same `registry-view/<package>-<tag>.json` in this PR:
+
+```diff
+-  "nonces": null,
++  "nonces": 4736,
+   "weight": null
+```
+
+Pick the 8-GPU normalized number from the report's "8×GPU normalized" line.
+If the report ran on already 8 GPUs (single instance), use that directly.
+If it only measured fewer GPUs without normalising, multiply linearly (the
+report convention is that normalisation is operator-verified, not just naive
+multiplication, so check that the README *explicitly* states an 8-GPU
+normalized figure before copying it).
+
+Why this doesn't require a rebuild: `mlnode-foundry registry-view` reads the
+existing `registry-view/<file>.json` before overwriting and **preserves
+hand-edited `nonces` / `weight`** (see `_preserve_hand_edited_metrics` in
+`cli.py`). The number persists across future Stage 3 rebuilds without
+re-editing.
+
+Leave `weight` as `null` unless you have a measured Gonka PoC weight to
+publish (separate column on the public dashboard; not all reports include it).
+
+### 5. Open the PR + merge
 
 Squash + delete branch. Single PR carries both edits (profile + JSON).
 Commit message convention:
@@ -89,7 +121,7 @@ Commit message convention:
 chore(<gpu>-<family>): link validation report after hardware smoke
 ```
 
-### 5. Verify the chip flipped (≤ 5 min after merge)
+### 6. Verify the chip flipped (≤ 5 min after merge)
 
 The dashboard auto-sync timer (`dashboard-sync-registry.timer` on
 `88.216.70.137`) runs every 5 minutes and pulls
