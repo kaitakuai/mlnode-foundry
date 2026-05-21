@@ -94,8 +94,13 @@ package registry_view
 	// Verifiable by anyone via `cosign verify --certificate-identity-regexp`.
 	cosign_identity: =~"^https://github\\.com/kaitakuai/mlnode-foundry/.*"
 
-	// SLSA L3 attestation URL — points to the GitHub attestation index for this digest.
-	slsa_attestation_url: =~"^https://github\\.com/kaitakuai/mlnode-foundry/attestations"
+	// SLSA L3 attestation URL — reserved for a publishable provenance UI surface.
+	// CURRENTLY ALWAYS NULL: our build-stage3.yml emits the SLSA provenance INSIDE
+	// the OCI manifest (BuildKit `provenance: mode=max`); we do NOT use
+	// `actions/attest-build-provenance`, so the GitHub /attestations page would
+	// be empty for these images. Schema keeps the field for future use if Gonka
+	// governance ever requires a publishable URL alongside the in-manifest data.
+	slsa_attestation_url: null | =~"^https://"
 
 	// Link to the experiments runbook that justifies the tuning choices, if any.
 	// Picked from the first tuning_notes[].source that points at an experiments URL.
