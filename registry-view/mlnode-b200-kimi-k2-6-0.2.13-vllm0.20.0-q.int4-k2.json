@@ -48,15 +48,16 @@
     "max-num-batched-tokens=32768,max-num-seqs=32,max-model-len=120000": "Smaller batch envelope is required when cudagraph captures large shapes; 131072 baseline OOMs cudagraph FULL on Kimi MLA on B200."
   },
   "flag_descriptions": {
+    "validation-report": "Hardware validation report \u2014 4\u00d7B200 (Vast.ai), PoC nonces flowing, no MLA assert after kaitakuai/vllm#9 (seq_lens_cpu_upper_bound restore in Stage 1). First tuning_note with an experiments URL \u2192 picked up by render_registry_view._report_url as the image's report_url (dashboard \u2018verified\u2019 chip).",
     "compilation-config.mode=3,cudagraph_mode=FULL_AND_PIECEWISE": "Replaces rev=1 mode=0/NONE eager defaults with compiled+cudagraph path. Throughput claim untested; this image is the test.",
     "enable-expert-parallel": "Adds EP=4 over the TP=4 sharding. Legacy B300 Kimi config showed +5% EP gain; replicate on B200 here.",
     "max-num-batched-tokens=32768,max-num-seqs=32,max-model-len=120000": "Smaller batch envelope is required when cudagraph captures large shapes; 131072 baseline OOMs cudagraph FULL on Kimi MLA on B200."
   },
-  "digest": "sha256:43943c0b478808383cdbb1f95ee405f63bd8b52b3eab5e1ab1037bda12cdd914",
+  "digest": "sha256:0e021339af1ffe87f6a76dbe9fece45f7f4a3de0ae1705a0ebafbb8b3c9960e1",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
   "slsa_attestation_url": "https://github.com/kaitakuai/mlnode-foundry/attestations",
   "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-05/kimi_k26_int4_4xb200_q-int4-k2/README.md",
-  "uploaded_by": "github-actions[bot]",
+  "uploaded_by": "Mykola Baichak",
   "nonces": null,
   "weight": null
 }
