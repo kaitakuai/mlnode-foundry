@@ -63,7 +63,7 @@ def test_report_url_none_when_no_url_notes() -> None:
 def test_render_registry_view_b200_kimi_int4() -> None:
     """End-to-end render: profile + model-registry + stage2.lock → dashboard JSON."""
     view = render_registry_view(
-        "b200-kimi-k2-6-int4",
+        "b200-kimi-k2-6",
         digest="sha256:" + "a" * 64,
         cosign_identity="https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
         size="42 GB",
@@ -72,14 +72,16 @@ def test_render_registry_view_b200_kimi_int4() -> None:
     assert view["gpu"] == "b200"
     assert view["model_family"] == "kimi"
     assert view["model_revision"] == "k2-6"
-    assert view["quant"] == "int4"
+    # quant axis intentionally omitted on b200-kimi-k2-6 (only INT4 variant
+    # exists today; suffix adds noise without distinguishing anything).
+    assert view["quant"] is None
     assert view["model"] == "moonshotai/Kimi-K2.6"
     assert view["model_short"] == "Kimi K2.6"
     assert view["cuda"] == "13.0"
     assert view["size"] == "42 GB"
     assert "tensor_parallel_size=4" in view["flags"]
     assert "VLLM_USE_FLASHINFER_MOE_INT4=1" in view["flags"]
-    # b200-kimi-k2-6-int4 rev=2 carries warning-severity tuning_notes
+    # b200-kimi-k2-6 rev=2 carries warning-severity tuning_notes
     # (compilation_mode=3 + smaller batch envelope) — flag_warnings non-empty.
     assert view["flag_warnings"] != {}
     # flag_descriptions are populated from profile.tuning_notes (knob → reason).
