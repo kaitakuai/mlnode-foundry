@@ -74,7 +74,7 @@ def test_render_registry_view_b200_kimi_int4() -> None:
     assert view["model_revision"] == "k2-6"
     assert view["quant"] == "int4"
     assert view["model"] == "moonshotai/Kimi-K2.6"
-    assert view["model_short"] == "Moonshot Kimi-K2.6"
+    assert view["model_short"] == "Kimi K2.6"
     assert view["cuda"] == "13.0"
     assert view["size"] == "42 GB"
     assert "tensor_parallel_size=4" in view["flags"]

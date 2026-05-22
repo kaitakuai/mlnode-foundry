@@ -13,7 +13,7 @@
   "mlnode_version": "0.2.13",
   "upstream_overlay_version": null,
   "model": "MiniMaxAI/MiniMax-M2.7",
-  "model_short": "MiniMax-M2.7",
+  "model_short": "MiniMax M2.7",
   "model_params_b": 230.0,
   "model_context_max": 180000,
   "model_license": "Apache-2.0",

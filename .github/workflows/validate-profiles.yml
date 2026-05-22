@@ -107,12 +107,12 @@ jobs:
 
       - name: tag both
         run: |
-          .venv/bin/mlnode-foundry tag b300-kimi-k2-6-int4
-          .venv/bin/mlnode-foundry tag h100-qwen3-235b-a22b
+          .venv/bin/mlnode-foundry tag b200-kimi-k2-6-int4
+          .venv/bin/mlnode-foundry tag h100-minimax-m2-7
 
       - name: hash determinism
         run: |
-          H1=$(.venv/bin/mlnode-foundry hash b300-kimi-k2-6-int4)
-          H2=$(.venv/bin/mlnode-foundry hash b300-kimi-k2-6-int4)
+          H1=$(.venv/bin/mlnode-foundry hash b200-kimi-k2-6-int4)
+          H2=$(.venv/bin/mlnode-foundry hash b200-kimi-k2-6-int4)
           [ "$H1" = "$H2" ] || { echo "Hash not deterministic: $H1 vs $H2"; exit 1; }
           echo "✓ profile_hash: $H1"
