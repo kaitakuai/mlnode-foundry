@@ -136,8 +136,15 @@ jobs:
                 # excluding schema. Bases (profiles/bases/*.cue) are intentionally
                 # excluded — base changes affect many profiles and require an
                 # explicit dispatch.
+                #
+                # `--diff-filter=d` EXCLUDES files that were deleted between
+                # $PUSH_BEFORE and $PUSH_AFTER. Without this, a cleanup commit
+                # that removes profiles drags those deleted names into the
+                # build matrix; each job then crashes at "Compute tag + hash"
+                # because load_profile() can't find the file (and the cleanup
+                # commit's whole point was that we don't want to build them).
                 set +o pipefail
-                CHANGED=$(git diff --name-only "$PUSH_BEFORE" "$PUSH_AFTER" -- profiles/ \
+                CHANGED=$(git diff --name-only --diff-filter=d "$PUSH_BEFORE" "$PUSH_AFTER" -- profiles/ \
                   | grep -E '^profiles/[^/]+\.cue$' \
                   | grep -v '^profiles/schema\.cue$' \
                   | sed 's|^profiles/||; s|\.cue$||')
