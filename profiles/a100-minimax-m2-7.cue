@@ -28,7 +28,13 @@ a100_minimax_m2_7: #BaseProfile & bases.A100 & bases.MINIMAX_M2_7 & {
 	mode:         "kaitakuai-base"
 	hw_patches:   list.Concat([bases.A100.hw_patches, ["poc-householder-compile"]])
 	runner_patch: ""
-	env: {}
+	env: {
+		// Belt-and-suspenders with moe_backend=marlin: even though we force
+		// MARLIN, some vLLM paths probe VLLM_USE_FLASHINFER_MOE_FP8 separately
+		// and raise NotImplementedError on Ampere. Pin to 0 at env level so
+		// the backend selector never even attempts the FlashInfer FP8 path.
+		VLLM_USE_FLASHINFER_MOE_FP8: "0"
+	}
 	runtime_defaults: {
 		// 4 × A100 80GB = 320 GB HBM, exactly matches chain VRam=320 GB.
 		// gpu_memory_utilization=0.92 + FP8 KV cache leaves enough headroom.
@@ -66,6 +72,12 @@ a100_minimax_m2_7: #BaseProfile & bases.A100 & bases.MINIMAX_M2_7 & {
 			source:   "gonka-ai/gonka:inference-chain/app/upgrades/v0_2_13/upgrades.go:minimaxGovernanceModel"
 			reason:   "Chain governance mandates 180000; experiments validated only 131072 (on 4×A100). First production load is the validation; long-context divergence risk if lower. Set high enough that cross-node PoC validation matches; lower would diverge on long-context prompts."
 			severity: "warning"
+			added_at: "2026-05-22"
+		},
+		{
+			knob:     "VLLM_USE_FLASHINFER_MOE_FP8=0"
+			source:   "https://github.com/kaitakuai/experiments/blob/main/2026-05/minimax-m27-fp8-4xa100/README.md"
+			reason:   "Env-level disable for FlashInfer FP8 MoE. Pairs with moe_backend=marlin: even with MARLIN forced, some vLLM code paths probe this env var independently and raise NotImplementedError on Ampere sm_80. Pinning to 0 stops the FlashInfer path from being attempted at all."
 			added_at: "2026-05-22"
 		},
 		{
