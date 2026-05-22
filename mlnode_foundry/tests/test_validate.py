@@ -9,7 +9,7 @@ from mlnode_foundry.validate import validate_naming, validate_profile
 
 
 def test_b200_kimi_int4_valid() -> None:
-    validate_profile("b200-kimi-k2-6-int4")  # should not raise
+    validate_profile("b200-kimi-k2-6")  # should not raise
 
 
 def test_h100_minimax_valid() -> None:

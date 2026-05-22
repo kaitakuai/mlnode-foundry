@@ -9,13 +9,17 @@ package profiles
 
 import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
 
-b200_kimi_k2_6_int4: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
+b200_kimi_k2_6: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
 	identity: {
 		axes: {
 			gpu:            "b200"
 			model:          "kimi"
 			model_revision: "k2-6"
-			quant:          "int4"
+			// quant axis intentionally omitted — Kimi-K2.6 is shipped only as INT4
+			// today (compressed-tensors W4A16 — see tools/model-registry.cue).
+			// Adding `quant: "int4"` would suffix the tag with `-q.int4`, which
+			// adds noise without distinguishing anything: only one Kimi quant exists.
+			// Re-add when (and only when) a second quant variant (fp8, nvfp4, ...) ships.
 		}
 		version: {
 			mlnode: "0.2.13"
@@ -35,7 +39,7 @@ b200_kimi_k2_6_int4: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
 		"nvidia-headers-symlinks",
 		"cold-start-tolerance",
 	]
-	runner_patch: "b200-kimi-k2-6-int4"
+	runner_patch: "b200-kimi-k2-6"
 	env: {
 		VLLM_RUNNER_TIMEOUT: "3600"
 	}

@@ -59,14 +59,14 @@ def test_tuning_label_serializes_compact_json() -> None:
 def test_render_dockerfile_b200_kimi(tmp_path: Path) -> None:
     """Real profile renders without leftover {{...}} placeholders."""
     out = tmp_path / "Dockerfile.rendered"
-    profile = load_profile("b200-kimi-k2-6-int4")
+    profile = load_profile("b200-kimi-k2-6")
     path = render_dockerfile(profile, out)
     text = path.read_text()
     assert "{{ENV_BLOCK}}" not in text
     assert "{{TUNING_LABEL}}" not in text
-    # b200-kimi-k2-6-int4 sets VLLM_USE_FLASHINFER_MOE_INT4=1 via KIMI_INT4 base
+    # b200-kimi-k2-6 sets VLLM_USE_FLASHINFER_MOE_INT4=1 via KIMI_INT4 base
     assert "VLLM_USE_FLASHINFER_MOE_INT4=1" in text
-    # b200-kimi-k2-6-int4 has tuning_notes → label present, not the count-zero fallback
+    # b200-kimi-k2-6 has tuning_notes → label present, not the count-zero fallback
     assert "tuning_notes_count" not in text
     assert "gonka.kaitaku.tuning_notes=" in text
 
