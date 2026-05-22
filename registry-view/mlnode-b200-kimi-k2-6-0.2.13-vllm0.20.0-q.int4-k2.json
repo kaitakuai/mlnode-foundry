@@ -55,7 +55,7 @@
     "max_num_seqs=32": "Coupled to max_num_batched_tokens=32768: one prefill chunk = batch \u00d7 seq_len = 32 \u00d7 1024. No hard upstream default for max_num_seqs; this is a coupling note, not a regression vs upstream.",
     "max_model_len=120000": "Capped below Kimi-K2.6's native 262144 context window (~54% reduction). Cudagraph FULL captures KV-cache shapes at 256k that OOM at B200's 178 GiB/GPU. Long-context prompts (>120k tokens) get truncated."
   },
-  "digest": "sha256:8f9352b3251102226b7b6abbeb4db28c8feb541473a31cede11f0c64fa338541",
+  "digest": "sha256:e3c39b1466ada7963f7f385bd4a7fa0288785567d5a8ab5011c32a7a639463e0",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
   "slsa_attestation_url": null,
   "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-05/kimi_k26_int4_4xb200_q-int4-k2/README.md",
