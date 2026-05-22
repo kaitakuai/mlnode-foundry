@@ -46,6 +46,14 @@ b200_minimax_m2_7: #BaseProfile & bases.B200 & bases.MINIMAX_M2_7 & {
 		MoE backend FLASHINFER_TRTLLM auto-selected on sm_100; attention backend FLASHINFER (explicit).
 		"""
 	tuning_notes: [
+		// FIRST entry with an experiments URL — picked up by
+		// render_registry_view._report_url for the dashboard "verified" chip.
+		{
+			knob:     "validation-report"
+			source:   "https://github.com/kaitakuai/experiments/blob/main/2026-05/minimax_m27_2xb200_ohio_pr36/README.md"
+			reason:   "Hardware validation — 2×B200 SXM (Vast.ai Ohio inst 37296947), Pasha 2026-05-21. Validates the foundry image with PR#36 (apply_householder torch.compile) confirmed baked in. PoC throughput 2624 nonces/min @ batch=32 — bit-for-bit identical to the published 2×B200 reference (mean L2 = 0.0000, 0/1000 mismatch under strict vLLM self-validation 0.02). PR#36 numerically neutral on B200 (contrast: on 4×H100 same patch shifts L2≈0.23). Inference (chain §3.2.3): TTFT 2.12 s, TPOT 24.9 ms/tok, 803 output tok/s, RPS 2.68, 0/60 failures."
+			added_at: "2026-05-22"
+		},
 		{
 			knob:     "max_model_len=180000"
 			source:   "gonka-ai/gonka:inference-chain/app/upgrades/v0_2_13/upgrades.go:minimaxGovernanceModel"
