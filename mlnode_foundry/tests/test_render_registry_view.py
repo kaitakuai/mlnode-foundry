@@ -86,7 +86,7 @@ def test_render_registry_view_b200_kimi_int4() -> None:
     # b200-kimi rev=2 carries notes on validation-report, compilation-config,
     # expert-parallel, batch envelope.
     assert "validation-report" in view["flag_descriptions"]
-    assert any("compilation-config" in k for k in view["flag_descriptions"])
+    assert any("compilation_mode" in k for k in view["flag_descriptions"])
     assert view["report_url"] is not None
     assert view["report_url"].startswith("https://github.com/kaitakuai/experiments")
     assert view["digest"].startswith("sha256:")
