@@ -58,6 +58,6 @@
   "slsa_attestation_url": null,
   "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-05/kimi_k26_int4_4xb200_q-int4-k2/README.md",
   "uploaded_by": "Mykola Baichak",
-  "nonces": null,
+  "nonces": 4480,
   "weight": null
 }
