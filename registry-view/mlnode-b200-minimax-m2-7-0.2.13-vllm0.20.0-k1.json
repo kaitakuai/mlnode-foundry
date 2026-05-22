@@ -40,6 +40,7 @@
     "max_num_seqs=128 (batch_size=64 hard ceiling)": "Phase 3 sweep observed batch_size=64 hangs the PoC engine (OOM-stuck, not crash \u2014 engine never recovers). max_num_seqs=128 from MINIMAX_M2_7 base is safe because vLLM runtime caps actual batch by KV cache; the hazard is operator-supplied PoC batch override. Same failure as flashinfer_moe_int4_blackwell.md memory entry."
   },
   "flag_descriptions": {
+    "validation-report": "Hardware validation \u2014 2\u00d7B200 SXM (Vast.ai Ohio inst 37296947), Pasha 2026-05-21. Validates the foundry image with PR#36 (apply_householder torch.compile) confirmed baked in. PoC throughput 2624 nonces/min @ batch=32 \u2014 bit-for-bit identical to the published 2\u00d7B200 reference (mean L2 = 0.0000, 0/1000 mismatch under strict vLLM self-validation 0.02). PR#36 numerically neutral on B200 (contrast: on 4\u00d7H100 same patch shifts L2\u22480.23). Inference (chain \u00a73.2.3): TTFT 2.12 s, TPOT 24.9 ms/tok, 803 output tok/s, RPS 2.68, 0/60 failures.",
     "max_model_len=180000": "Chain governance mandates 180000; experiments validated only up to 131072. First production deployment under load is the proof point. Set high enough that cross-node PoC validation matches; lower will diverge on long-context prompts.",
     "tensor_parallel_size=2": "2\u00d7B200 = 360 GB HBM, fits chain VRam=320 GB requirement with headroom for FP8 KV cache. Phase 3 batch sweep: 2\u21921364, 8\u21922256, 16\u21922560, 32\u21922624 (best), 64\u2192hang. Vast.ai inst 41067, 2026-05.",
     "max_num_seqs=128 (batch_size=64 hard ceiling)": "Phase 3 sweep observed batch_size=64 hangs the PoC engine (OOM-stuck, not crash \u2014 engine never recovers). max_num_seqs=128 from MINIMAX_M2_7 base is safe because vLLM runtime caps actual batch by KV cache; the hazard is operator-supplied PoC batch override. Same failure as flashinfer_moe_int4_blackwell.md memory entry.",
@@ -49,8 +50,8 @@
   "digest": "sha256:488574dfca4624baa1da96dbc8ca96de7c7a5d4eb17a8c58f5a6ac170eafaf82",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
   "slsa_attestation_url": null,
-  "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-05/minimax-m27-fp8-2xb200/README.md",
+  "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-05/minimax_m27_2xb200_ohio_pr36/README.md",
   "uploaded_by": "Mykola Baichak",
-  "nonces": null,
+  "nonces": 10496,
   "weight": null
 }
