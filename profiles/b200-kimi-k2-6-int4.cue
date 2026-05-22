@@ -85,18 +85,25 @@ b200_kimi_k2_6_int4: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
 		// dashboard/app/web/public/index.html is `flag_warnings[chipLabel]`.
 		// Don't combine multiple keys into one comma-separated knob string —
 		// that string matches no chip and the warning is silently orphaned.
+		// SEVERITY DISCIPLINE (matches mlnode/registry/schema.json::flag_warnings):
+		//   `warning` ONLY for: value BELOW upstream/recommended baseline AND
+		//                       has a measurable consequence (truncation,
+		//                       throughput cap, memory cap, latency hit).
+		//   `info`    (default) for everything else — mode switches,
+		//                       experimental paths, performance opts, knobs
+		//                       without a hard upstream baseline.
+		// Avoid warning-noise: only the truly notable downside should wear
+		// the amber triangle. Operators learn to ignore over-warned cards.
 		{
 			knob:     "compilation_mode=3"
 			source:   "operator iteration 2026-05-19 (handoff to colleague for benchmark)"
 			reason:   "Replaces rev=1 mode=0/NONE eager defaults with compiled+cudagraph path. Throughput claim untested — this image is the test."
-			severity: "warning"
 			added_at: "2026-05-19"
 		},
 		{
 			knob:     "cudagraph_mode=FULL_AND_PIECEWISE"
 			source:   "operator iteration 2026-05-19"
-			reason:   "Pairs with compilation_mode=3 (CompilationMode 3 + FULL_AND_PIECEWISE cudagraph). Compile-cache OOMs above 32768 batched tokens on Kimi MLA on B200 — see other warnings."
-			severity: "warning"
+			reason:   "Pairs with compilation_mode=3 (CompilationMode 3 + FULL_AND_PIECEWISE cudagraph). Compile-cache OOMs above 32768 batched tokens on Kimi MLA on B200 — see max_num_batched_tokens / max_num_seqs / max_model_len for the coupled budget."
 			added_at: "2026-05-19"
 		},
 		{
@@ -108,21 +115,19 @@ b200_kimi_k2_6_int4: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
 		{
 			knob:     "max_num_batched_tokens=32768"
 			source:   "operator iteration 2026-05-19"
-			reason:   "Reduced from the upstream 131072 baseline. Cudagraph FULL_AND_PIECEWISE OOMs above 32768 on Kimi MLA at B200's 178 GiB/GPU — see compilation_mode=3 / cudagraph_mode warnings for the coupled context."
-			severity: "warning"
+			reason:   "Above vLLM upstream chunked-prefill default 8192 but below rev=1's 131072. Cudagraph FULL_AND_PIECEWISE OOMs above 32768 on Kimi MLA at B200's 178 GiB/GPU. No upstream-baseline violation — info."
 			added_at: "2026-05-19"
 		},
 		{
 			knob:     "max_num_seqs=32"
 			source:   "operator iteration 2026-05-19"
-			reason:   "Coupled to max_num_batched_tokens=32768: one prefill chunk = batch × seq_len = 32 × 1024. Higher max_num_seqs would request larger prefill batches that OOM cudagraph FULL."
-			severity: "warning"
+			reason:   "Coupled to max_num_batched_tokens=32768: one prefill chunk = batch × seq_len = 32 × 1024. No hard upstream default for max_num_seqs; this is a coupling note, not a regression vs upstream."
 			added_at: "2026-05-19"
 		},
 		{
 			knob:     "max_model_len=120000"
 			source:   "operator iteration 2026-05-19"
-			reason:   "Capped below Kimi-K2.6's native 262144 context window (~54% reduction). Required because cudagraph FULL captures KV-cache shapes at 256k that OOM at B200's 178 GiB/GPU. Long-context prompts (>120k tokens) get truncated."
+			reason:   "Capped below Kimi-K2.6's native 262144 context window (~54% reduction). Cudagraph FULL captures KV-cache shapes at 256k that OOM at B200's 178 GiB/GPU. Long-context prompts (>120k tokens) get truncated."
 			severity: "warning"
 			added_at: "2026-05-19"
 		},
