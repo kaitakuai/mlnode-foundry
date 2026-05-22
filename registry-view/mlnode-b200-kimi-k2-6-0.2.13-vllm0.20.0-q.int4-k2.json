@@ -44,20 +44,16 @@
     "trust_remote_code=True"
   ],
   "flag_warnings": {
-    "compilation_mode=3": "Replaces rev=1 mode=0/NONE eager defaults with compiled+cudagraph path. Throughput claim untested \u2014 this image is the test.",
-    "cudagraph_mode=FULL_AND_PIECEWISE": "Pairs with compilation_mode=3 (CompilationMode 3 + FULL_AND_PIECEWISE cudagraph). Compile-cache OOMs above 32768 batched tokens on Kimi MLA on B200 \u2014 see other warnings.",
-    "max_num_batched_tokens=32768": "Reduced from the upstream 131072 baseline. Cudagraph FULL_AND_PIECEWISE OOMs above 32768 on Kimi MLA at B200's 178 GiB/GPU \u2014 see compilation_mode=3 / cudagraph_mode warnings for the coupled context.",
-    "max_num_seqs=32": "Coupled to max_num_batched_tokens=32768: one prefill chunk = batch \u00d7 seq_len = 32 \u00d7 1024. Higher max_num_seqs would request larger prefill batches that OOM cudagraph FULL.",
-    "max_model_len=120000": "Capped below Kimi-K2.6's native 262144 context window (~54% reduction). Required because cudagraph FULL captures KV-cache shapes at 256k that OOM at B200's 178 GiB/GPU. Long-context prompts (>120k tokens) get truncated."
+    "max_model_len=120000": "Capped below Kimi-K2.6's native 262144 context window (~54% reduction). Cudagraph FULL captures KV-cache shapes at 256k that OOM at B200's 178 GiB/GPU. Long-context prompts (>120k tokens) get truncated."
   },
   "flag_descriptions": {
     "validation-report": "Hardware validation report \u2014 4\u00d7B200 (Vast.ai), PoC nonces flowing, no MLA assert after kaitakuai/vllm#9 (seq_lens_cpu_upper_bound restore in Stage 1). First tuning_note with an experiments URL \u2192 picked up by render_registry_view._report_url as the image's report_url (dashboard \u2018verified\u2019 chip).",
     "compilation_mode=3": "Replaces rev=1 mode=0/NONE eager defaults with compiled+cudagraph path. Throughput claim untested \u2014 this image is the test.",
-    "cudagraph_mode=FULL_AND_PIECEWISE": "Pairs with compilation_mode=3 (CompilationMode 3 + FULL_AND_PIECEWISE cudagraph). Compile-cache OOMs above 32768 batched tokens on Kimi MLA on B200 \u2014 see other warnings.",
+    "cudagraph_mode=FULL_AND_PIECEWISE": "Pairs with compilation_mode=3 (CompilationMode 3 + FULL_AND_PIECEWISE cudagraph). Compile-cache OOMs above 32768 batched tokens on Kimi MLA on B200 \u2014 see max_num_batched_tokens / max_num_seqs / max_model_len for the coupled budget.",
     "enable_expert_parallel=True": "Adds EP=4 over the TP=4 sharding. Legacy B300 Kimi config showed +5% EP gain; replicate on B200 here.",
-    "max_num_batched_tokens=32768": "Reduced from the upstream 131072 baseline. Cudagraph FULL_AND_PIECEWISE OOMs above 32768 on Kimi MLA at B200's 178 GiB/GPU \u2014 see compilation_mode=3 / cudagraph_mode warnings for the coupled context.",
-    "max_num_seqs=32": "Coupled to max_num_batched_tokens=32768: one prefill chunk = batch \u00d7 seq_len = 32 \u00d7 1024. Higher max_num_seqs would request larger prefill batches that OOM cudagraph FULL.",
-    "max_model_len=120000": "Capped below Kimi-K2.6's native 262144 context window (~54% reduction). Required because cudagraph FULL captures KV-cache shapes at 256k that OOM at B200's 178 GiB/GPU. Long-context prompts (>120k tokens) get truncated."
+    "max_num_batched_tokens=32768": "Above vLLM upstream chunked-prefill default 8192 but below rev=1's 131072. Cudagraph FULL_AND_PIECEWISE OOMs above 32768 on Kimi MLA at B200's 178 GiB/GPU. No upstream-baseline violation \u2014 info.",
+    "max_num_seqs=32": "Coupled to max_num_batched_tokens=32768: one prefill chunk = batch \u00d7 seq_len = 32 \u00d7 1024. No hard upstream default for max_num_seqs; this is a coupling note, not a regression vs upstream.",
+    "max_model_len=120000": "Capped below Kimi-K2.6's native 262144 context window (~54% reduction). Cudagraph FULL captures KV-cache shapes at 256k that OOM at B200's 178 GiB/GPU. Long-context prompts (>120k tokens) get truncated."
   },
   "digest": "sha256:8f9352b3251102226b7b6abbeb4db28c8feb541473a31cede11f0c64fa338541",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
