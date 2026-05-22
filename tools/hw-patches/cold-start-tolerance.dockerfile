@@ -22,9 +22,12 @@
 #    manager — so post-startup crashes still trigger the
 #    operator-expected fast restart.
 #
-# See: tools/fragments/hw-patches/runner-py-patches/cold-start-tolerance.py
+# See: tools/runner-patches/cold-start-tolerance.py (the script body).
+# The script lives under runner-patches/ for historical reasons (single
+# .py file shared by both the runner-patch and hw-patch mechanisms);
+# it remains an HW-PATCH per profile.hw_patches opt-in, NOT a runner_patch.
 
-COPY tools/fragments/hw-patches/runner-py-patches/cold-start-tolerance.py /tmp/cold-start-tolerance.py
+COPY tools/runner-patches/cold-start-tolerance.py /tmp/cold-start-tolerance.py
 RUN python3 /tmp/cold-start-tolerance.py && rm /tmp/cold-start-tolerance.py
 
 ENV VLLM_RUNNER_TIMEOUT=3600
