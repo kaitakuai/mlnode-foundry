@@ -78,7 +78,7 @@ models: [
 	{
 		family:       "kimi"
 		revision:     "k2-6"
-		display_name: "Moonshot Kimi-K2.6"
+		display_name: "Kimi K2.6"
 		hf_repo:      "moonshotai/Kimi-K2.6"
 		params_b:     1060.0
 		context_max:  262144
@@ -88,7 +88,7 @@ models: [
 	{
 		family:       "qwen3"
 		revision:     "235b-a22b"
-		display_name: "Qwen3-235B-A22B-Instruct FP8"
+		display_name: "Qwen3 235B"
 		hf_repo:      "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8"
 		params_b:     235.0
 		context_max:  262144
@@ -98,7 +98,7 @@ models: [
 	{
 		family:       "minimax"
 		revision:     "m2-7"
-		display_name: "MiniMax-M2.7"
+		display_name: "MiniMax M2.7"
 		hf_repo:      "MiniMaxAI/MiniMax-M2.7"
 		// Pinned by the upstream chain governance model at v0.2.13 upgrade
 		// (inference-chain/app/upgrades/v0_2_13/upgrades.go:minimaxGovernanceModel).

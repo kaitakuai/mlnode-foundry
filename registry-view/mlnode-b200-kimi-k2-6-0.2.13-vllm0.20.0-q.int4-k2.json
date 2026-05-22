@@ -13,7 +13,7 @@
   "mlnode_version": "0.2.13",
   "upstream_overlay_version": null,
   "model": "moonshotai/Kimi-K2.6",
-  "model_short": "Moonshot Kimi-K2.6",
+  "model_short": "Kimi K2.6",
   "model_params_b": 1060.0,
   "model_context_max": 262144,
   "model_license": "MIT",
