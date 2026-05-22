@@ -1,0 +1,18 @@
+{
+  "profile": "profiles/h200-minimax-m2-7.cue",
+  "profile_hash": "00d351d81b4ad122d2b65386ef95c311e2dc6a2659ae8d3d2447448025422ba0",
+  "status": "draft",
+  "image": {
+    "package": "ghcr.io/kaitakuai/mlnode-h200-minimax-m2-7",
+    "tag": "0.2.13-vllm0.20.0-k1",
+    "digest": "sha256:151be2ab95221f68ac4f5e8fa8cc08325e09bf78bdf21cf724b2c6f00eed075f",
+    "built_at": "2026-05-22T18:04:12Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main"
+  },
+  "validation": {
+    "build_smoke": {
+      "result": "pass",
+      "at": "2026-05-22T18:04:12Z"
+    }
+  }
+}
