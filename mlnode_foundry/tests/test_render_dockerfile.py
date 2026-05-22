@@ -56,28 +56,19 @@ def test_tuning_label_serializes_compact_json() -> None:
     assert "VLLM_FOO=1" in label
 
 
-def test_render_dockerfile_b300_kimi(tmp_path: Path) -> None:
+def test_render_dockerfile_b200_kimi(tmp_path: Path) -> None:
     """Real profile renders without leftover {{...}} placeholders."""
     out = tmp_path / "Dockerfile.rendered"
-    profile = load_profile("b300-kimi-k2-6-int4")
+    profile = load_profile("b200-kimi-k2-6-int4")
     path = render_dockerfile(profile, out)
     text = path.read_text()
     assert "{{ENV_BLOCK}}" not in text
     assert "{{TUNING_LABEL}}" not in text
-    # b300-kimi-k2-6-int4 sets VLLM_USE_FLASHINFER_MOE_INT4=1 via KIMI_INT4 base
+    # b200-kimi-k2-6-int4 sets VLLM_USE_FLASHINFER_MOE_INT4=1 via KIMI_INT4 base
     assert "VLLM_USE_FLASHINFER_MOE_INT4=1" in text
-    # b300-kimi-k2-6-int4 has tuning_notes → label present, not the count-zero fallback
+    # b200-kimi-k2-6-int4 has tuning_notes → label present, not the count-zero fallback
     assert "tuning_notes_count" not in text
     assert "gonka.kaitaku.tuning_notes=" in text
-
-
-def test_render_dockerfile_profile_without_tuning_notes(tmp_path: Path) -> None:
-    """Profile without tuning_notes falls back to count=0 label."""
-    out = tmp_path / "Dockerfile.rendered"
-    profile = load_profile("h100-qwen3-235b-a22b")
-    path = render_dockerfile(profile, out)
-    text = path.read_text()
-    assert "tuning_notes_count" in text
 
 
 def test_hw_patches_block_empty_list() -> None:
@@ -139,12 +130,3 @@ def test_render_dockerfile_inlines_hw_patches(tmp_path: Path) -> None:
     assert "/tmp/hw-patches" not in text
 
 
-def test_render_dockerfile_empty_hw_patches_for_h100_qwen3(tmp_path: Path) -> None:
-    """H100 base contributes 0 patches; h100-qwen3 opts in to poc-householder-compile only."""
-    # h100-qwen3-235b-a22b uses list.Concat([H100.hw_patches, ["poc-householder-compile"]])
-    # = [] + ["poc-householder-compile"] = single patch.
-    profile = load_profile("h100-qwen3-235b-a22b")
-    out = tmp_path / "Dockerfile.rendered"
-    text = render_dockerfile(profile, out).read_text()
-    assert "{{HW_PATCHES_BLOCK}}" not in text
-    assert "hw-patch: poc-householder-compile" in text

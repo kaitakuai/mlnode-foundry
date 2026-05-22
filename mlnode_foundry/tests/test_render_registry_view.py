@@ -60,16 +60,16 @@ def test_report_url_none_when_no_url_notes() -> None:
     assert _report_url([{"knob": "K=v", "source": "n/a", "reason": "r"}]) is None
 
 
-def test_render_registry_view_b300_kimi_int4() -> None:
+def test_render_registry_view_b200_kimi_int4() -> None:
     """End-to-end render: profile + model-registry + stage2.lock → dashboard JSON."""
     view = render_registry_view(
-        "b300-kimi-k2-6-int4",
+        "b200-kimi-k2-6-int4",
         digest="sha256:" + "a" * 64,
         cosign_identity="https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
         size="42 GB",
     )
     assert view["line"] == "mlnode"
-    assert view["gpu"] == "b300"
+    assert view["gpu"] == "b200"
     assert view["model_family"] == "kimi"
     assert view["model_revision"] == "k2-6"
     assert view["quant"] == "int4"
@@ -79,13 +79,21 @@ def test_render_registry_view_b300_kimi_int4() -> None:
     assert view["size"] == "42 GB"
     assert "tensor_parallel_size=4" in view["flags"]
     assert "VLLM_USE_FLASHINFER_MOE_INT4=1" in view["flags"]
-    # b300-kimi-k2-6-int4 has two tuning_notes (both info) → all in descriptions, none in warnings
-    assert view["flag_warnings"] == {}
-    assert "VLLM_USE_FLASHINFER_MOE_INT4=1" in view["flag_descriptions"]
+    # b200-kimi-k2-6-int4 rev=2 carries warning-severity tuning_notes
+    # (compilation_mode=3 + smaller batch envelope) — flag_warnings non-empty.
+    assert view["flag_warnings"] != {}
+    # flag_descriptions are populated from profile.tuning_notes (knob → reason).
+    # b200-kimi rev=2 carries notes on validation-report, compilation-config,
+    # expert-parallel, batch envelope.
+    assert "validation-report" in view["flag_descriptions"]
+    assert any("compilation-config" in k for k in view["flag_descriptions"])
     assert view["report_url"] is not None
     assert view["report_url"].startswith("https://github.com/kaitakuai/experiments")
     assert view["digest"].startswith("sha256:")
-    assert view["nonces"] is None  # filled later by benchmark agent
+    # render_registry_view itself returns None — preserve-hand-edited
+    # logic in CLI _preserve_hand_edited_metrics is what carries forward
+    # the post-validation number.
+    assert view["nonces"] is None
     assert view["weight"] is None
 
 

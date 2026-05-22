@@ -52,7 +52,7 @@ def test_generate_refuses_overwrite() -> None:
     """Generation MUST refuse to overwrite an existing profile."""
     with pytest.raises(FileExistsError):
         profile_factory.generate_profile(
-            gpu="b300", model="kimi", model_revision="k2-6", quant="int4"
+            gpu="b200", model="kimi", model_revision="k2-6", quant="int4"
         )
 
 

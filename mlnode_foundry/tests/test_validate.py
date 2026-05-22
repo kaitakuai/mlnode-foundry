@@ -8,12 +8,12 @@ from mlnode_foundry.cue import CueError
 from mlnode_foundry.validate import validate_naming, validate_profile
 
 
-def test_b300_kimi_int4_valid() -> None:
-    validate_profile("b300-kimi-k2-6-int4")  # should not raise
+def test_b200_kimi_int4_valid() -> None:
+    validate_profile("b200-kimi-k2-6-int4")  # should not raise
 
 
-def test_h100_qwen_valid() -> None:
-    validate_profile("h100-qwen3-235b-a22b")
+def test_h100_minimax_valid() -> None:
+    validate_profile("h100-minimax-m2-7")
 
 
 def test_naming_valid() -> None:

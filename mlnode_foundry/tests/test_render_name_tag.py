@@ -26,18 +26,19 @@ def test_naming_loads(naming: dict) -> None:
     assert naming["axes"]["gpu"]["name_axis_only"] is True
 
 
-def test_b300_kimi_int4_tag(naming: dict) -> None:
-    profile = load_profile("b300-kimi-k2-6-int4")
+def test_b200_kimi_int4_tag(naming: dict) -> None:
+    profile = load_profile("b200-kimi-k2-6-int4")
     pkg, tag = render_package_and_tag(profile, naming)
-    assert pkg == "ghcr.io/kaitakuai/mlnode-b300-kimi-k2-6"
-    assert tag == "0.2.13-vllm0.20.0-q.int4-k1"
+    assert pkg == "ghcr.io/kaitakuai/mlnode-b200-kimi-k2-6"
+    # rev=2 in profile.identity.version → -k2 suffix on tag.
+    assert tag == "0.2.13-vllm0.20.0-q.int4-k2"
 
 
-def test_h100_qwen_tag_omits_default_axes(naming: dict) -> None:
-    """h100-qwen has no quant set; tag should omit q.* segment."""
-    profile = load_profile("h100-qwen3-235b-a22b")
+def test_h100_minimax_tag_omits_default_axes(naming: dict) -> None:
+    """h100-minimax has no quant set; tag should omit q.* segment."""
+    profile = load_profile("h100-minimax-m2-7")
     pkg, tag = render_package_and_tag(profile, naming)
-    assert pkg == "ghcr.io/kaitakuai/mlnode-h100-qwen3-235b-a22b"
+    assert pkg == "ghcr.io/kaitakuai/mlnode-h100-minimax-m2-7"
     assert tag == "0.2.13-vllm0.20.0-k1"
     assert "q." not in tag
     assert "f." not in tag
@@ -45,16 +46,16 @@ def test_h100_qwen_tag_omits_default_axes(naming: dict) -> None:
 
 def test_render_package_uses_naming_package_axes(naming: dict) -> None:
     """Package name is constructed from naming.package.axes in order."""
-    profile = load_profile("b300-kimi-k2-6-int4")
+    profile = load_profile("b200-kimi-k2-6-int4")
     pkg = render_package(profile, naming)
     # naming.package.axes is ["gpu", "model", "model_revision"]
-    assert pkg.endswith("-b300-kimi-k2-6")
+    assert pkg.endswith("-b200-kimi-k2-6")
     assert pkg.startswith("ghcr.io/kaitakuai/mlnode")
 
 
 def test_render_tag_includes_only_set_axes(naming: dict) -> None:
     """Tag only includes axes that are explicitly set in profile.identity.axes."""
-    profile = load_profile("b300-kimi-k2-6-int4")
+    profile = load_profile("b200-kimi-k2-6-int4")
     tag = render_tag(profile, naming)
     assert "q.int4" in tag  # quant set → in tag
     assert "f." not in tag  # framework not set → not in tag
