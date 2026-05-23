@@ -61,8 +61,7 @@ b300_minimax_m2_7: #BaseProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 		{
 			knob:     "tensor_parallel_size=1"
 			source:   "operator iteration 2026-05-23 — experimental single-B300 benchmark"
-			reason:   "1×B300 = 288 GB HBM3e is BELOW chain VRam=320 GB requirement. Profile is for single-GPU benchmark only; the chain will not assign MiniMax tasks to a node advertising 288 GB. For production duty on Blackwell Ultra hosts, run two instances at TP=2 each, or use b200-minimax-m2-7."
-			severity: "warning"
+			reason:   "Single-B300 configuration for benchmarking the Blackwell Ultra MoE path against the 2×B200 baseline. Not chain-eligible on its own (1×B300 = 288 GB HBM3e, chain governance asks 320 GB); operators wanting production duty should run two instances at TP=2, or use b200-minimax-m2-7."
 			added_at: "2026-05-23"
 		},
 		{
