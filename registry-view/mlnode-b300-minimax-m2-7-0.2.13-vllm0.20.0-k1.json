@@ -38,16 +38,15 @@
   ],
   "flag_warnings": {
     "max_model_len=180000": "Chain governance mandates 180000; experiments validated only 131072 (on B200/H200/H100/A100). No B300 validation yet \u2014 first production load is the proof point. Set high enough that cross-node PoC validation matches; lower would diverge on long-context prompts.",
-    "tensor_parallel_size=1": "1\u00d7B300 = 288 GB HBM3e is BELOW chain VRam=320 GB requirement. Profile is for single-GPU benchmark only; the chain will not assign MiniMax tasks to a node advertising 288 GB. For production duty on Blackwell Ultra hosts, run two instances at TP=2 each, or use b200-minimax-m2-7.",
     "max_num_seqs=128 (batch_size=64 hard ceiling)": "Phase 3 sweeps across all other MiniMax profiles observed batch_size=64 hangs the PoC engine (OOM-stuck, not crash \u2014 engine never recovers). max_num_seqs=128 from MINIMAX_M2_7 base is safe because vLLM runtime caps actual batch by KV cache; the hazard is operator-supplied PoC batch override. Assumed same failure mode on B300 until proven otherwise."
   },
   "flag_descriptions": {
     "max_model_len=180000": "Chain governance mandates 180000; experiments validated only 131072 (on B200/H200/H100/A100). No B300 validation yet \u2014 first production load is the proof point. Set high enough that cross-node PoC validation matches; lower would diverge on long-context prompts.",
-    "tensor_parallel_size=1": "1\u00d7B300 = 288 GB HBM3e is BELOW chain VRam=320 GB requirement. Profile is for single-GPU benchmark only; the chain will not assign MiniMax tasks to a node advertising 288 GB. For production duty on Blackwell Ultra hosts, run two instances at TP=2 each, or use b200-minimax-m2-7.",
+    "tensor_parallel_size=1": "Single-B300 configuration for benchmarking the Blackwell Ultra MoE path against the 2\u00d7B200 baseline. Not chain-eligible on its own (1\u00d7B300 = 288 GB HBM3e, chain governance asks 320 GB); operators wanting production duty should run two instances at TP=2, or use b200-minimax-m2-7.",
     "attention_backend=FLASHINFER": "vLLM auto-selector picks FLASHINFER on Blackwell sm_100; sm_103a is the same family and the heuristic applies. Pinning explicitly so the auto-selector heuristic doesn't silently regress this profile across vLLM versions.",
     "max_num_seqs=128 (batch_size=64 hard ceiling)": "Phase 3 sweeps across all other MiniMax profiles observed batch_size=64 hangs the PoC engine (OOM-stuck, not crash \u2014 engine never recovers). max_num_seqs=128 from MINIMAX_M2_7 base is safe because vLLM runtime caps actual batch by KV cache; the hazard is operator-supplied PoC batch override. Assumed same failure mode on B300 until proven otherwise."
   },
-  "digest": "sha256:d12ce138fdbfc212d2137bb0d7d80a7b5d88c33595f456f85da74a1d83d54442",
+  "digest": "sha256:45e14a9177764cb51501d95c00dbdf8674bd8bf2de03716598110403d06ff1b0",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
   "slsa_attestation_url": null,
   "report_url": null,
