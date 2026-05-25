@@ -1,7 +1,7 @@
 {
   "stage2_image": "ghcr.io/kaitakuai/mlnode-base:0.2.13-vllm0.20.0-k1",
-  "digest": "sha256:38567b55e8ebee488ee8dae55ad22101a2c508d295fd03f08c58283e00a73c2a",
-  "built_at": "2026-05-19T19:25:39Z",
+  "digest": "sha256:6d0956ab369a878f5a051fcb50be1ab5b39365e1a17bd7da7fab397e38fd16dc",
+  "built_at": "2026-05-25T16:59:07Z",
   "vllm": {
     "vllm_env_names": [
       "CMAKE_BUILD_TYPE",
