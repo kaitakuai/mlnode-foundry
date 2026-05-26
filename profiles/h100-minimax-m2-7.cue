@@ -26,7 +26,15 @@ h100_minimax_m2_7: #BaseProfile & bases.H100 & bases.MINIMAX_M2_7 & {
 	mode:         "kaitakuai-base"
 	hw_patches:  list.Concat([bases.H100.hw_patches, ["poc-householder-compile"]])
 	runner_patch: ""
-	env: {}
+	env: {
+		// Stage 1/2 base bakes in VLLM_USE_FLASHINFER_MOE_FP8=1, which on
+		// Hopper sm_90 routes MoE through FLASHINFER_CUTLASS — measurably
+		// slower than TRITON for MiniMax-M2.7. CLI `--moe-backend triton`
+		// overrides this in normal operation, but a flat `docker run` without
+		// the override would silently regress. Pin to 0 so the env layer
+		// agrees with moe_backend=triton from runtime_defaults out of the box.
+		VLLM_USE_FLASHINFER_MOE_FP8: "0"
+	}
 	runtime_defaults: {
 		// 4 × H100 = 320 GB HBM, exactly matches chain VRam=320 GB.
 		// gpu_memory_utilization=0.92 + FP8 KV cache leaves enough headroom.
@@ -52,6 +60,12 @@ h100_minimax_m2_7: #BaseProfile & bases.H100 & bases.MINIMAX_M2_7 & {
 			reason:   "Chain mandate; experiments validated only 131072. First production load is the validation; long-context divergence risk if lower."
 			severity: "warning"
 			added_at: "2026-05-25"
+		},
+		{
+			knob:     "VLLM_USE_FLASHINFER_MOE_FP8=0"
+			source:   "image inspection — Stage 1/2 base bakes in VLLM_USE_FLASHINFER_MOE_FP8=1"
+			reason:   "Env-level disable for FlashInfer FP8 MoE on Hopper. Pairs with moe_backend=triton: CLI args take priority in vLLM, but a flat `docker run` without `--moe-backend triton` would silently regress to FLASHINFER_CUTLASS (slower). Pinning to 0 makes the env layer agree with the profile's TRITON choice out of the box."
+			added_at: "2026-05-26"
 		},
 		{
 			knob:     "moe_backend=triton"
