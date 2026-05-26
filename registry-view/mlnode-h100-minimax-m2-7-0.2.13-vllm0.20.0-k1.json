@@ -21,6 +21,7 @@
   "size": "12 GB",
   "runtime": "docker run -d --gpus all -p 8080:8080 ghcr.io/kaitakuai/mlnode-h100-minimax-m2-7:0.2.13-vllm0.20.0-k1",
   "flags": [
+    "VLLM_USE_FLASHINFER_MOE_FP8=0",
     "VLLM_USE_V1=1",
     "WATCHER_GRACE_FIRST_HEALTHY=1",
     "attention_backend=FLASHINFER",
@@ -42,12 +43,13 @@
   },
   "flag_descriptions": {
     "max_model_len=180000": "Chain mandate; experiments validated only 131072. First production load is the validation; long-context divergence risk if lower.",
+    "VLLM_USE_FLASHINFER_MOE_FP8=0": "Env-level disable for FlashInfer FP8 MoE on Hopper. Pairs with moe_backend=triton: CLI args take priority in vLLM, but a flat `docker run` without `--moe-backend triton` would silently regress to FLASHINFER_CUTLASS (slower). Pinning to 0 makes the env layer agree with the profile's TRITON choice out of the box.",
     "moe_backend=triton": "FlashInfer FP8 MoE paths (FLASHINFER_CUTLASS) underperform on Hopper sm_90 in vLLM 0.20 \u2014 auto-select picks them and silently regresses. TRITON forced explicitly so the 2368 nonces/min measurement is reproducible across vLLM versions.",
     "attention_backend=FLASHINFER": "vLLM auto-default on Hopper is FLASH_ATTN; FLASHINFER measured faster on the 2026-05 sweep. Pinning explicitly prevents the auto-selector heuristic from silently regressing this profile across vLLM releases.",
     "tensor_parallel_size=4": "4\u00d7H100 = 320 GB HBM exactly matches chain VRam=320 GB requirement. Phase 3 batch sweep: 2\u2192888, 8\u21922048, 16\u21922240, 32\u21922368 (best), 64\u2192hang. shadecloud orion, 2026-05.",
     "max_num_seqs=128 (batch_size=64 hard ceiling)": "Phase 3 sweep observed batch_size=64 hangs the PoC engine (OOM-stuck, not crash \u2014 engine never recovers). max_num_seqs=128 from MINIMAX_M2_7 base is safe because vLLM runtime caps actual batch by KV cache; the hazard is operator-supplied PoC batch override. Same failure mode as b200-minimax-m2-7 and the flashinfer_moe_int4_blackwell.md memory entry."
   },
-  "digest": "sha256:9643206e1b421efe3f326352fec806c72ecd2dae9c083ff8d75bff13e0a830a2",
+  "digest": "sha256:6ca1a021f14145d23dae94c3fedf33e24b86f8d56bb425609728e050de499b82",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
   "slsa_attestation_url": null,
   "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-05/minimax-m27-fp8-4xh100/README.md",
