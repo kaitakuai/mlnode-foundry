@@ -29,14 +29,14 @@ stage2: {
 	// monolith remains a valid Stage 2 lineage for the 5 non-migrated profiles
 	// (a100/b200/h100/h200-minimax + b200-kimi) — the schema accepts both.
 	image: "ghcr.io/kaitakuai/vllm-poc"
-	// 0.23.0 is the vllm-poc tag (vLLM 0.23 residual base + gonka-poc); build
-	// chain pins by digest below. Digest is a PLACEHOLDER (sixty-four zeros) so
-	// `cue vet` passes the ^sha256:[a-f0-9]{64}$ regex; it is NOT a real image.
-	// TODO(user): swap placeholder for real vllm-poc digest after build+push
-	// (the S2 vllm-poc 0.23.0 image must be built and pushed first).
+	// 0.23.0 is the vllm-poc tag (vLLM 0.23 residual base + gonka-poc); the build
+	// chain pins by the digest below. The mutable `0.23.0` and immutable
+	// `0.23.0-7f4a032a6` (gonka-poc @ 7f4a032a6) tags both resolve to this index
+	// digest. Built + pushed + cosign-signed by kaitakuai/vllm build-vllm-poc.yml
+	// on 2026-06-21 (residual S1 sha256:2f133c14… + gonka-poc 7f4a032a61e7…).
 	tag:    "0.23.0"
-	digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-	cuda:   "13.0" // CUDA toolkit shipped inside Stage 2 (vllm-poc plugin base); used by dashboard renderer
+	digest: "sha256:619713dea9bc1b380adae6d63182ff023c63a93a902c410b3a5e9b97b922048b"
+	cuda:   "12.9" // CUDA inside Stage 2 (vllm-poc = vllm/vllm-openai:v0.23.0-cu129 → CUDA 12.9.1); dashboard metadata
 }
 
 stage3: {
