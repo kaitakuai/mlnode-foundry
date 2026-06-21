@@ -1,7 +1,7 @@
 # B300 + MiniMax-M2.7 (vllm-poc plugin base) — colleague GPU acceptance handoff
 
 > This runbook is the acceptance gate for the **plugin-base** B300 MiniMax-M2.7
-> image (`b300-minimax-m2-7-plugin` profile). It migrates the PoC engine from
+> image (`b300-minimax-m2-7` profile, migrated in place from the fat-fork). It migrates the PoC engine from
 > the fat-fork monolith (in-tree `vllm/poc/`) to the **vllm-poc** base
 > (residual vLLM 0.23 + out-of-tree `gonka-poc` package; ADR-0013). Because the
 > 0.20.0 → 0.23.0 base bump and the plugin entrypoint/worker-extension wiring
@@ -17,7 +17,7 @@ ghcr.io/kaitakuai/mlnode-b300-minimax-m2-7:0.2.13-vllm0.23.0-k1
 ```
 
 - This is the **Stage 4** (colleague) image rendered from the
-  `b300-minimax-m2-7-plugin` profile. The exact digest is produced by foundry
+  `b300-minimax-m2-7` profile. The exact digest is produced by foundry
   CI when PR-C merges; the operator hand-off message MUST carry the digest, not
   just the tag (the tag is mutable until the build lands).
 - Rollback baseline (do NOT delete): the fat-fork image
