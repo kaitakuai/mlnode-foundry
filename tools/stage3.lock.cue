@@ -1,16 +1,16 @@
-// Package tools — immutable upstream pin for Stage 2 (`mlnode-base`).
+// Package tools — immutable upstream pin for Stage 3 (`mlnode-base`).
 //
 // CI reads this file, fetches the pinned upstream commit, applies
 // `patches/*.patch`, runs upstream's mlnode/packages/api/Dockerfile with
-// BASE_IMAGE overridden to our pinned Stage 1 digest, and publishes the
-// resulting image to `ghcr.io/kaitakuai/mlnode-base:<tag>`.
+// BASE_IMAGE overridden to our pinned Stage 2 (vllm-poc) digest, and publishes
+// the resulting image to `ghcr.io/kaitakuai/mlnode-base:<tag>`.
 //
 // Bumped by:
-//   - Renovate bot when a new vLLM PoC image (Stage 1) is published
+//   - Renovate bot when a new vLLM PoC image (Stage 2) is published
 //   - Human in PR when gonka-ai/gonka mlnode source needs bumping
 //   - Human in PR to apply a new patch in patches/
 //
-// Stage 1 digest format: sha256:<64-hex> (immutable; tag is mutable metadata).
+// Stage 2 (vllm-poc) digest format: sha256:<64-hex> (immutable; tag is mutable metadata).
 package tools
 
 upstream: {
@@ -22,7 +22,7 @@ upstream: {
 	mlnode_version: "0.2.13"
 }
 
-stage1: {
+stage2: {
 	image: "ghcr.io/kaitakuai/vllm"
 	// 0.20.0-pocv2 is the mutable tag; build chain pins by digest below.
 	// Image rebuilt by kaitakuai/vllm build-stage1 CI on 2026-05-19 from
@@ -36,10 +36,10 @@ stage1: {
 	//     SBOM) instead of manual `docker push` from a laptop.
 	tag:    "0.20.0-pocv2"
 	digest: "sha256:7955b84635f3138ec61bd612d682ad73588305113ed7f3291f34b786f4bb14df"
-	cuda:   "13.0" // CUDA toolkit shipped inside Stage 1 (vLLM PoC base); used by dashboard renderer
+	cuda:   "13.0" // CUDA toolkit shipped inside Stage 2 (vLLM PoC base); used by dashboard renderer
 }
 
-stage2: {
+stage3: {
 	package: "ghcr.io/kaitakuai/mlnode-base"
 	tag:     "0.2.13-vllm0.20.0-k1"
 }

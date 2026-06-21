@@ -1,6 +1,6 @@
 # `tools/hw-patches/` — hardware-specific Dockerfile fragments
 
-Each `*.dockerfile` is a fragment applied to the Stage 3 image build via the profile's `hw_patches:` list. Fragments are **idempotent** (re-applying produces same result).
+Each `*.dockerfile` is a fragment applied to the Stage 4 image build via the profile's `hw_patches:` list. Fragments are **idempotent** (re-applying produces same result).
 
 Profile references patches by basename (without `.dockerfile` extension):
 
@@ -14,7 +14,7 @@ hw_patches: [
 ]
 ```
 
-The Stage 3 build resolves each name to `tools/hw-patches/<name>.dockerfile`, inlines via Docker build context, and applies in order.
+The Stage 4 build resolves each name to `tools/hw-patches/<name>.dockerfile`, inlines via Docker build context, and applies in order.
 
 ## Inventory
 

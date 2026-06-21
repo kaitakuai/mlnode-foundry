@@ -1,47 +1,35 @@
-// Stage 3 bake config — placeholder, populated dynamically by Python CLI.
+// Stage 3 bake config — placeholder. Real CI invocation lands in PR #2.
 //
-// `mlnode-foundry build <profile>` (per ADR-0008) computes build args from
-// the profile + naming.cue and invokes `docker buildx build` directly.
-// This HCL file exists so `docker buildx bake` works for manual debugging
-// (e.g., `BASE_IMAGE=... GPU=... docker buildx bake -f stage3/docker-bake.hcl`).
+// `mlnode-foundry build-stage3` (Phase 3) will populate this dynamically
+// from tools/stage3.lock.cue.
 
 variable "BASE_IMAGE" {
-  default = ""  // resolved by CLI from tools/stage2.lock.cue OR profile overlay
+  default = ""  // overridden by CI from stage3.lock.cue::stage2.digest
 }
 
-variable "GPU" {
-  default = ""
+variable "UPSTREAM_REPO" {
+  default = "gonka-ai/gonka"
 }
 
-variable "MODEL" {
-  default = ""
+variable "UPSTREAM_COMMIT" {
+  default = ""  // overridden by CI from stage3.lock.cue::upstream.commit
 }
 
-variable "QUANT" {
-  default = ""
-}
-
-variable "PACKAGE_NAME" {
-  default = ""
-}
-
-variable "TAG" {
-  default = ""
+variable "MLNODE_VERSION" {
+  default = "0.2.13"
 }
 
 target "default" {
   context    = "."
-  dockerfile = "stage3/Dockerfile"
+  dockerfile = "stage3/Dockerfile.patch-and-build"
   args = {
-    BASE_IMAGE   = BASE_IMAGE
-    GPU          = GPU
-    MODEL        = MODEL
-    QUANT        = QUANT
-    PACKAGE_NAME = PACKAGE_NAME
-    TAG          = TAG
+    BASE_IMAGE      = BASE_IMAGE
+    UPSTREAM_REPO   = UPSTREAM_REPO
+    UPSTREAM_COMMIT = UPSTREAM_COMMIT
+    MLNODE_VERSION  = MLNODE_VERSION
   }
   tags = [
-    "${PACKAGE_NAME}:${TAG}",
+    "ghcr.io/kaitakuai/mlnode-base:${MLNODE_VERSION}-vllm0.20.0-k1",
   ]
   attest = [
     "type=provenance,mode=max",

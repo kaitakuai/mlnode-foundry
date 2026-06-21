@@ -27,7 +27,7 @@ Adopt a three-layer architecture; do not block the in-flight decode-PoC port on 
 - Worker side: `--worker-extension-cls gonka_poc.worker.PoCWorkerExtension` — the official mechanism (used by RLHF frameworks) to add worker methods callable via the **public** `collective_rpc` API. Replaces the monkey-patch for `execute_poc_forward`.
 - Server side: thin entrypoint `gonka-vllm-serve` that composes vLLM's stock `build_app` + PoC router + gating middleware (503 + abort in-flight). Composition instead of patching chat/completions routers.
 - Torch-level pieces (layer Householder hooks via `register_forward_hook`, vanilla `skip_compiled`) work from the plugin as-is.
-- Image becomes: **official `vllm/vllm-openai:<ver>` + `pip install gonka-poc==X`**. Stage-1 overlay build trivializes; vLLM patch releases that don't touch private APIs require no plugin rebuild.
+- Image becomes: **official `vllm/vllm-openai:<ver>` + `pip install gonka-poc==X`**. The Stage 2 (vllm-poc) overlay build trivializes; vLLM patch releases that don't touch private APIs require no plugin rebuild.
 
 **Layer 2 — compat shim + contract tests**:
 - All touches of private internals (attention metadata builders, KV-scratch, worker model access) isolated in `gonka_poc/_compat/v0_XX.py` behind an explicit interface. Porting to a new vLLM = writing **one new compat file**.
@@ -36,7 +36,7 @@ Adopt a three-layer architecture; do not block the in-flight decode-PoC port on 
 **Layer 3 — upstream enabling primitives** to vllm-project (via the vLLM working group; shared pain across teams): stable hook for synthetic-embeds forward on workers; enforced-token replay / dual logprobs (verified-inference demand exists industry-wide). Each merged primitive permanently deletes a fork patch (proof: `skip_compiled`).
 **Status (2026-06-16):** DEFERRED-INDEFINITELY — see ADR-0014. The upstream-PR pathway to vllm-project is not viable at present; the residual fork is treated as permanent infrastructure with a maintenance pipeline.
 
-**Hygiene:** baked deployment defaults move out of the fork into mlnode-foundry profiles (env/CLI — Stage 3 concern, not engine code). The fork remains only as a staging area for patches not yet plugin-ized/upstreamed, with auto-rebase CI onto upstream tags and the bit-test verification ladder.
+**Hygiene:** baked deployment defaults move out of the fork into mlnode-foundry profiles (env/CLI — Stage 4 concern, not engine code). The fork remains only as a staging area for patches not yet plugin-ized/upstreamed, with auto-rebase CI onto upstream tags and the bit-test verification ladder.
 
 ## Options considered
 
@@ -60,16 +60,16 @@ Adopt a three-layer architecture; do not block the in-flight decode-PoC port on 
 
 - Positive: vLLM version bumps stop being projects; PoC math versioned/released independently of vLLM; official images consumable directly; clearer security/supply-chain story (pip package + digest pinning vs full-image overlay).
 - Negative: initial extraction effort; two artifacts to release (plugin + image profile) instead of one; enforced-tokens remains fork-bound until upstreamed.
-- Operational: Stage-1 of the foundry pipeline (ADR-0001) eventually reduces to "official base + pip install"; contract tests added to CI gates.
+- Operational: the vLLM base stages of the foundry pipeline (Stage 1 residual + Stage 2 vllm-poc, ADR-0001) eventually reduce to "official base + pip install"; contract tests added to CI gates.
 
 ## Rollout plan
 
 1. **Now**: continue decode-PoC port (`mb/feat/port-dpoc-vllm-0-20-0`) on the current skeleton; route all new internals touches through the same narrow interface as prefill (plugin-ready structure).
 2. After decode-PoC parity: extract `gonka-poc` package (math + worker extension + entrypoint), `_compat/v0_20.py`, contract tests; ship one release where fork-image and plugin-image are byte-equivalent on the golden ladder.
-3. Switch foundry Stage-1 to official base + pip install; keep fork build as fallback for one release cycle.
+3. Switch the foundry vLLM base stages (Stage 1 residual + Stage 2 vllm-poc) to official base + residual + pip install; keep fork build as fallback for one release cycle.
 4. Layer 3: bring primitive proposals to the vLLM working group (2026-06-15 call agenda fits: "перенос на новые версии"). DEFERRED-INDEFINITELY per ADR-0014.
 
-Backout: plugin and fork builds coexist; revert = pin Stage-1 back to fork image.
+Backout: plugin and fork builds coexist; revert = pin the vLLM base stage (Stage 2 vllm-poc) back to the monolith fork image.
 
 ## Acceptance criteria
 

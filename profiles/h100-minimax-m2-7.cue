@@ -27,7 +27,7 @@ h100_minimax_m2_7: #BaseProfile & bases.H100 & bases.MINIMAX_M2_7 & {
 	hw_patches:  list.Concat([bases.H100.hw_patches, ["poc-householder-compile"]])
 	runner_patch: ""
 	env: {
-		// Stage 1/2 base bakes in VLLM_USE_FLASHINFER_MOE_FP8=1, which on
+		// Stage 2/3 base bakes in VLLM_USE_FLASHINFER_MOE_FP8=1, which on
 		// Hopper sm_90 routes MoE through FLASHINFER_CUTLASS — measurably
 		// slower than TRITON for MiniMax-M2.7. CLI `--moe-backend triton`
 		// overrides this in normal operation, but a flat `docker run` without
@@ -63,7 +63,7 @@ h100_minimax_m2_7: #BaseProfile & bases.H100 & bases.MINIMAX_M2_7 & {
 		},
 		{
 			knob:     "VLLM_USE_FLASHINFER_MOE_FP8=0"
-			source:   "image inspection — Stage 1/2 base bakes in VLLM_USE_FLASHINFER_MOE_FP8=1"
+			source:   "image inspection — Stage 2/3 base bakes in VLLM_USE_FLASHINFER_MOE_FP8=1"
 			reason:   "Env-level disable for FlashInfer FP8 MoE on Hopper. Pairs with moe_backend=triton: CLI args take priority in vLLM, but a flat `docker run` without `--moe-backend triton` would silently regress to FLASHINFER_CUTLASS (slower). Pinning to 0 makes the env layer agree with the profile's TRITON choice out of the box."
 			added_at: "2026-05-26"
 		},

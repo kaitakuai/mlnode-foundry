@@ -15,7 +15,7 @@
 | P7 | **Финальные Dockerfile-ы не коммитим** | Render по требованию + attestation на каждый publish; отсутствие drift |
 | P8 | **Custom thin DSL** поверх `docker buildx bake` | На масштабе ≤150 профилей и команды 2 dev — оптимально по cost/value |
 | P9 | **Greenfield repo** для рефакторинга, со заморозкой старого | Минимизирует риск для production (нод-операторы пинят digest-ы из старого репо); параллельная разработка без конфликтов; тривиальный откат |
-| P10 | **Spec / state / policy разделены** на всех уровнях | Профиль — pure spec (intent человека); observed state (validation results, benchmarks, vLLM ENV snapshot) — отдельно в `state/`; naming + tag + axes policy — глобально в `tools/naming.cue`; pin upstream — immutable lock в `tools/stage2.lock.cue`. Не смешиваем «что хотим», «что произошло» и «как именуем» в одном файле — **ни на per-profile, ни на org-wide уровне** |
+| P10 | **Spec / state / policy разделены** на всех уровнях | Профиль — pure spec (intent человека); observed state (validation results, benchmarks, vLLM ENV snapshot) — отдельно в `state/`; naming + tag + axes policy — глобально в `tools/naming.cue`; pin upstream — immutable lock в `tools/stage3.lock.cue`. Не смешиваем «что хотим», «что произошло» и «как именуем» в одном файле — **ни на per-profile, ни на org-wide уровне** |
 | P11 | **[Cue](https://cuelang.org/) для типизированных конфигов и схем** | Единый язык для **human-authored intent**: профили, naming policy, runner inventory, schemas. Sum types (`#BaseProfile \| #OverlayProfile`) — нативно. Unification (`&`) вместо deep-merge — коммутативна, конфликты падают громко. Constraints (`>=1`, `=~ regex`) проверяются compiler-ом. TOML — только для внешних форматов (`pyproject.toml`); YAML — только где tooling требует (GitHub Actions). JSON — для **machine-written observed state** (валидируется Cue-схемами через `cue vet`) |
 | P11a | **Boundary Cue ↔ JSON ↔ Python** | **Cue** — то что пишет человек (intent, schemas, policy). **JSON** — то что пишет машина (observed state, BuildKit attestations, OCI labels), валидируется Cue-схемами. **Python** — orchestration: subprocess-вызовы (cue, docker, cosign), file I/O, content hashing, template generation. Каждый язык на своём месте; не заменяют друг друга |
 | P12 | **Composition через unification, не inheritance** | `extends:` уходит — заменяется Cue-импортами и `&`. Order-independent (unification коммутативна), type-safe (compiler ловит несовместимые значения), безопасно глубоко по необходимости. Style-конвенция: max 2 базы на профиль, base-файлы атомарны — но это **stylistic**, не safety-invariant |
@@ -24,26 +24,30 @@
 ## 2. Цепочка слоёв
 
 ```
-Stage 0   vllm/vllm-openai:<vllm-ver>                                        [внешний]
-            │ Dockerfile.quick (репо kaitakuai/vllm, ветка mb/feat/port-poc-vllm-X.Y)
+Stage 0   vllm/vllm-openai:<vllm-ver>                                              [внешний]
+            │ residual sampler-stack fork (репо kaitakuai/vllm)
             ▼
-Stage 1   ghcr.io/kaitakuai/vllm:<vllm-ver>-poc-k<rev>                       [репо kaitakuai/vllm]
-            │ upstream packages/api/Dockerfile (target=app) + patches
+Stage 1   ghcr.io/kaitakuai/vllm-sampler-residual:<vllm-ver>-k<rev>              [репо kaitakuai/vllm]
+            │ pip install gonka-poc + upstream packages/api/Dockerfile (target=app)
             ▼
-Stage 2   ghcr.io/kaitakuai/mlnode-base:<mlnode-ver>-vllm<vllm-ver>-k<rev>   [этот репо, новый артефакт]
+Stage 2   ghcr.io/kaitakuai/vllm-poc:<vllm-ver>-k<rev>                            [репо kaitakuai/vllm]
+            │ apt + OpenSSL + poetry + venv + mlnode source
+            ▼
+Stage 3   ghcr.io/kaitakuai/mlnode-base:<mlnode-ver>-vllm<vllm-ver>-k<rev>        [этот репо, новый артефакт]
             │ hw-patches + runner-patch + ENV — из профиля
             ▼
-Stage 3   ghcr.io/kaitakuai/mlnode-<gpu>-<model>:<tag>                       [этот репо, потребительский образ]
+Stage 4   ghcr.io/kaitakuai/mlnode-<gpu>-<model>:<tag>                           [этот репо, потребительский образ]
 ```
 
 | Слой | Где собирается | Что внутри | Когда ребилдится |
 |------|----------------|------------|------------------|
 | **Stage 0** | вне нашей зоны (vLLM Project) | upstream vLLM-OpenAI Docker image | релизы vLLM |
-| **Stage 1** | репо `kaitakuai/vllm` | upstream + Gonka PoC v2 patches (через `Dockerfile.quick`) | bump vLLM или PoC-патчей |
-| **Stage 2** | репо `kaitakuai/mlnode-foundry` | apt + OpenSSL + poetry + venv + mlnode source — **GPU-агностик** | bump Stage 1 digest, upstream commit или `patches/` |
-| **Stage 3** | репо `kaitakuai/mlnode-foundry` | Stage 2 + hw-patches + runner-patch + ENV из профиля | правка профиля, hw-патчей, runner-патчей или Stage 2 digest |
+| **Stage 1** | репо `kaitakuai/vllm` | upstream + thin sampler-residual fork (ADR-0014) | bump vLLM или residual-патчей |
+| **Stage 2** | репо `kaitakuai/vllm` | Stage 1 + `pip install gonka-poc` (ADR-0013) | bump Stage 1 digest или gonka-poc |
+| **Stage 3** | репо `kaitakuai/mlnode-foundry` | apt + OpenSSL + poetry + venv + mlnode source — **GPU-агностик** | bump Stage 2 digest, upstream commit или `patches/` |
+| **Stage 4** | репо `kaitakuai/mlnode-foundry` | Stage 3 + hw-patches + runner-patch + ENV из профиля | правка профиля, hw-патчей, runner-патчей или Stage 3 digest |
 
-**Линий `full` и `overlay` нет.** Overlay-режим (поверх upstream `product-science/mlnode` бинарника) сохранён как `naming.mode: upstream-overlay` в профиле — пропускает Stage 2, идёт через тот же Stage 3 с `BASE_IMAGE=ghcr.io/product-science/mlnode:<ver>`. Тот же Dockerfile, тот же набор патчей.
+**Линий `full` и `overlay` нет.** Overlay-режим (поверх upstream `product-science/mlnode` бинарника) сохранён как `naming.mode: upstream-overlay` в профиле — пропускает Stage 3, идёт через тот же Stage 4 с `BASE_IMAGE=ghcr.io/product-science/mlnode:<ver>`. Тот же Dockerfile, тот же набор патчей.
 
 ## 3. Два типа осей
 
@@ -93,7 +97,7 @@ axes: transform: {
     status:      "reserved"
     default:     "full"
     allowed_values: ["full", "slim"]
-    description: "Reserved for Stage 4 image minimization"
+    description: "Reserved for Stage 5 image minimization"
 }
 
 package: {
@@ -170,7 +174,7 @@ import "github.com/kaitakuai/mlnode-foundry/tools/naming"
     }
     description: string
     notes?: string
-    minimization?: {...}    // reserved для Stage 4
+    minimization?: {...}    // reserved для Stage 5
 }
 
 #BaseProfile: #CommonProfile & {
@@ -180,7 +184,7 @@ import "github.com/kaitakuai/mlnode-foundry/tools/naming"
         vllm:   =~ "^[0-9]+\\.[0-9]+\\.[0-9]+"
         rev:    int & >=1
     }
-    // base.image+digest НЕ допускаются — резолвятся из tools/stage2.lock.cue
+    // base.image+digest НЕ допускаются — резолвятся из tools/stage3.lock.cue
 }
 
 #OverlayProfile: #CommonProfile & {
@@ -280,7 +284,7 @@ D2 (extends-footguns) теперь закрыт **более глубоко**: �
 
 ### Self-contained snapshot
 
-Команда `tools/expand-profile.py profiles/<name>.cue` резолвит все ссылки (extends, hw_patches, runner_patch, axes catalog, stage2 digest) в инлайн-формат. Полезно для:
+Команда `tools/expand-profile.py profiles/<name>.cue` резолвит все ссылки (extends, hw_patches, runner_patch, axes catalog, stage3 digest) в инлайн-формат. Полезно для:
 
 - Аудита (один файл вместо обхода репо)
 - Архивации release-snapshot-а
@@ -313,7 +317,7 @@ State (что произошло с образом — собрался ли, п
     "tag": "0.2.13-vllm0.20.0-q.int4-k1",
     "digest": "sha256:...",
     "built_at": "2026-05-10T14:32:00Z",
-    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main"
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main"
   },
   "validation": {
     "build_smoke": {"result": "pass", "at": "2026-05-10", "commit": "a1b2c3"},
@@ -404,7 +408,7 @@ CI вызывает `cue vet state/<x>.json state/_schema.cue` чтобы про
 | Tier | Проверка | Где запускается | Стоимость | Триггер |
 |------|----------|-----------------|-----------|---------|
 | **0 — Static** | JSON-schema, axes catalog, render Dockerfile, lint, drift detection | GH Actions ubuntu-latest | бесплатно | каждый PR/push |
-| **1 — Build-only smoke** | Stage 3 собирается, entrypoint exists, `import vllm` не падает (CPU-only) | GH Actions ubuntu-latest | бесплатно | каждый PR с правкой профиля или его зависимостей |
+| **1 — Build-only smoke** | Stage 4 собирается, entrypoint exists, `import vllm` не падает (CPU-only) | GH Actions ubuntu-latest | бесплатно | каждый PR с правкой профиля или его зависимостей |
 | **2 — Real-GPU smoke** | образ запускается, `/api/v1/inference/up` отвечает, 1-10 nonces | vast.ai эфемера или ssh-host | $0.50-3 | PR-метка `/validate-gpu` или первая публикация профиля |
 | **3 — Full benchmark** | 1000+ nonces, logprobs, cross-validation, итоговые метрики | vast.ai / ssh-host через `poc-benchmark` AI-агента | $5-50 | PR-метка `/benchmark`, cron, или bump major-версии |
 
@@ -477,7 +481,7 @@ profile: ... & {
 ## 9. Bidirectional flow `mlnode ↔ experiments`
 
 ```
-   profiles/*.cue         build & publish        Stage 3 image
+   profiles/*.cue         build & publish        Stage 4 image
    ───────────────►  CI  ──────────────────►  GHCR
                                                   │
                           (manual / label /       │ pull
@@ -524,13 +528,13 @@ Workflow резолвит профиль → image digest, runner config → п�
    - `metrics:` блок
    - `status: benchmarked`
 3. **Профиль `profiles/<x>.cue` НЕ трогается** — это pure spec, агент его не пишет.
-4. PR не триггерит Stage 3 ребилд: state-файлы не входят в `profile_hash`-input.
+4. PR не триггерит Stage 4 ребилд: state-файлы не входят в `profile_hash`-input.
 
 ## 10. AI-ассистент `poc-benchmark` интеграция
 
 Контракт агента (см. [.claude/agents/poc-benchmark.md](../../.claude/agents/poc-benchmark.md)):
 
-- **Input**: resolved profile YAML + runner config + Stage 3 image digest
+- **Input**: resolved profile YAML + runner config + Stage 4 image digest
 - **Output**: `experiments/<YYYY-MM>/<package-tag>/{README.md, nonces.json, metrics.json}` + auto-PR в mlnode
 - **Идемпотентность**: повторный запуск с тем же `(image_digest, runner)` пропускается
 - **Failure handling**: агент сам поднимает упавший vast.ai-инстанс или фейлит корректно
@@ -549,7 +553,7 @@ Workflow резолвит профиль → image digest, runner config → п�
 | Rendered Dockerfile attestation | `--attest type=dockerfile` (in-toto predicate) — позволяет аудитору cвалидировать «какой Dockerfile собрал данный digest» |
 | Cosign keyless signing | GitHub OIDC → `cosign sign --yes` в `promote.yml` |
 | Dashboard verify | `cosign verify` с identity-regex по workflow path в `sync_registry.py` |
-| Pin-цепочка | Stage 1 digest → `tools/stage2.lock.cue`; Stage 2 digest → `profiles/_resolved/<id>.json` (генерится в CI через `cue export`) |
+| Pin-цепочка | Stage 2 (vllm-poc) digest → `tools/stage3.lock.cue`; Stage 3 (mlnode-base) digest → `profiles/_resolved/<id>.json` (генерится в CI через `cue export`) |
 | `:latest` запрещён | проверка в `promote.yml` |
 | Profile schema check | `cue vet profiles/<x>.cue tools/naming.cue` в `validate-profiles.yml` — type-checking + axes catalog + sum-type discrimination за один вызов |
 | Tag-format check | regex синхронный с dashboard, в `validate-profiles.yml` |
@@ -558,7 +562,7 @@ Workflow резолвит профиль → image digest, runner config → п�
 
 ### Промежуточные образы как first-class артефакты
 
-Каждый Stage публикуется в GHCR, переиспользуется через `@sha256:<digest>`. Stage 2 (apt + OpenSSL + poetry + venv) — **строится один раз** на (mlnode, vllm) пару, потом 8+ Stage 3 сборок пользуются результатом через `FROM kaitakuai/mlnode-base@sha256:…`.
+Каждый Stage публикуется в GHCR, переиспользуется через `@sha256:<digest>`. Stage 3 (apt + OpenSSL + poetry + venv) — **строится один раз** на (mlnode, vllm) пару, потом 8+ Stage 4 сборок пользуются результатом через `FROM kaitakuai/mlnode-base@sha256:…`.
 
 ### Кеш-уровни
 
@@ -573,9 +577,9 @@ Workflow резолвит профиль → image digest, runner config → п�
 
 | Артефакт | Политика |
 |----------|----------|
-| Stage 1 теги | ≥ 6 мес, GC через год |
-| Stage 2 теги | ≥ 3 мес, GC если нет depending Stage 3 |
-| Stage 3 теги | **постоянно** — публичный артефакт |
+| Stage 1 / Stage 2 теги (residual fork, vllm-poc) | ≥ 6 мес, GC через год |
+| Stage 3 теги (mlnode-base) | ≥ 3 мес, GC если нет depending Stage 4 |
+| Stage 4 теги | **постоянно** — публичный артефакт |
 | `:buildcache` теги | последние 5, GC еженедельно |
 
 ### Ожидаемые времена (warm cache)
@@ -584,8 +588,8 @@ Workflow резолвит профиль → image digest, runner config → п�
 |----------|-------|
 | Правка одного профиля | ~1 мин |
 | Правка shared hw-patch (затрагивает N профилей) | ~1 мин × N параллельно |
-| Bump Stage 2 (каскад на все профили) | ~9 мин |
-| Bump vLLM (Stage 1 уже опубликован) | ~9 мин |
+| Bump Stage 3 (каскад на все профили) | ~9 мин |
+| Bump vLLM (Stage 2 vllm-poc уже опубликован) | ~9 мин |
 
 ## 13. Maintenance multipliers
 
@@ -594,13 +598,13 @@ Workflow резолвит профиль → image digest, runner config → п�
 | Multiplier | Что даёт |
 |------------|----------|
 | **Profile inheritance (`extends:`)** | новые 10 профилей по семейству — ~15 строк каждый |
-| **Renovate bot на `tools/stage2.lock.cue`** | авто-PR при новом upstream-теге; merge кнопкой при зелёном CI |
-| **vLLM ENV snapshot в `state/_stage2-vllm-env.json`** | компат-валидация профилей — регрессии «переименовали флаг» ловятся в CI через `cue vet state/_stage2-vllm-env.json state/_schema.cue`, не в проде. Snapshot пишется автоматикой при build Stage 2 (introspect через `python -c "import vllm.envs"`); spec-файл `stage2.lock.cue` остаётся чистым pin-ом |
+| **Renovate bot на `tools/stage3.lock.cue`** | авто-PR при новом upstream-теге; merge кнопкой при зелёном CI |
+| **vLLM ENV snapshot в `state/_stage3-vllm-env.json`** | компат-валидация профилей — регрессии «переименовали флаг» ловятся в CI через `cue vet state/_stage3-vllm-env.json state/_schema.cue`, не в проде. Snapshot пишется автоматикой при build Stage 3 (introspect через `python -c "import vllm.envs"`); spec-файл `stage3.lock.cue` остаётся чистым pin-ом |
 | **`mlnode-foundry profile new/add-model/add-gpu`** | bulk profile generation из defaults |
-| **CODEOWNERS разделяет infra и контент** | researcher PR'ит профили без dev-ревью; dev-ревью только на `_base/`, `tools/naming.cue`, `_schema.cue`, `tools/`, `tools/stage2.lock.cue` |
-| **Reusable GHA workflows** | один `build-stage3.yml` параметризованный |
+| **CODEOWNERS разделяет infra и контент** | researcher PR'ит профили без dev-ревью; dev-ревью только на `_base/`, `tools/naming.cue`, `_schema.cue`, `tools/`, `tools/stage3.lock.cue` |
+| **Reusable GHA workflows** | один `build-stage4.yml` параметризованный |
 | **`notes:` блок в профиле** | через год — почему стоит этот флаг, ссылка на бенч |
-| **Dashboard «stale profiles» view** | показывает «12 профилей собраны 3 мес назад при vllm 0.19, Stage 2 уже 0.20» — кнопка `Rebuild all` |
+| **Dashboard «stale profiles» view** | показывает «12 профилей собраны 3 мес назад при vllm 0.19, Stage 3 уже 0.20» — кнопка `Rebuild all` |
 
 ### Отложенные multipliers (по факту первой боли)
 
@@ -616,11 +620,11 @@ Workflow резолвит профиль → image digest, runner config → п�
 kaitakuai/mlnode-foundry/
 ├── cue.mod/                              # Cue module manifest (`module: "github.com/kaitakuai/mlnode-foundry"`)
 │   └── module.cue
-├── stage2/
+├── stage3/
 │   ├── docker-bake.hcl
 │   ├── Dockerfile.patch-and-build
 │   └── README.md
-├── stage3/
+├── stage4/
 │   ├── docker-bake.hcl                   # matrix через render-bake (читает Cue → JSON)
 │   ├── Dockerfile                        # один общий, всё через build-args
 │   └── README.md
@@ -638,12 +642,12 @@ kaitakuai/mlnode-foundry/
 │   └── ...
 ├── state/                                # observed state, пишет автоматика (CI + agent)
 │   ├── _schema.cue                       # #State схема (Cue, human-authored)
-│   ├── _stage2-vllm-env.json             # observed: vLLM ENV var snapshot (JSON, machine-written)
+│   ├── _stage3-vllm-env.json             # observed: vLLM ENV var snapshot (JSON, machine-written)
 │   └── mlnode-<gpu>-<model>-<tag>.json   # один файл на каждый publish (JSON, machine-written)
 ├── tools/                                # data-only: spec и policy файлы (intent), без Python-кода
 │   ├── naming.cue                        # axes registry + naming policy (объединено)
 │   ├── runners.cue                       # runner inventory (один файл, не каталог)
-│   ├── stage2.lock.cue                   # IMMUTABLE pin: upstream commit + patches list + Stage1 digest
+│   ├── stage3.lock.cue                   # IMMUTABLE pin: upstream commit + patches list + Stage2 (vllm-poc) digest
 │   ├── hw-patches/                       # *.dockerfile фрагменты (по имени)
 │   └── runner-patches/                   # *.py патчеры (по имени)
 ├── mlnode_foundry/                         # Python CLI пакет (Typer); ставится `pip install -e .`
@@ -665,16 +669,15 @@ kaitakuai/mlnode-foundry/
 │   └── 0001-content-type-middleware.patch
 ├── docs/
 │   ├── architecture.md                   # этот файл
-│   ├── adr/                              # 0001..0012
+│   ├── adr/                              # 0001..0014
 │   ├── decision-log.md
-│   ├── tags.md
 │   └── runbooks/
 ├── renovate.json                         # auto-PR на upstream pins
 ├── CODEOWNERS                            # infra vs content split
 └── .github/workflows/                    # GHA требует YAML — единственное место с YAML
     ├── validate-profiles.yml             # Tier 0+1
-    ├── build-stage2.yml
-    ├── build-stage3.yml                  # пишет state/<x>.json после publish
+    ├── build-stage3.yml
+    ├── build-stage4.yml                  # пишет state/<x>.json после publish
     ├── benchmark.yml                     # Tier 2/3 trigger (out-of-band)
     └── promote.yml                       # cosign sign + sbom + state/ commit
 ```
@@ -683,13 +686,13 @@ kaitakuai/mlnode-foundry/
 
 **`registry/` каталог удалён.** Метаданные образа доступны через OCI labels + cosign attestations + state-файлы; dashboard читает оттуда напрямую через `crane manifest` и `cosign download attestation`. См. ADR-0011.
 
-**Консолидация спец-файлов** (D7): было 7-8 типов (axes.yaml + naming.yaml + runners/*.yaml + stage2.lock.yaml + 4 schema-файла), стало 4 (`naming.cue` + `runners.cue` + `stage2.lock.cue` + profile/state); схемы embedded в Cue, отдельных schema-файлов нет.
+**Консолидация спец-файлов** (D7): было 7-8 типов (axes.yaml + naming.yaml + runners/*.yaml + stage2.lock.yaml + 4 schema-файла), стало 4 (`naming.cue` + `runners.cue` + `stage3.lock.cue` + profile/state); схемы embedded в Cue, отдельных schema-файлов нет.
 
 **Cue dependency.** `cue` binary (~15 MB Go-based CLI) ставится через `brew install cue-lang/tap/cue` (macOS), `go install cuelang.org/go/cmd/cue@latest`, или скачиванием из [GitHub Releases](https://github.com/cue-lang/cue/releases). Версия пинится в `pyproject.toml` через `mise.toml` (см. P11 в [ADR-0008](./adr/0008-custom-dsl-vs-frameworks.md)).
 
 Этот layout — для **нового** репо `kaitakuai/mlnode-foundry`. Старый `kaitakuai/mlnode` остаётся со своей текущей структурой (`full/`, `overlay/`, `tools/fragments/`, `tools/generate-dockerfiles.py`) до архивации; никаких удалений в нём не делаем.
 
-`.mlnode-src/` в новом репо НЕ создаётся. Stage 2 потребляет апстрим `gonka-ai/gonka` через `--build-context` напрямую (см. §6 / [ADR-0001](./adr/0001-four-stage-pipeline.md)).
+`.mlnode-src/` в новом репо НЕ создаётся. Stage 3 потребляет апстрим `gonka-ai/gonka` через `--build-context` напрямую (см. §6 / [ADR-0001](./adr/0001-four-stage-pipeline.md)).
 
 ## 15. CLI команды
 
@@ -732,13 +735,13 @@ mlnode-foundry --install-completion             # autocomplete для bash/zsh
 
 | Implicit input | Откуда берётся |
 |----------------|----------------|
-| Stage 2 digest | `tools/stage2.lock.cue` (`kaitakuai-base` mode) или из профиля (`upstream-overlay` mode) |
+| Stage 3 digest | `tools/stage3.lock.cue` (`kaitakuai-base` mode) или из профиля (`upstream-overlay` mode) |
 | `tools/naming.cue` | реестр identity-осей + глобальная политика имени и тэга |
 | `profiles/_schema.cue` | sum-type схема `#BaseProfile \| #OverlayProfile` |
 | `profiles/_base/<x>.cue` | базы, импортируемые профилем через unification |
 | `tools/hw-patches/<name>.dockerfile` | по списку имён в профиле |
 | `tools/runner-patches/<name>.py` | по `runner_patch` в профиле |
-| `stage3/Dockerfile` | один общий template |
+| `stage4/Dockerfile` | один общий template |
 | Cosign keyless OIDC token | в workflow |
 
 ### Outputs
@@ -790,17 +793,17 @@ mlnode-foundry --install-completion             # autocomplete для bash/zsh
 | Новая GPU (`l40`, `mi300`) | низкая | один профиль (или `_base/<gpu>.cue` + N профилей) |
 | Новая модель (`deepseek`) | низкая | один профиль на каждый GPU; `_base/<model>.cue` если общая логика |
 | Новая ось `quant` (FP8 / INT4 / NVFP4) | низкая | строка в `axes:` блоке `tools/naming.cue` + полем в существующих профилях |
-| Новая ось `framework` (sglang) | средняя | строка в `axes:` блоке `tools/naming.cue`; Stage 1/2 параметризуются по `framework`; dashboard не меняется (JSONB) |
-| Новая ось `transform` (минимизация) | средняя | placeholder уже зарезервирован; добавляется Stage 4 + стратегии (см. §18) |
+| Новая ось `framework` (sglang) | средняя | строка в `axes:` блоке `tools/naming.cue`; Stage 1-3 параметризуются по `framework`; dashboard не меняется (JSONB) |
+| Новая ось `transform` (минимизация) | средняя | placeholder уже зарезервирован; добавляется Stage 5 + стратегии (см. §18) |
 | Runtime-ось (без нового образа) | нулевая | блок `runtime_defaults` в профиле или override при `docker run` |
 
-## 18. Stage 4 placeholder — image minimization
+## 18. Stage 5 placeholder — image minimization
 
 Ось `transform` зарезервирована в `tools/naming.cue` (`status: reserved`, `allowed_values: [full, slim]`). Блок `minimization:` в профиле зарезервирован в JSON-Schema, но игнорируется build-системой до реализации.
 
 Когда потребуется минимизация:
 
-1. Реализуется `stage4/Dockerfile.minimize` (~30 строк).
+1. Реализуется `stage5/Dockerfile.minimize` (~30 строк).
 2. Создаётся `tools/minimize-strategies/` с реализациями (`multistage-copy.py`, `apko-distroless.py`, `dockerslim.py`).
 3. Профили дополняются блоком `minimization:` опционально.
 4. Имена/тэги авто-обновляются: `transform: slim` → суффикс `-t.slim` в тэге.
@@ -812,7 +815,7 @@ mlnode-foundry --install-completion             # autocomplete для bash/zsh
 
 | ADR | Тема | Статус |
 |-----|------|--------|
-| [0001](./adr/0001-four-stage-pipeline.md) | Four-stage build pipeline | Accepted |
+| [0001](./adr/0001-four-stage-pipeline.md) | Five-stage build pipeline | Accepted (amended 2026-06-21) |
 | [0002](./adr/0002-tag-and-naming-scheme.md) | Tag and naming scheme | Accepted |
 | [0003](./adr/0003-profile-dsl-and-axis-types.md) | Profile DSL and axis types | Accepted |
 | [0004](./adr/0004-supply-chain-attestations.md) | Supply-chain attestations | Accepted |
@@ -821,9 +824,11 @@ mlnode-foundry --install-completion             # autocomplete для bash/zsh
 | [0007](./adr/0007-build-optimization-and-caching.md) | Build optimization and caching | Accepted |
 | [0008](./adr/0008-custom-dsl-vs-frameworks.md) | Why custom thin DSL over Bazel/apko/Dagger | Accepted |
 | [0009](./adr/0009-validation-tiers-and-benchmarks.md) | Validation tiers and benchmark integration | Accepted |
-| [0010](./adr/0010-image-minimization-stage4.md) | Image minimization (Stage 4 placeholder) | Reserved |
+| [0010](./adr/0010-image-minimization-stage4.md) | Image minimization (Stage 5 placeholder) | Reserved |
 | [0011](./adr/0011-spec-state-policy-separation.md) | Spec / state / policy разделены: `profiles/` (intent), `state/` (observed), `tools/naming.cue` (org policy); `registry/` каталог удалён (читаем OCI напрямую) | Accepted |
 | [0012](./adr/0012-cue-as-config-language.md) | Cue как единый язык для конфигов, схем и validation; sum types, unification, embedded type system | Accepted |
+| [0013](./adr/0013-poc-integration-architecture.md) | PoC integration architecture (Stage 1/2 split: residual + gonka-poc) | Accepted |
+| [0014](./adr/0014-residual-fork-permanent-infra.md) | Residual vLLM fork as permanent infrastructure | Accepted |
 
 ## 20. Стратегия репозитория (greenfield)
 
@@ -832,15 +837,15 @@ Build-система живёт в новом репо `kaitakuai/mlnode-foundry
 GHCR-неймспейсы не пересекаются:
 
 - Старый репо публикует `ghcr.io/kaitakuai/mlnode-full:*` и `mlnode-overlay:*` — существующие теги остаются доступны навсегда после архивации.
-- Новый репо публикует `ghcr.io/kaitakuai/mlnode-base:*` (Stage 2) и `ghcr.io/kaitakuai/mlnode-<gpu>-<model>:*` (Stage 3).
-- Stage 1 (`ghcr.io/kaitakuai/vllm:*`) — общий, в репо `kaitakuai/vllm`.
+- Новый репо публикует `ghcr.io/kaitakuai/mlnode-base:*` (Stage 3) и `ghcr.io/kaitakuai/mlnode-<gpu>-<model>:*` (Stage 4).
+- Stage 1 (`ghcr.io/kaitakuai/vllm-sampler-residual:*`) и Stage 2 (`ghcr.io/kaitakuai/vllm-poc:*`) — общие, в репо `kaitakuai/vllm`.
 
 Греenфилд-подход выбран ради минимизации риска для production (нод-операторы пинят digest-ы из старого репо), параллельной разработки без конфликтов и тривиального отката (продолжаем использовать legacy).
 
 ## Источники
 
-- [Upstream Gonka mlnode](https://github.com/gonka-ai/gonka/tree/main/mlnode) — Stage 2 потребляет `mlnode/packages/api/Dockerfile`
-- [kaitakuai/vllm](https://github.com/kaitakuai/vllm) — репо Stage 1
+- [Upstream Gonka mlnode](https://github.com/gonka-ai/gonka/tree/main/mlnode) — Stage 3 потребляет `mlnode/packages/api/Dockerfile`
+- [kaitakuai/vllm](https://github.com/kaitakuai/vllm) — репо Stage 1 (residual) + Stage 2 (vllm-poc)
 - [Cue language](https://cuelang.org/)
 - [docker buildx bake](https://docs.docker.com/build/bake/)
 - [BuildKit attestations](https://docs.docker.com/build/metadata/attestations/)

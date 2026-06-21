@@ -63,7 +63,7 @@ axes: transform: {
 	type:        "identity"
 	prefix:      "t"
 	status:      "reserved"  // not yet implemented; see ADR-0010
-	description: "Post-build transform (full=untouched, slim=minimized via Stage 4)"
+	description: "Post-build transform (full=untouched, slim=minimized via Stage 5)"
 	allowed_values: ["full", "slim"]
 	default: "full"
 }

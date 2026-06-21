@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1.7
 #
-# Stage 3 Dockerfile TEMPLATE — rendered per profile by
-# `mlnode-foundry render-dockerfile <profile>` into `stage3/Dockerfile.rendered`.
+# Stage 4 Dockerfile TEMPLATE — rendered per profile by
+# `mlnode-foundry render-dockerfile <profile>` into `stage4/Dockerfile.rendered`.
 #
 # Inputs (passed via --build-arg):
-#   BASE_IMAGE        — Stage 2 image (mlnode-base@sha256:...) or upstream binary
+#   BASE_IMAGE        — Stage 3 image (mlnode-base@sha256:...) or upstream binary
 #   GPU, MODEL,
 #   MODEL_REVISION,
 #   QUANT             — identity axes (OCI labels)
@@ -51,7 +51,7 @@ RUN if [ -n "${RUNNER_PATCH}" ] && [ -f "/tmp/runner-patches/${RUNNER_PATCH}.py"
 # ENV from profile.env (rendered) ---------------------------------------------
 {{ENV_BLOCK}}
 
-LABEL gonka.kaitaku.stage="3" \
+LABEL gonka.kaitaku.stage="4" \
       gonka.kaitaku.gpu="${GPU}" \
       gonka.kaitaku.model="${MODEL}" \
       gonka.kaitaku.model_revision="${MODEL_REVISION}" \

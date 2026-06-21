@@ -20,7 +20,7 @@ We need a way for ops/audit to inspect "what Dockerfile produced this image" wit
 2. **PR-bot diff** — `validate-profiles.yml` GHA renders Dockerfile diff for changed profiles, posts as PR comment
 3. **Attached as attestation** — BuildKit `--attest type=dockerfile` records the actual Dockerfile content in the image's in-toto predicates, accessible via `cosign download attestation`
 
-Source of truth is `stage3/Dockerfile` (parametric template) + profile inputs. The "rendered" form exists only as a build action and an attestation predicate.
+Source of truth is `stage4/Dockerfile` (parametric template) + profile inputs. The "rendered" form exists only as a build action and an attestation predicate.
 
 ## Consequences
 

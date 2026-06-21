@@ -29,18 +29,18 @@
   ],
   "customManagers": [
     {
-      "description": "Pin Stage 1 image digest in tools/stage2.lock.cue",
+      "description": "Pin Stage 2 (vllm-poc) image digest in tools/stage3.lock.cue",
       "customType": "regex",
-      "fileMatch": ["^tools/stage2\\.lock\\.cue$"],
+      "fileMatch": ["^tools/stage3\\.lock\\.cue$"],
       "matchStrings": [
         "image:\\s*\"(?<depName>[^\"]+)\"\\s*\\n\\s*tag:\\s*\"(?<currentValue>[^\"]+)\"\\s*\\n\\s*digest:\\s*\"(?<currentDigest>sha256:[a-f0-9]{64})\""
       ],
       "datasourceTemplate": "docker"
     },
     {
-      "description": "Pin upstream gonka-ai/gonka commit in tools/stage2.lock.cue",
+      "description": "Pin upstream gonka-ai/gonka commit in tools/stage3.lock.cue",
       "customType": "regex",
-      "fileMatch": ["^tools/stage2\\.lock\\.cue$"],
+      "fileMatch": ["^tools/stage3\\.lock\\.cue$"],
       "matchStrings": [
         "upstream:\\s*\\{[^}]*repo:\\s*\"(?<depName>[^\"]+)\"[^}]*commit:\\s*\"(?<currentDigest>[a-f0-9]{40})\""
       ],

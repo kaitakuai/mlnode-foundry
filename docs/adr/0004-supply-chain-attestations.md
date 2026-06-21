@@ -9,7 +9,7 @@ Node operators pull images from GHCR and need to verify they are produced by our
 
 ## Decision
 
-Every published Stage 2 and Stage 3 image carries:
+Every published Stage 3 and Stage 4 image carries:
 
 1. **SLSA L3 provenance attestation** via BuildKit `--attest type=provenance,mode=max` — records build environment, source commit, and command line
 2. **SBOM (SPDX format)** via BuildKit `--sbom=true` — full pip + apt manifest

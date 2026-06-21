@@ -51,7 +51,7 @@ Specifically:
 
 - Positive: explicit and honest documentation of fork lifetime; CI gate on drift; rebase procedure is doc-driven not tribal-knowledge-driven.
 - Negative: residual fork is now an explicit team artifact with maintenance ownership; if the team disbands, the fork goes stale. Bus factor needs to be acknowledged.
-- Operational: each vLLM minor release triggers (a) automated CI alert when upstream surface drifts, (b) explicit rebase task per REBASE.md, (c) version-tag bump in residual fork + foundry stage1 lock.
+- Operational: each vLLM minor release triggers (a) automated CI alert when upstream surface drifts, (b) explicit rebase task per REBASE.md, (c) version-tag bump in residual fork (Stage 1) + foundry base-stage lock (`tools/stage3.lock.cue`).
 
 ## Acceptance criteria
 

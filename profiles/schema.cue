@@ -5,7 +5,7 @@
 // results, validation, metrics) lives in `state/<x>.json`, not here.
 //
 // Profile is a discriminated union by `mode`:
-//   - kaitakuai-base   → built FROM kaitakuai/mlnode-base (our Stage 2)
+//   - kaitakuai-base   → built FROM kaitakuai/mlnode-base (our Stage 3)
 //   - upstream-overlay → built FROM product-science/mlnode binary directly
 //
 // Cue's sum type catches mismatched fields at validation time.
@@ -45,8 +45,8 @@ package profiles
 		// produce a distinct image automatically.
 		framework?: "vllm" | "sglang" | "trtllm"
 
-		// Stage 4 post-build transform (reserved for ADR-0010 minimization work).
-		// "full" = untouched image; "slim" = minimized via Stage 4 transform.
+		// Stage 5 post-build transform (reserved for ADR-0010 minimization work).
+		// "full" = untouched image; "slim" = minimized via Stage 5 transform.
 		// Today only "full" is implemented.
 		transform?: "full" | "slim"
 	}
@@ -147,21 +147,21 @@ package profiles
 	}
 }
 
-// Profile mode A: Stage 3 builds on top of our `mlnode-base` (Stage 2).
+// Profile mode A: Stage 4 builds on top of our `mlnode-base` (Stage 3).
 // Requires mlnode + vllm versions in identity.version.
 #BaseProfile: #CommonProfile & {
 	mode: "kaitakuai-base"
 	identity: version: {
-		// Gonka mlnode source version (matches upstream commit in tools/stage2.lock.cue).
+		// Gonka mlnode source version (matches upstream commit in tools/stage3.lock.cue).
 		mlnode: =~"^[0-9]+\\.[0-9]+\\.[0-9]+"
-		// vLLM major.minor.patch baked into Stage 1 (kaitakuai/vllm PoC).
+		// vLLM major.minor.patch baked into Stage 2 (kaitakuai/vllm-poc).
 		vllm: =~"^[0-9]+\\.[0-9]+\\.[0-9]+"
 		// Kaitaku k-rev counter (see #Identity.version.rev).
 		rev: int & >=1
 	}
 }
 
-// Profile mode B: Stage 3 builds on top of an upstream binary image
+// Profile mode B: Stage 4 builds on top of an upstream binary image
 // (product-science/mlnode). Requires explicit base.image + base.digest.
 #OverlayProfile: #CommonProfile & {
 	mode: "upstream-overlay"

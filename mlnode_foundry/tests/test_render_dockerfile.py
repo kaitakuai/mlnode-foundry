@@ -1,4 +1,4 @@
-"""Tests for stage3 Dockerfile template renderer."""
+"""Tests for stage4 Dockerfile template renderer."""
 
 from __future__ import annotations
 

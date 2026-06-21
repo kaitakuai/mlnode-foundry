@@ -7,7 +7,7 @@ the single shape the dashboard renders.
 Inputs that MUST exist at render time:
   - profiles/<name>.cue                  (intent)
   - tools/model-registry.cue             (human-readable model metadata)
-  - tools/stage2.lock.cue                (cuda + base image version)
+  - tools/stage3.lock.cue                (cuda + base image version)
   - tools/naming.cue                     (package + tag composition)
 
 Inputs that CAN be passed by the workflow after push (else null):
@@ -110,8 +110,8 @@ def render_registry_view(
             f"revision={axes['model_revision']}); add it to tools/model-registry.cue"
         )
 
-    stage2_lock = cue_export(REPO_ROOT / "tools" / "stage2.lock.cue")
-    cuda = stage2_lock.get("stage1", {}).get("cuda")
+    stage3_lock = cue_export(REPO_ROOT / "tools" / "stage3.lock.cue")
+    cuda = stage3_lock.get("stage2", {}).get("cuda")
 
     mode = profile["mode"]
     is_overlay = mode == "upstream-overlay"
@@ -119,7 +119,7 @@ def render_registry_view(
 
     full_tag = f"{pkg}:{tag}"
     # SLSA L3 attestation lives INSIDE the OCI manifest (BuildKit
-    # `provenance: mode=max` + `sbom: true` in build-stage3.yml). Verifiable
+    # `provenance: mode=max` + `sbom: true` in build-stage4.yml). Verifiable
     # via `cosign verify-attestation` or `docker buildx imagetools inspect`.
     # We do NOT use `actions/attest-build-provenance`, so the GitHub
     # /attestations page is not populated for our repo. Schema keeps the

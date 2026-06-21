@@ -6,7 +6,7 @@ Each `*.py` script mutates `runner.py` (in the built image) to inject GPU+model-
 runner_patch: "b300-kimi"
 ```
 
-The Stage 3 build resolves to `tools/runner-patches/<name>.py`, COPYs it into the image at `/tmp/runner-patch.py`, runs it, and removes it.
+The Stage 4 build resolves to `tools/runner-patches/<name>.py`, COPYs it into the image at `/tmp/runner-patch.py`, runs it, and removes it.
 
 ## Inventory
 

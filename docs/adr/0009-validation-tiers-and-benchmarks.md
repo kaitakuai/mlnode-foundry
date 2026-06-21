@@ -33,7 +33,7 @@ Image is published in any state. Dashboard shows lifecycle badge. Node operators
 
 After Tier 3 the `poc-benchmark` agent (separate process, see `.claude/agents/poc-benchmark.md`) writes results to `experiments/<YYYY-MM>/<package-tag>/{README.md, nonces.json, metrics.json}` and opens an auto-PR in `mlnode-foundry` updating `state/<package-tag>.json` (status, validation.benchmark, metrics).
 
-The auto-PR does NOT trigger a Stage 3 rebuild — `state/` files are excluded from `profile_hash` input.
+The auto-PR does NOT trigger a Stage 4 rebuild — `state/` files are excluded from `profile_hash` input.
 
 ## Consequences
 

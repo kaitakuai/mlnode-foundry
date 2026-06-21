@@ -1,4 +1,4 @@
-"""Render stage3/Dockerfile.tmpl → concrete stage3/Dockerfile.rendered per profile.
+"""Render stage4/Dockerfile.tmpl → concrete stage4/Dockerfile.rendered per profile.
 
 Substitutes three placeholders:
 
@@ -19,7 +19,7 @@ This removes the fixed-list ENV ARG/ENV block that lived in the old static
 Dockerfile, so any profile can introduce arbitrary ENV vars without editing
 the template. Per-profile hw-patches selection (opt-in via the .cue
 profile's `hw_patches: [...]` list) is honoured here — fragments declared
-by a profile end up inlined into that profile's Stage 3 image; fragments
+by a profile end up inlined into that profile's Stage 4 image; fragments
 not declared are absent entirely (no /tmp/hw-patches dir, no leftover
 scripts).
 """
@@ -31,8 +31,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-TEMPLATE_PATH = REPO_ROOT / "stage3" / "Dockerfile.tmpl"
-DEFAULT_OUTPUT = REPO_ROOT / "stage3" / "Dockerfile.rendered"
+TEMPLATE_PATH = REPO_ROOT / "stage4" / "Dockerfile.tmpl"
+DEFAULT_OUTPUT = REPO_ROOT / "stage4" / "Dockerfile.rendered"
 HW_PATCHES_DIR = REPO_ROOT / "tools" / "hw-patches"
 
 
@@ -101,15 +101,15 @@ def _replace_unique(template: str, placeholder: str, value: str) -> str:
     count = template.count(placeholder)
     if count != 1:
         raise ValueError(
-            f"Stage 3 template expects exactly one occurrence of "
-            f"{placeholder!r}, found {count}. Check stage3/Dockerfile.tmpl "
+            f"Stage 4 template expects exactly one occurrence of "
+            f"{placeholder!r}, found {count}. Check stage4/Dockerfile.tmpl "
             f"for stale mentions in comments / doc headers."
         )
     return template.replace(placeholder, value)
 
 
 def render_dockerfile(profile: dict, output_path: Path = DEFAULT_OUTPUT) -> Path:
-    """Render the Stage 3 Dockerfile template for `profile` to `output_path`."""
+    """Render the Stage 4 Dockerfile template for `profile` to `output_path`."""
     template = TEMPLATE_PATH.read_text()
     env = profile.get("env", {})
     tuning_notes = profile.get("tuning_notes")

@@ -25,7 +25,7 @@ Mixing these in one file (e.g., a profile that has both intent and observed metr
 |------|----------|--------|--------|
 | Spec | `profiles/*.cue`, `profiles/bases/*.cue` | Cue | humans |
 | Schema | `profiles/schema.cue`, `state/schema.cue` | Cue | humans (rare changes) |
-| Policy | `tools/naming.cue`, `tools/runners.cue`, `tools/stage2.lock.cue` | Cue | humans (rare changes) |
+| Policy | `tools/naming.cue`, `tools/runners.cue`, `tools/stage3.lock.cue` | Cue | humans (rare changes) |
 | State | `state/<package-tag>.json` | JSON | machines (CI, agent) |
 
 Cue is the language for **human-authored intent** (composition, types, constraints, sum types). JSON is for **machine-written observations** (no need for type system at write-time; validated by Cue schema at read-time via `cue vet`).
@@ -35,7 +35,7 @@ CI workflows write `state/*.json` directly; humans don't edit these. Schema enfo
 ## Consequences
 
 - **Clean `git blame` on profiles** — only human changes
-- **No write-loop**: agent writes state.json → does NOT trigger Stage 3 rebuild (state files excluded from `profile_hash`)
+- **No write-loop**: agent writes state.json → does NOT trigger Stage 4 rebuild (state files excluded from `profile_hash`)
 - **Reset state without touching spec** — if benchmark fails or budget burns, `rm state/<x>.json` and re-run; profile untouched
 - **Auditability**: dashboard can `cosign verify` + read state.json + compare to spec.cue, all three from different sources
 

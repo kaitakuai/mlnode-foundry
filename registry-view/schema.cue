@@ -1,6 +1,6 @@
 // Package registry_view — formal shape of the dashboard-facing image entry.
 //
-// One registry-view/<package-basename>-<tag>.json file per published Stage 3
+// One registry-view/<package-basename>-<tag>.json file per published Stage 4
 // image, written by CI (mlnode_foundry.render_registry_view). Validated via
 // `cue vet registry-view/<x>.json registry-view/schema.cue` so any
 // drift between the Python renderer and dashboard contract fails in CI.
@@ -21,9 +21,9 @@ package registry_view
 	schema_version: int & >=1
 
 	// Image line — high-level grouping for dashboard filtering.
-	//   - "mlnode":         Stage 3 image built on our kaitakuai/mlnode-base.
-	//   - "mlnode-overlay": Stage 3 built directly on product-science/mlnode upstream binary.
-	// "vllm" line is reserved for future Stage 1 publishes.
+	//   - "mlnode":         Stage 4 image built on our kaitakuai/mlnode-base.
+	//   - "mlnode-overlay": Stage 4 built directly on product-science/mlnode upstream binary.
+	// "vllm" line is reserved for future Stage 2 publishes.
 	line: "mlnode" | "mlnode-overlay" | "vllm"
 
 	// Identity axes (mirrors profile.identity.axes). Each value MUST satisfy
@@ -62,8 +62,8 @@ package registry_view
 	model_context_max: null | (int & >0)     // native context window
 	model_license:     null | string         // SPDX-style identifier when available
 
-	// CUDA toolkit baked into Stage 1 base. Surfaced for compatibility hints.
-	// Null if unknown (legacy entries before tools/stage2.lock.cue had a cuda field).
+	// CUDA toolkit baked into Stage 2 base. Surfaced for compatibility hints.
+	// Null if unknown (legacy entries before tools/stage3.lock.cue had a cuda field).
 	cuda: null | =~"^[0-9]+\\.[0-9]+$"
 
 	// Humanized compressed image size for linux/amd64 platform (e.g. "15 GB").
@@ -95,7 +95,7 @@ package registry_view
 	cosign_identity: =~"^https://github\\.com/kaitakuai/mlnode-foundry/.*"
 
 	// SLSA L3 attestation URL — reserved for a publishable provenance UI surface.
-	// CURRENTLY ALWAYS NULL: our build-stage3.yml emits the SLSA provenance INSIDE
+	// CURRENTLY ALWAYS NULL: our build-stage4.yml emits the SLSA provenance INSIDE
 	// the OCI manifest (BuildKit `provenance: mode=max`); we do NOT use
 	// `actions/attest-build-provenance`, so the GitHub /attestations page would
 	// be empty for these images. Schema keeps the field for future use if Gonka

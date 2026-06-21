@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Idempotently patch the vLLM package installed in the Stage 1 base image.
+"""Idempotently patch the vLLM package installed in the Stage 2 (vllm-poc) base image.
 
 ONE universal edit for any PoC v2 image:
 
@@ -21,8 +21,8 @@ Not patched here:
     `def rms_norm()` that no longer exists in 0.20.0-pocv2 (now methods on
     an Op class with multiple forward variants). The guard there is needed
     only for NVFP4/int8 *weight* quant, which we don't deploy today.
-  - gpu_random.py @torch.compile(apply_householder): moved from Stage 2
-    (universal) to Stage 3 (opt-in) via tools/hw-patches/poc-householder-compile
+  - gpu_random.py @torch.compile(apply_householder): moved from Stage 3
+    (universal) to Stage 4 (opt-in) via tools/hw-patches/poc-householder-compile
     so Kimi-K2.6-INT4 profiles can opt out — legacy production Kimi image
     explicitly omits this decorator (see kaitakuai/mlnode-full:
     0.2.12-vllm0.20.0-b300-k5-kimi-1), and PR #36's measured +10-12% gain
@@ -30,7 +30,7 @@ Not patched here:
 
 Script is idempotent (detects already-patched files); the anchor is an
 exact regex — if vLLM upstream moves it, the script exits 1 with a clear
-pointer back to tools/stage2.lock.cue.
+pointer back to tools/stage3.lock.cue.
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ def _resolve_vllm_root() -> Path:
     /usr/local/lib/python3.12/dist-packages/vllm/)."""
     spec = importlib.util.find_spec("vllm")
     if spec is None or spec.origin is None:
-        sys.exit("ERROR: vllm package not importable; is this a Stage 1 base image?")
+        sys.exit("ERROR: vllm package not importable; is this a Stage 2 (vllm-poc) base image?")
     root = Path(spec.origin).parent
     if not root.is_dir():
         sys.exit(f"ERROR: vllm import resolved to {root!r} which is not a directory")
@@ -72,7 +72,7 @@ def _patch_poc_runner(path: Path) -> str:
     m = anchor_re.search(src)
     if m is None:
         sys.exit(f"ERROR: kv_caches scratch loop anchor not found in {path}; "
-                 "vLLM upstream moved? Verify against tools/stage2.lock.cue.")
+                 "vLLM upstream moved? Verify against tools/stage3.lock.cue.")
     indent = m.group("indent")
     insertion = (
         f"{indent}if kv.dtype in (torch.uint8, torch.int8, "

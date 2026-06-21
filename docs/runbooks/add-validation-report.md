@@ -8,7 +8,7 @@
 
 ## Pre-conditions
 
-- Image has been **published** to GHCR by the Stage 3 CI
+- Image has been **published** to GHCR by the Stage 4 CI
   (`registry-view/<package-tag>.json` exists in this repo).
 - Image has been **run on real hardware** and the operator has evidence
   of correct behaviour. Evidence MAY be a multi-batch nonce sweep with
@@ -31,7 +31,7 @@ The short-name SHOULD encode the image axes for searchability. Examples:
 Required content (concise — full operator log lives in chat, not here):
 
 - Image full ref (`ghcr.io/kaitakuai/mlnode-<gpu>-<family>-<rev>:<tag>` + digest)
-- Stage 1 / Stage 2 / Stage 3 digests so the build chain is reproducible
+- Stage 1 / Stage 2 / Stage 3 / Stage 4 digests so the build chain is reproducible
 - Hardware (provider, GPU count + model, host CPU/RAM if relevant)
 - What was tested (PoC nonce generation, /chat/completions correctness, multi-batch sweep, …)
 - Result (numeric where applicable: nonces/min, batch size, p50/p99 latency)
@@ -66,8 +66,8 @@ contains `experiments`. The first match wins.
 ### 3. (Optional, immediate effect) Patch the published `registry-view/` JSON
 
 The `registry-view/<package>-<tag>.json` for this profile is auto-generated
-by Stage 3 CI. If you do not patch it manually, the new `report_url` only
-lands when the next Stage 3 rebuild for this profile happens — possibly
+by Stage 4 CI. If you do not patch it manually, the new `report_url` only
+lands when the next Stage 4 rebuild for this profile happens — possibly
 days or weeks away.
 
 For immediate dashboard pickup, also edit the JSON in this same PR:
@@ -77,7 +77,7 @@ For immediate dashboard pickup, also edit the JSON in this same PR:
 +  "report_url": "https://github.com/kaitakuai/experiments/blob/main/<YYYY-MM>/<short-name>/README.md",
 ```
 
-This is safe: the next Stage 3 build will regenerate the same value
+This is safe: the next Stage 4 build will regenerate the same value
 deterministically from the profile change in step 2.
 
 ### 4. Record measured throughput as `nonces` (8-GPU normalized)
@@ -106,7 +106,7 @@ normalized figure before copying it).
 Why this doesn't require a rebuild: `mlnode-foundry registry-view` reads the
 existing `registry-view/<file>.json` before overwriting and **preserves
 hand-edited `nonces` / `weight`** (see `_preserve_hand_edited_metrics` in
-`cli.py`). The number persists across future Stage 3 rebuilds without
+`cli.py`). The number persists across future Stage 4 rebuilds without
 re-editing.
 
 Leave `weight` as `null` unless you have a measured Gonka PoC weight to

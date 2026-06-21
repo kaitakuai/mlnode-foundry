@@ -35,5 +35,5 @@ for i, line in enumerate(lines):
         print(f"→ {path}: patched")
         sys.exit(0)
 sys.exit(f"ERROR: `def apply_householder(` not found in {path}; "
-         f"vLLM upstream moved? Verify against tools/stage2.lock.cue.")
+         f"vLLM upstream moved? Verify against tools/stage3.lock.cue.")
 EOF

@@ -1,6 +1,6 @@
-# `patches/` — upstream source patches for Stage 2
+# `patches/` — upstream source patches for Stage 3
 
-Patches in this directory are applied by `stage2/Dockerfile.patch-and-build` to the upstream `gonka-ai/gonka` source tree (at the commit pinned in `tools/stage2.lock.cue::upstream.commit`) before invoking upstream's `mlnode/packages/api/Dockerfile`.
+Patches in this directory are applied by `stage3/Dockerfile.patch-and-build` to the upstream `gonka-ai/gonka` source tree (at the commit pinned in `tools/stage3.lock.cue::upstream.commit`) before invoking upstream's `mlnode/packages/api/Dockerfile`.
 
 ## Format
 
@@ -14,7 +14,7 @@ Standard `git format-patch -1 <sha>` output, applied via `git apply --3way`.
 
 ## Patch source / provenance
 
-Patches are extracted from upstream commits and applied on top of a clean upstream checkout. They are NOT a fork — they're independently-versioned changes layered on `tools/stage2.lock.cue::upstream.commit`.
+Patches are extracted from upstream commits and applied on top of a clean upstream checkout. They are NOT a fork — they're independently-versioned changes layered on `tools/stage3.lock.cue::upstream.commit`.
 
 `0001-content-type-middleware.patch` was extracted from commit `827d5ffe401f0482c46090fbf79ec693b385a5b0` in `gonka-ai/gonka`. Verified end-to-end on production RTX PRO 6000 SE running vLLM 0.20.0 PoC v2.
 
@@ -27,7 +27,7 @@ git -C /path/to/gonka-ai-clone format-patch -1 <sha> --stdout > patches/000N-<sh
 # Test apply
 git -C /path/to/gonka-ai-clone apply --3way --check patches/000N-<short-name>.patch
 
-# Add to stage2.lock.cue patches list (in order applied)
+# Add to stage3.lock.cue patches list (in order applied)
 ```
 
 Patches must be **commutative** — order shouldn't matter beyond standard `git apply --3way` 3-way-merge resolution.

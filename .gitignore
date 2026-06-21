@@ -26,4 +26,4 @@ build/
 # Build artifacts (transient)
 .cue/
 profiles/_resolved/
-stage3/Dockerfile.rendered
+stage4/Dockerfile.rendered
