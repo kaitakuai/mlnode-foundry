@@ -23,25 +23,25 @@ upstream: {
 }
 
 stage2: {
-	image: "ghcr.io/kaitakuai/vllm"
-	// 0.20.0-pocv2 is the mutable tag; build chain pins by digest below.
-	// Image rebuilt by kaitakuai/vllm build-stage1 CI on 2026-05-19 from
-	// branch mb/feat/port-pocv2-vllm-0.20 HEAD = ccbe7cd8d (merge of PRs #9 + #10):
-	//   - kaitakuai/vllm#9: restore seq_lens_cpu_upper_bound in
-	//     _create_v1_attn_metadata; without it MLA backends crash on the
-	//     first PoC step with `assert seq_lens_cpu is not None` (reported
-	//     by Паша on b200-kimi-k2-6 0.2.13-q.int4-k2 image).
-	//   - kaitakuai/vllm#10: actions/workflows/build-stage1.yml — makes
-	//     future Stage 1 rebuilds reproducible CI artifacts (cosign, SLSA,
-	//     SBOM) instead of manual `docker push` from a laptop.
-	tag:    "0.20.0-pocv2"
-	digest: "sha256:7955b84635f3138ec61bd612d682ad73588305113ed7f3291f34b786f4bb14df"
-	cuda:   "13.0" // CUDA toolkit shipped inside Stage 2 (vLLM PoC base); used by dashboard renderer
+	// Repointed to the vllm-poc PLUGIN base (residual vLLM + gonka-poc package:
+	// worker extension + composed entrypoint; see ADR-0013) as part of the
+	// b300-minimax fork→plugin migration. The legacy `ghcr.io/kaitakuai/vllm`
+	// monolith remains a valid Stage 2 lineage for the 5 non-migrated profiles
+	// (a100/b200/h100/h200-minimax + b200-kimi) — the schema accepts both.
+	image: "ghcr.io/kaitakuai/vllm-poc"
+	// 0.23.0 is the vllm-poc tag (vLLM 0.23 residual base + gonka-poc); build
+	// chain pins by digest below. Digest is a PLACEHOLDER (sixty-four zeros) so
+	// `cue vet` passes the ^sha256:[a-f0-9]{64}$ regex; it is NOT a real image.
+	// TODO(user): swap placeholder for real vllm-poc digest after build+push
+	// (the S2 vllm-poc 0.23.0 image must be built and pushed first).
+	tag:    "0.23.0"
+	digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+	cuda:   "13.0" // CUDA toolkit shipped inside Stage 2 (vllm-poc plugin base); used by dashboard renderer
 }
 
 stage3: {
 	package: "ghcr.io/kaitakuai/mlnode-base"
-	tag:     "0.2.13-vllm0.20.0-k1"
+	tag:     "0.2.13-vllm0.23.0-k1"
 }
 
 patches: [

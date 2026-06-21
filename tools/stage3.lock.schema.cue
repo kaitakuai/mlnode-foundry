@@ -43,20 +43,30 @@ package tools
 }
 
 #Stage2: {
-	// Full GHCR package path (no tag) of the kaitakuai/vllm PoC base.
-	image: =~"^ghcr\\.io/kaitakuai/vllm$"
+	// Full GHCR package path (no tag) of the Stage 2 base. Either the
+	// vllm-poc plugin base (residual + gonka-poc) OR the legacy vllm monolith.
+	// `vllm`     → legacy fat-fork monolith (PoC math baked into the vLLM tree).
+	// `vllm-poc` → plugin base: official-style residual vLLM + the gonka-poc
+	//              package (worker extension + composed entrypoint) layered on top
+	//              (see ADR-0013). Both are valid Stage 2 publish targets during
+	//              the fork→plugin migration; profiles pick which lineage they
+	//              build on via the digest pinned in stage2.digest below.
+	image: =~"^ghcr\\.io/kaitakuai/vllm(-poc)?$"
 
-	// Human-readable tag of the Stage 2 (vllm-poc) image. NOT used for builds (digest is);
+	// Human-readable tag of the Stage 2 base image. NOT used for builds (digest is);
 	// kept for traceability and dashboard. Must not be 'latest' (mutable tag policy).
+	// vllm-poc plugin base (residual + gonka-poc) OR legacy vllm monolith.
 	tag: string & !="latest"
 
-	// Immutable content-addressable Stage 2 (vllm-poc) digest. THIS is what build-stage3
+	// Immutable content-addressable Stage 2 digest. THIS is what build-stage3
 	// passes as --build-arg BASE_IMAGE. Pinning to the digest, not the tag, is
-	// the only way to guarantee Stage 3 reproducibility.
+	// the only way to guarantee Stage 3 reproducibility. Points at either the
+	// vllm-poc plugin base (residual + gonka-poc) OR the legacy vllm monolith.
 	digest: =~"^sha256:[a-f0-9]{64}$"
 
-	// CUDA toolkit version baked into Stage 2 (vllm-poc base). Surfaced in registry-view's
-	// `cuda` field so the dashboard can render compatibility info.
+	// CUDA toolkit version baked into Stage 2 (vllm-poc plugin base, residual +
+	// gonka-poc, OR legacy vllm monolith). Surfaced in registry-view's `cuda`
+	// field so the dashboard can render compatibility info.
 	cuda: =~"^[0-9]+\\.[0-9]+$"
 }
 

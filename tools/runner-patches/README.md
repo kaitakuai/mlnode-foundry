@@ -14,6 +14,7 @@ The Stage 4 build resolves to `tools/runner-patches/<name>.py`, COPYs it into th
 |-------|--------------|
 | `b300.py` | B300 Qwen baseline: forces TP=1, gpu_memory_utilization=0.95, max_model_len, logprobs_mode=processed |
 | `b300-kimi.py` | B300 Kimi-K2.6 INT4: forces TP=4, max_num_batched_tokens=131072, compilation mode=0, cudagraph=NONE |
+| `b300-minimax-plugin.py` | B300 MiniMax-M2.7 on the vllm-poc PLUGIN base: forces `--worker-extension-cls gonka_poc.worker.PoCWorkerExtension`, `--enforce-eager`, `--logprobs-mode processed_logprobs`, `--attention-backend FLASHINFER`. Governance args (max-model-len/kv-cache-dtype/parsers) NOT re-injected — they flow from the DAPI broadcast. |
 | `cold-start-tolerance.py` | Patches WAIT_FOR_SERVER_TIMEOUT + watcher grace window for slow cold starts |
 
 ## Style guidelines
