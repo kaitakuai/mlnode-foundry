@@ -3,7 +3,7 @@
 Build pipeline for Kaitaku-tuned mlnode container images.
 
 > **Status:** Phase 1 (Discovery spike). One profile (`b300-kimi-int4`) builds
-> locally end-to-end. Real Stage 2, CI, and full profile set land in PR #1-#3.
+> locally end-to-end. Real Stage 3, CI, and full profile set land in PR #1-#3.
 > See architecture in [`docs/architecture.md`](./docs/architecture.md) and
 > [implementation epic](https://github.com/kaitakuai/mlnode-foundry/issues/7).
 
@@ -46,7 +46,7 @@ mlnode-foundry/
 │   ├── cue.py                # subprocess wrapper for `cue` CLI
 │   ├── render_bake.py        # profile + naming → buildx args + tag
 │   └── validate.py           # `cue vet` runner
-├── stage3/
+├── stage4/
 │   └── Dockerfile            # parameterized via build-args
 ├── docs/
 │   └── architecture.md       # full architecture spec

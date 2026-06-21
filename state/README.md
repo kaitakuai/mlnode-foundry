@@ -6,8 +6,8 @@ This directory holds **machine-written** JSON files recording what actually happ
 
 | Who writes | What | When |
 |------------|------|------|
-| `build-stage3.yml` workflow | `state/mlnode-<gpu>-<model>-<tag>.json` initial entry + `status: draft` | After successful Stage 3 build + push |
-| `build-stage2.yml` workflow | `state/_stage2-vllm-env.json` (introspected vLLM env vars) | After Stage 2 build |
+| `build-stage4.yml` workflow | `state/mlnode-<gpu>-<model>-<tag>.json` initial entry + `status: draft` | After successful Stage 4 build + push |
+| `build-stage3.yml` workflow | `state/_stage3-vllm-env.json` (introspected vLLM env vars) | After Stage 3 build |
 | `poc-benchmark` agent | Updates `validation.benchmark`, `metrics`, `status: benchmarked` | After Tier 3 benchmark run; opens auto-PR to this repo |
 | CI workflows | `status: validated` (Tier 2 pass) | After GPU smoke test |
 

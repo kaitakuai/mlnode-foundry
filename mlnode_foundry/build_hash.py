@@ -5,9 +5,9 @@ The hash covers everything that influences the resulting image:
   - schema.cue (changes invalidate validation logic)
   - all bases referenced via `bases.X` (resolved by `cue export`)
   - naming.cue (changes invalidate tag computation)
-  - stage3/Dockerfile.tmpl (template changes)
-  - tools/stage2.lock.cue (Stage 2 pin)
-  - patches/*.patch + stage2/scripts/*.py (Stage 2 lineage)
+  - stage4/Dockerfile.tmpl (template changes)
+  - tools/stage3.lock.cue (Stage 3 pin)
+  - patches/*.patch + stage3/scripts/*.py (Stage 3 lineage)
   - tools/hw-patches/<name>.dockerfile for each name in profile.hw_patches
   - tools/runner-patches/<name>.py if profile.runner_patch is non-empty
 
@@ -36,35 +36,35 @@ def _hash_file(path: Path) -> bytes:
 def compute_profile_hash(name: str) -> str:
     """Compute SHA-256 hex of all inputs that affect this profile's build.
 
-    Includes both Stage 3 inputs (profile, schema, naming, Dockerfile.tmpl,
-    bases/) AND the Stage 2 lineage (Dockerfile.patch-and-build, patches/*,
-    stage2/scripts/*). Without the Stage 2 inputs, a vLLM patch added in
-    Stage 2 would silently fail to invalidate Stage 3 skip-if-unchanged,
-    because Stage 3 pulls Stage 2 by TAG (not digest) so the BASE_IMAGE
+    Includes both Stage 4 inputs (profile, schema, naming, Dockerfile.tmpl,
+    bases/) AND the Stage 3 lineage (Dockerfile.patch-and-build, patches/*,
+    stage3/scripts/*). Without the Stage 3 inputs, a vLLM patch added in
+    Stage 3 would silently fail to invalidate Stage 4 skip-if-unchanged,
+    because Stage 4 pulls Stage 3 by TAG (not digest) so the BASE_IMAGE
     build-arg stays the same while the underlying image content changes.
     """
     inputs = [
         REPO_ROOT / "profiles" / f"{name}.cue",
         REPO_ROOT / "profiles" / "schema.cue",
         REPO_ROOT / "tools" / "naming.cue",
-        REPO_ROOT / "tools" / "stage2.lock.cue",
+        REPO_ROOT / "tools" / "stage3.lock.cue",
         REPO_ROOT / "tools" / "model-registry.cue",
-        REPO_ROOT / "stage3" / "Dockerfile.tmpl",
-        REPO_ROOT / "stage2" / "Dockerfile.patch-and-build",
+        REPO_ROOT / "stage4" / "Dockerfile.tmpl",
+        REPO_ROOT / "stage3" / "Dockerfile.patch-and-build",
     ]
     bases_dir = REPO_ROOT / "profiles" / "bases"
     if bases_dir.is_dir():
         inputs.extend(sorted(bases_dir.glob("*.cue")))
 
-    # Source-level patches applied in Stage 2 Stage A (alpine/git container).
+    # Source-level patches applied in Stage 3 Stage A (alpine/git container).
     patches_dir = REPO_ROOT / "patches"
     if patches_dir.is_dir():
         inputs.extend(sorted(patches_dir.glob("*.patch")))
 
-    # In-image vLLM patchers run in Stage 2 Stage B (after Stage 1 inheritance).
-    stage2_scripts = REPO_ROOT / "stage2" / "scripts"
-    if stage2_scripts.is_dir():
-        inputs.extend(sorted(stage2_scripts.glob("*.py")))
+    # In-image vLLM patchers run in Stage 3 Stage B (after Stage 2 inheritance).
+    stage3_scripts = REPO_ROOT / "stage3" / "scripts"
+    if stage3_scripts.is_dir():
+        inputs.extend(sorted(stage3_scripts.glob("*.py")))
 
     # Per-profile hw-patches the profile actually opts into (resolved via cue export).
     # Editing a fragment a given profile DOESN'T use must NOT invalidate that

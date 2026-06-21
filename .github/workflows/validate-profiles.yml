@@ -11,6 +11,7 @@ on:
       - 'state/**'
       - 'patches/**'
       - 'stage3/**'
+      - 'stage4/**'
       - 'mlnode_foundry/**'
       - 'pyproject.toml'
       - 'mise.toml'
@@ -42,8 +43,8 @@ jobs:
       - name: cue vet (all packages)
         run: cue vet ./...
 
-      - name: cue vet — stage2.lock against schema
-        run: cue vet tools/stage2.lock.cue tools/stage2.lock.schema.cue
+      - name: cue vet — stage3.lock against schema
+        run: cue vet tools/stage3.lock.cue tools/stage3.lock.schema.cue
 
       - name: cue vet — existing registry-view JSON files against #RegistryView
         run: |
@@ -57,7 +58,7 @@ jobs:
         run: |
           shopt -s nullglob
           for f in state/*.json; do
-            # _stage2-vllm-env.json has a different shape (no #State); skip
+            # _stage3-vllm-env.json has a different shape (no #State); skip
             case "$f" in
               state/_*) echo "  (skip $f — meta file, not #State-shaped)"; continue ;;
             esac

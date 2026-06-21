@@ -78,7 +78,7 @@ def _preserve_hand_edited_metrics(view: dict, output_path: Path) -> dict:
       2. Operator tests the image on real hardware, measures throughput.
       3. Operator opens a small PR editing only `registry-view/<file>.json` to set
          `"nonces": <8-GPU-normalized-count>` (no profile change, no rebuild).
-      4. Some later commit triggers Stage 3 rebuild of this profile. This
+      4. Some later commit triggers Stage 4 rebuild of this profile. This
          function reads the EXISTING registry-view JSON before overwriting,
          finds the hand-edited number, and carries it forward into the
          fresh render — so the rebuild does NOT regress the dashboard chip
@@ -144,11 +144,11 @@ def registry_view_cmd(
 def render_dockerfile_cmd(
     profile: str,
     output: Path = typer.Option(  # noqa: B008
-        REPO_ROOT / "stage3" / "Dockerfile.rendered",
+        REPO_ROOT / "stage4" / "Dockerfile.rendered",
         help="Where to write the rendered Dockerfile.",
     ),
 ) -> None:
-    """Render stage3/Dockerfile.tmpl for a profile (substitute ENV block + tuning label)."""
+    """Render stage4/Dockerfile.tmpl for a profile (substitute ENV block + tuning label)."""
     from .render_dockerfile import render_dockerfile
 
     p = load_profile(profile)

@@ -60,7 +60,7 @@ package state
 
 	// Per-tier validation results. Tier names are free-form so new tiers can
 	// be added without schema bumps, but conventional keys are:
-	//   - "build_smoke":  Stage 3 RUN steps completed without error.
+	//   - "build_smoke":  Stage 4 RUN steps completed without error.
 	//   - "tier1_local":  local single-prompt smoke on developer hardware.
 	//   - "tier2_remote": remote single-instance soak (1-hour) on target GPU.
 	//   - "tier3_pocv2":  full PoC v2 nonce generation benchmark.

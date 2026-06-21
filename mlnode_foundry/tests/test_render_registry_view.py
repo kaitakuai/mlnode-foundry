@@ -61,11 +61,11 @@ def test_report_url_none_when_no_url_notes() -> None:
 
 
 def test_render_registry_view_b200_kimi_int4() -> None:
-    """End-to-end render: profile + model-registry + stage2.lock → dashboard JSON."""
+    """End-to-end render: profile + model-registry + stage3.lock → dashboard JSON."""
     view = render_registry_view(
         "b200-kimi-k2-6",
         digest="sha256:" + "a" * 64,
-        cosign_identity="https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage3.yml@refs/heads/main",
+        cosign_identity="https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main",
         size="42 GB",
     )
     assert view["line"] == "mlnode"

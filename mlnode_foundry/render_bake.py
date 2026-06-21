@@ -1,12 +1,12 @@
 """Render profile → docker buildx build args.
 
 Resolves BASE_IMAGE per profile.mode:
-- `kaitakuai-base`: from tools/stage2.lock.cue (Stage 2 published image)
+- `kaitakuai-base`: from tools/stage3.lock.cue (Stage 3 published image)
 - `upstream-overlay`: from profile.base (explicit image+digest)
 
-Falls back to SPIKE_BASE_IMAGE if Stage 2 hasn't been published yet (set
+Falls back to SPIKE_BASE_IMAGE if Stage 3 hasn't been published yet (set
 via MLNODE_FOUNDRY_SPIKE_BASE env var; useful for local dev before CI runs
-build-stage2 for the first time).
+build-stage3 for the first time).
 """
 
 from __future__ import annotations
@@ -38,9 +38,9 @@ def load_profile(name: str) -> dict:
     return data[key]
 
 
-def load_stage2_lock() -> dict:
-    """Load tools/stage2.lock.cue."""
-    return cue_export(REPO_ROOT / "tools" / "stage2.lock.cue")
+def load_stage3_lock() -> dict:
+    """Load tools/stage3.lock.cue."""
+    return cue_export(REPO_ROOT / "tools" / "stage3.lock.cue")
 
 
 def resolve_base_image(profile: dict) -> str:
@@ -50,11 +50,11 @@ def resolve_base_image(profile: dict) -> str:
 
     mode = profile["mode"]
     if mode == "kaitakuai-base":
-        lock = load_stage2_lock()
-        s2 = lock["stage2"]
+        lock = load_stage3_lock()
+        s3 = lock["stage3"]
         # Use tag reference; CI verifies digest separately.
-        # Phase 4 will switch to digest pinning once stage 2 publishes consistently.
-        return f"{s2['package']}:{s2['tag']}"
+        # Phase 4 will switch to digest pinning once stage 3 publishes consistently.
+        return f"{s3['package']}:{s3['tag']}"
     elif mode == "upstream-overlay":
         base = profile.get("base", {})
         digest = base.get("digest")

@@ -79,7 +79,7 @@ b200_kimi_k2_6: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
 		{
 			knob:     "validation-report"
 			source:   "https://github.com/kaitakuai/experiments/blob/main/2026-05/kimi_k26_int4_4xb200_q-int4-k2/README.md"
-			reason:   "Hardware validation report — 4×B200 (Vast.ai), PoC nonces flowing, no MLA assert after kaitakuai/vllm#9 (seq_lens_cpu_upper_bound restore in Stage 1). First tuning_note with an experiments URL → picked up by render_registry_view._report_url as the image's report_url (dashboard ‘verified’ chip)."
+			reason:   "Hardware validation report — 4×B200 (Vast.ai), PoC nonces flowing, no MLA assert after kaitakuai/vllm#9 (seq_lens_cpu_upper_bound restore in Stage 2). First tuning_note with an experiments URL → picked up by render_registry_view._report_url as the image's report_url (dashboard ‘verified’ chip)."
 			added_at: "2026-05-21"
 		},
 		// IMPORTANT: `knob` MUST exactly match the chip label rendered on the

@@ -2,7 +2,7 @@
 #
 # Two-tier policy:
 #   - infra files (Cue schemas, naming policy, build tools, CI workflows,
-#     Stage 2 lock) require dev-pair review
+#     Stage 3 lock) require dev-pair review
 #   - profiles/*.cue can be reviewed by any maintainer (including researchers)
 #
 # Update @kaitakuai/maintainers and @kaitakuai/infra teams in github org settings.
@@ -16,9 +16,9 @@
 /profiles/schema.cue           @kaitakuai/infra
 /profiles/bases/               @kaitakuai/infra
 /state/schema.cue              @kaitakuai/infra
-/stage2/                       @kaitakuai/infra
-/stage3/Dockerfile             @kaitakuai/infra
-/stage3/docker-bake.hcl        @kaitakuai/infra
+/stage3/                       @kaitakuai/infra
+/stage4/Dockerfile             @kaitakuai/infra
+/stage4/docker-bake.hcl        @kaitakuai/infra
 /mlnode_foundry/               @kaitakuai/infra
 /.github/workflows/            @kaitakuai/infra
 /pyproject.toml                @kaitakuai/infra

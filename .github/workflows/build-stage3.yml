@@ -1,183 +1,37 @@
 name: build-stage3
 
-# Builds and publishes Stage 3 per-(GPU, model) image for each profile.
-#
-# Matrix selection rules:
-#   - push (default): ONLY leaf profiles whose `profiles/<name>.cue` changed
-#     in this push are rebuilt. Changes to profiles/bases/, stage2/, tools/,
-#     stage3/, patches/, mlnode_foundry/, or the workflow itself do NOT
-#     trigger auto-rebuild — by design — even though they may invalidate
-#     the profile_hash of every profile. Operator must explicitly
-#     `workflow_dispatch` with empty `profile` to do a full-matrix rebuild
-#     in those cases.
-#   - workflow_dispatch + non-empty `profile`: pattern-matched subset
-#     (exact name, comma list, or glob — e.g. `*-minimax-m2-7`).
-#   - workflow_dispatch + empty `profile`: full matrix (explicit
-#     operator intent to rebuild everything).
-#
-# Per profile:
-#   1. Resolve BASE_IMAGE from tools/stage2.lock.cue (or profile.base for overlay-mode)
-#   2. Compute profile_hash; skip if matching GHCR tag exists (skip-if-unchanged)
-#   3. Build via stage3/Dockerfile with hw-patches + runner-patch applied
-#   4. Push to GHCR
-#   5. Sign with cosign keyless
-#   6. Write + commit state/<package-tag>.json
+# Builds Stage 3 (kaitakuai/mlnode-base) image:
+#   1. Clone upstream gonka-ai/gonka at pinned commit
+#   2. Apply patches/*.patch to source tree
+#   3. Build via stage3/Dockerfile.patch-and-build with Stage 2 (vllm-poc) digest as BASE_IMAGE
+#   4. Push to ghcr.io/kaitakuai/mlnode-base
+#   5. Sign with cosign keyless via OIDC
+#   6. Introspect vLLM ENV vars, commit state/_stage3-vllm-env.json
 
 on:
   push:
     branches: [main]
-    # Narrowed to ONLY paths whose change can be auto-mapped to a specific
-    # leaf profile. Other paths (bases, stage2, tools, etc.) can still
-    # invalidate profile_hashes, but rebuilding on them is gated behind
-    # explicit `workflow_dispatch` so push noise doesn't trigger the full
-    # 12-profile matrix unintentionally. See module header for rationale.
     paths:
-      - 'profiles/*.cue'
+      - 'tools/stage3.lock.cue'
+      - 'patches/**'
+      - 'stage3/**'
       - '.github/workflows/build-stage3.yml'
   workflow_dispatch:
-    inputs:
-      profile:
-        description: |
-          Profile selector: empty = ALL profiles (full matrix); or exact name
-          (`b300-kimi-k2-6-int4`); or comma-separated list
-          (`b200-minimax-m2-7,h200-minimax-m2-7`); or glob (`*-minimax-m2-7`);
-          or any mix (`*-kimi-*,b300-qwen3-235b-a22b`).
-        required: false
-        type: string
-      force:
-        description: 'Force rebuild even if profile_hash unchanged'
-        required: false
-        type: boolean
-        default: false
 
 permissions:
-  contents: write
-  id-token: write
-  packages: write
-  attestations: write
+  contents: write       # commit state/_stage3-vllm-env.json
+  id-token: write       # cosign keyless OIDC
+  packages: write       # GHCR push
+  attestations: write   # SLSA provenance
 
 concurrency:
-  # Workflow-level concurrency; per-profile concurrency handled by job-level matrix.
   group: build-stage3-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: false   # don't interrupt mid-publish
 
 jobs:
-  matrix:
-    # Compute matrix from event:
-    #   - push           → only leaf profiles whose `profiles/<name>.cue` changed in the push
-    #   - dispatch + sel → pattern-matched subset (exact / comma / glob)
-    #   - dispatch + ∅   → ALL profiles (full matrix)
-    runs-on: ubuntu-latest
-    outputs:
-      profiles: ${{ steps.set.outputs.profiles }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          # Full history so `git diff $before $after` works on the push event.
-          fetch-depth: 0
-      - id: set
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          PROFILE_INPUT: ${{ inputs.profile }}
-          PUSH_BEFORE: ${{ github.event.before }}
-          PUSH_AFTER: ${{ github.event.after }}
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-
-          ls_all_profiles() {
-            ls profiles/*.cue 2>/dev/null \
-              | grep -v '^profiles/schema\.cue$' \
-              | sed 's|^profiles/||; s|\.cue$||'
-          }
-
-          case "$EVENT_NAME" in
-            workflow_dispatch)
-              if [ -n "$PROFILE_INPUT" ]; then
-                # Mode: explicit pattern selector (exact name, comma list, glob).
-                # Only top-level profiles/*.cue are scanned (bases/ excluded).
-                IFS=',' read -ra PATTERNS <<< "$PROFILE_INPUT"
-                declare -a matched=()
-                for raw in "${PATTERNS[@]}"; do
-                  pat="${raw#"${raw%%[![:space:]]*}"}"; pat="${pat%"${pat##*[![:space:]]}"}"
-                  [ -z "$pat" ] && continue
-                  hit=0
-                  for f in profiles/${pat}.cue; do
-                    # nullglob suppresses unmatched globs but a literal path with no
-                    # wildcards still iterates over its literal value — check existence.
-                    [ -f "$f" ] || continue
-                    base=$(basename "$f" .cue)
-                    [ "$base" = "schema" ] && continue
-                    matched+=("$base")
-                    hit=1
-                  done
-                  [ "$hit" -eq 0 ] && echo "::warning::Pattern '$pat' matched 0 profiles"
-                done
-                if [ ${#matched[@]} -eq 0 ]; then
-                  echo "::error::Profile selector '$PROFILE_INPUT' matched 0 profiles"
-                  exit 1
-                fi
-                PROFILES=$(printf '%s\n' "${matched[@]}" | sort -u | jq -R . | jq -s -c .)
-                echo "Mode: workflow_dispatch with selector '$PROFILE_INPUT'"
-              else
-                # Mode: dispatch + empty input = explicit "rebuild all".
-                PROFILES=$(ls_all_profiles | jq -R . | jq -s -c .)
-                echo "Mode: workflow_dispatch with empty profile input (rebuild ALL)"
-              fi
-              ;;
-
-            push)
-              # Mode: only leaf profiles whose `profiles/<name>.cue` changed in this push.
-              if [ -z "$PUSH_BEFORE" ] || [ "$PUSH_BEFORE" = "0000000000000000000000000000000000000000" ]; then
-                echo "::warning::Push event has no 'before' SHA (initial branch push?); cannot compute diff. Use workflow_dispatch to build profiles explicitly."
-                PROFILES="[]"
-              else
-                # Restrict diff to profiles/ dir; post-filter to top-level *.cue,
-                # excluding schema. Bases (profiles/bases/*.cue) are intentionally
-                # excluded — base changes affect many profiles and require an
-                # explicit dispatch.
-                #
-                # `--diff-filter=d` EXCLUDES files that were deleted between
-                # $PUSH_BEFORE and $PUSH_AFTER. Without this, a cleanup commit
-                # that removes profiles drags those deleted names into the
-                # build matrix; each job then crashes at "Compute tag + hash"
-                # because load_profile() can't find the file (and the cleanup
-                # commit's whole point was that we don't want to build them).
-                set +o pipefail
-                CHANGED=$(git diff --name-only --diff-filter=d "$PUSH_BEFORE" "$PUSH_AFTER" -- profiles/ \
-                  | grep -E '^profiles/[^/]+\.cue$' \
-                  | grep -v '^profiles/schema\.cue$' \
-                  | sed 's|^profiles/||; s|\.cue$||')
-                set -o pipefail
-                if [ -z "$CHANGED" ]; then
-                  echo "::notice::Push touched watched paths but no leaf profile .cue changed. To rebuild after bases/, stage2/, tools/, patches/, or mlnode_foundry/ changes, run workflow_dispatch with empty 'profile' input."
-                  PROFILES="[]"
-                else
-                  PROFILES=$(printf '%s\n' $CHANGED | sort -u | jq -R . | jq -s -c .)
-                fi
-                echo "Mode: push — changed-leaf only (diff $PUSH_BEFORE..$PUSH_AFTER)"
-              fi
-              ;;
-
-            *)
-              echo "::error::Unsupported event_name: $EVENT_NAME"
-              exit 1
-              ;;
-          esac
-
-          echo "profiles=$PROFILES" >> "$GITHUB_OUTPUT"
-          echo "Matrix profiles: $PROFILES"
-
   build:
-    needs: matrix
-    if: needs.matrix.outputs.profiles != '[]'
-    strategy:
-      max-parallel: 4
-      fail-fast: false
-      matrix:
-        profile: ${{ fromJson(needs.matrix.outputs.profiles) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -188,62 +42,39 @@ jobs:
           android: true
           dotnet: true
           haskell: true
-          large-packages: false
-          docker-images: false
+          large-packages: false   # too slow
+          docker-images: false    # we'll prune our own
 
-      - name: Install mise + tools
+      - name: Install mise + cue
         uses: jdx/mise-action@v2
         with:
           version: 2026.3.17
           install: true
           cache: true
 
-      - name: Install mlnode-foundry CLI
+      - name: Resolve stage3.lock.cue values
+        id: lock
         run: |
-          python -m venv .venv
-          .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install -e .
-
-      - name: Compute tag + hash
-        id: meta
-        run: |
-          PROFILE="${{ matrix.profile }}"
-          FULL_TAG=$(.venv/bin/mlnode-foundry tag "$PROFILE")
-          PROFILE_HASH=$(.venv/bin/mlnode-foundry hash "$PROFILE")
-          # Split into package and tag
-          PACKAGE_NAME="${FULL_TAG%:*}"
-          TAG="${FULL_TAG#*:}"
+          # Use cue export to get JSON, then jq for field access
+          LOCK_JSON=$(cue export tools/stage3.lock.cue)
+          UPSTREAM_REPO=$(echo "$LOCK_JSON" | jq -r '.upstream.repo')
+          UPSTREAM_COMMIT=$(echo "$LOCK_JSON" | jq -r '.upstream.commit')
+          MLNODE_VERSION=$(echo "$LOCK_JSON" | jq -r '.upstream.mlnode_version')
+          STAGE2_IMAGE=$(echo "$LOCK_JSON" | jq -r '.stage2.image')
+          STAGE2_DIGEST=$(echo "$LOCK_JSON" | jq -r '.stage2.digest')
+          STAGE3_PACKAGE=$(echo "$LOCK_JSON" | jq -r '.stage3.package')
+          STAGE3_TAG=$(echo "$LOCK_JSON" | jq -r '.stage3.tag')
+          VLLM_VERSION=$(echo "$LOCK_JSON" | jq -r '.stage2.tag' | sed 's/-poc.*$//; s/^v//')
           {
-            echo "profile=$PROFILE"
-            echo "package_name=$PACKAGE_NAME"
-            echo "tag=$TAG"
-            echo "full_tag=$FULL_TAG"
-            echo "profile_hash=$PROFILE_HASH"
+            echo "upstream_repo=$UPSTREAM_REPO"
+            echo "upstream_commit=$UPSTREAM_COMMIT"
+            echo "mlnode_version=$MLNODE_VERSION"
+            echo "base_image=$STAGE2_IMAGE@$STAGE2_DIGEST"
+            echo "stage3_full_tag=$STAGE3_PACKAGE:$STAGE3_TAG"
+            echo "vllm_version=$VLLM_VERSION"
           } >> "$GITHUB_OUTPUT"
-          echo "=== Profile metadata ==="
-          echo "Profile: $PROFILE"
-          echo "Tag: $FULL_TAG"
-          echo "Hash: $PROFILE_HASH"
-
-      - name: Skip-if-unchanged
-        id: skip
-        if: ${{ !inputs.force }}
-        continue-on-error: true
-        run: |
-          # Check if image with matching profile_hash label exists
-          EXISTING_HASH=$(docker buildx imagetools inspect --raw "${{ steps.meta.outputs.full_tag }}" 2>/dev/null \
-            | jq -r '.. | objects | select(.["io.containerd.image.config"]? != null) | .["io.containerd.image.config"]["Labels"]["gonka.kaitaku.profile_hash"]' \
-            2>/dev/null | head -1 || echo "")
-          if [ "$EXISTING_HASH" = "${{ steps.meta.outputs.profile_hash }}" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "✓ Image with matching profile_hash already exists; skipping rebuild"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "Existing hash: '$EXISTING_HASH', new: '${{ steps.meta.outputs.profile_hash }}' — rebuild needed"
-          fi
 
       - name: Login to GHCR
-        if: steps.skip.outputs.skip != 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -251,132 +82,83 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        if: steps.skip.outputs.skip != 'true'
         uses: docker/setup-buildx-action@v3
-
-      - name: Render Stage 3 Dockerfile + build-args
-        if: steps.skip.outputs.skip != 'true'
-        id: args
-        run: |
-          # Render stage3/Dockerfile.rendered with profile-specific ENV + tuning label.
-          .venv/bin/mlnode-foundry render-dockerfile "${{ matrix.profile }}"
-          # Compute build-args (identity + base image; ENV is baked into rendered Dockerfile).
-          BUILD_ARGS=$(.venv/bin/python -c "
-          from mlnode_foundry.render_bake import load_profile, render_build_args
-          from mlnode_foundry.render_name_tag import load_naming, render_package_and_tag
-          from mlnode_foundry.build_hash import compute_profile_hash
-          p = load_profile('${{ matrix.profile }}')
-          naming = load_naming()
-          pkg, tag = render_package_and_tag(p, naming)
-          ph = compute_profile_hash('${{ matrix.profile }}')
-          args = render_build_args(p, pkg, tag, ph)
-          for k, v in args.items():
-              print(f'{k}={v}')
-          ")
-          {
-            echo "build_args<<EOF"
-            echo "$BUILD_ARGS"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
 
       - name: Build and push Stage 3
-        if: steps.skip.outputs.skip != 'true'
         id: build
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: stage3/Dockerfile.rendered
+          file: stage3/Dockerfile.patch-and-build
           push: true
-          tags: ${{ steps.meta.outputs.full_tag }}
+          tags: ${{ steps.lock.outputs.stage3_full_tag }}
+          target: app
           provenance: mode=max
           sbom: true
-          cache-from: type=registry,ref=${{ steps.meta.outputs.package_name }}:buildcache
-          cache-to: type=registry,ref=${{ steps.meta.outputs.package_name }}:buildcache,mode=max
-          build-args: ${{ steps.args.outputs.build_args }}
+          cache-from: type=registry,ref=${{ steps.lock.outputs.stage3_full_tag }}-buildcache
+          cache-to: type=registry,ref=${{ steps.lock.outputs.stage3_full_tag }}-buildcache,mode=max
+          build-args: |
+            BASE_IMAGE=${{ steps.lock.outputs.base_image }}
+            UPSTREAM_REPO=${{ steps.lock.outputs.upstream_repo }}
+            UPSTREAM_COMMIT=${{ steps.lock.outputs.upstream_commit }}
+            MLNODE_VERSION=${{ steps.lock.outputs.mlnode_version }}
+            VLLM_VERSION=${{ steps.lock.outputs.vllm_version }}
 
       - name: Install cosign
-        if: steps.skip.outputs.skip != 'true'
         uses: sigstore/cosign-installer@v3
 
       - name: Cosign keyless sign
-        if: steps.skip.outputs.skip != 'true'
         run: |
-          cosign sign --yes ${{ steps.meta.outputs.package_name }}@${{ steps.build.outputs.digest }}
+          cosign sign --yes ${{ steps.lock.outputs.stage3_full_tag }}@${{ steps.build.outputs.digest }}
 
-      - name: Write state/<package-tag>.json
-        if: steps.skip.outputs.skip != 'true'
+      - name: Introspect vLLM ENV vars
         run: |
+          # Pull a fresh copy of our newly-published stage3 image
+          DIGEST="${{ steps.build.outputs.digest }}"
+          IMAGE="${{ steps.lock.outputs.stage3_full_tag }}@$DIGEST"
+          # Run a brief container to extract vllm.envs.__all__
+          ENVS_JSON=$(docker run --rm --entrypoint /bin/sh "$IMAGE" -c '
+            python3 -c "
+          import json
+          try:
+              from vllm import envs
+              names = sorted([n for n in dir(envs) if n.isupper() and not n.startswith(\"_\")])
+              print(json.dumps({\"vllm_env_names\": names, \"vllm_envs_count\": len(names)}))
+          except Exception as e:
+              print(json.dumps({\"error\": str(e), \"vllm_env_names\": [], \"vllm_envs_count\": 0}))
+          "
+          ') || echo '{"error": "container run failed", "vllm_env_names": [], "vllm_envs_count": 0}'
+          # Write state/_stage3-vllm-env.json with snapshot metadata
           mkdir -p state
-          PACKAGE_BASENAME=$(echo "${{ steps.meta.outputs.package_name }}" | sed 's|.*/||')
-          STATE_FILE="state/${PACKAGE_BASENAME}-${{ steps.meta.outputs.tag }}.json"
           jq -n \
-            --arg profile "profiles/${{ matrix.profile }}.cue" \
-            --arg profile_hash "${{ steps.meta.outputs.profile_hash }}" \
-            --arg package "${{ steps.meta.outputs.package_name }}" \
-            --arg tag "${{ steps.meta.outputs.tag }}" \
-            --arg digest "${{ steps.build.outputs.digest }}" \
+            --arg stage3_image "${{ steps.lock.outputs.stage3_full_tag }}" \
+            --arg digest "$DIGEST" \
             --arg built_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg identity "https://github.com/${{ github.repository }}/.github/workflows/build-stage3.yml@${{ github.ref }}" \
+            --argjson envs "$ENVS_JSON" \
             '{
-              profile: $profile,
-              profile_hash: $profile_hash,
-              status: "draft",
-              image: {
-                package: $package,
-                tag: $tag,
-                digest: $digest,
-                built_at: $built_at,
-                cosign_identity: $identity
-              },
-              validation: {
-                build_smoke: { result: "pass", at: $built_at }
-              }
-            }' > "$STATE_FILE"
-          echo "=== $STATE_FILE ==="
-          cat "$STATE_FILE"
-          echo "state_file=$STATE_FILE" >> "$GITHUB_ENV"
+              stage3_image: $stage3_image,
+              digest: $digest,
+              built_at: $built_at,
+              vllm: $envs
+            }' > state/_stage3-vllm-env.json
+          echo "=== state/_stage3-vllm-env.json ==="
+          cat state/_stage3-vllm-env.json
 
-      - name: Validate state against schema
-        if: steps.skip.outputs.skip != 'true'
-        run: |
-          cue vet "$state_file" state/schema.cue -d "#State"
-
-      - name: Write registry-view/<package-tag>.json (dashboard)
-        if: steps.skip.outputs.skip != 'true'
-        run: |
-          # Compressed image size for linux/amd64 platform (walks index → manifest → layers).
-          SIZE=$(.venv/bin/mlnode-foundry image-size \
-            "${{ steps.meta.outputs.package_name }}@${{ steps.build.outputs.digest }}" \
-            2>/dev/null || echo "")
-          .venv/bin/mlnode-foundry registry-view "${{ matrix.profile }}" \
-            --digest "${{ steps.build.outputs.digest }}" \
-            --cosign-identity "https://github.com/${{ github.repository }}/.github/workflows/build-stage3.yml@${{ github.ref }}" \
-            --size "$SIZE"
-          PACKAGE_BASENAME=$(echo "${{ steps.meta.outputs.package_name }}" | sed 's|.*/||')
-          REGISTRY_FILE="registry-view/${PACKAGE_BASENAME}-${{ steps.meta.outputs.tag }}.json"
-          echo "registry_file=$REGISTRY_FILE" >> "$GITHUB_ENV"
-          echo "=== $REGISTRY_FILE ==="
-          cat "$REGISTRY_FILE"
-
-      - name: Validate registry-view against schema
-        if: steps.skip.outputs.skip != 'true'
-        run: |
-          cue vet "$registry_file" registry-view/schema.cue -d "#RegistryView"
-
-      - name: Commit state + registry-view
-        if: steps.skip.outputs.skip != 'true'
+      - name: Commit state/_stage3-vllm-env.json
         env:
           STATE_PUSH_TOKEN: ${{ secrets.STATE_PUSH_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           REMOTE="https://x-access-token:${STATE_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
-          git pull --rebase --autostash "$REMOTE" main || true
-          git add "$state_file" "$registry_file"
-          if git diff --cached --quiet; then
+          git add state/_stage3-vllm-env.json
+          if git diff --quiet --cached -- state/_stage3-vllm-env.json; then
             echo "No state changes to commit"
           else
-            git commit -m "state: ${{ matrix.profile }} → ${{ steps.meta.outputs.tag }} (hash ${{ steps.meta.outputs.profile_hash }}, digest ${{ steps.build.outputs.digest }}, run ${{ github.run_id }})"
+            git commit -m "state: update _stage3-vllm-env.json after stage3 build (digest ${{ steps.build.outputs.digest }}, run ${{ github.run_id }})"
             pushed=false
             for i in 1 2 3; do
               if git pull --rebase --autostash "$REMOTE" main && git push "$REMOTE" HEAD:main; then
@@ -387,21 +169,17 @@ jobs:
               sleep $((i * 5))
             done
             if [ "$pushed" != "true" ]; then
-              echo "::error::Failed to push state + registry-view after 3 attempts"
+              echo "::error::Failed to push state file after 3 attempts"
               exit 1
             fi
           fi
 
       - name: Summary
-        if: steps.skip.outputs.skip != 'true'
         run: |
-          echo "### ${{ matrix.profile }} build summary" >> $GITHUB_STEP_SUMMARY
+          echo "### Stage 3 build summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tag**: \`${{ steps.meta.outputs.full_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: \`${{ steps.lock.outputs.stage3_full_tag }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Digest**: \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **profile_hash**: \`${{ steps.meta.outputs.profile_hash }}\`" >> $GITHUB_STEP_SUMMARY
-
-      - name: Summary (skipped)
-        if: steps.skip.outputs.skip == 'true'
-        run: |
-          echo "### ${{ matrix.profile }} — SKIPPED (profile_hash unchanged)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Upstream commit**: \`${{ steps.lock.outputs.upstream_commit }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Stage 2 base**: \`${{ steps.lock.outputs.base_image }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Patches applied**: \`patches/0001-content-type-middleware.patch\`" >> $GITHUB_STEP_SUMMARY

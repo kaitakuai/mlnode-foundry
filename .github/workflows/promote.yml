@@ -1,7 +1,7 @@
 name: promote
 
 # Manual workflow to re-sign / re-attest an already-published image.
-# Most signing happens inline in build-stage{2,3}.yml; this workflow is the
+# Most signing happens inline in build-stage{3,4}.yml; this workflow is the
 # escape hatch for: cosign key rotation, manual re-attestation after policy
 # change, or signing of legacy images that were published before keyless flow.
 

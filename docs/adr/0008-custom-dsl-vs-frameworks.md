@@ -30,7 +30,7 @@ The choice is **right-sized for actual constraints**, not optimal in a vacuum.
 | > 150 profiles AND active tuning development | Bazel `rules_img` — lazy CUDA pull becomes critical |
 | Compliance L4 (full hermeticity, offline-buildable) | Bazel + air-gapped builder, or Nix `dockerTools` |
 | Team grows to 5+ devs with build-infra-engineer role | Any framework — onboarding cost amortizes |
-| Stage 4 minimization becomes default (slim images) | apko as `scratch-repack` strategy |
+| Stage 5 minimization becomes default (slim images) | apko as `scratch-repack` strategy |
 | Pipeline logic genuinely programmable (loops, conditional steps) | Dagger SDK |
 
 Currently all triggers below the horizon.

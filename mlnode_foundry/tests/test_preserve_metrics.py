@@ -2,7 +2,7 @@
 
 Plan B benchmark workflow: operator hand-edits `registry-view/<file>.json`
 to set `nonces` (and optionally `weight`) after testing the image on real
-hardware. Subsequent Stage 3 rebuilds MUST NOT clobber that number back
+hardware. Subsequent Stage 4 rebuilds MUST NOT clobber that number back
 to `null` — there's no profile change to trigger a re-edit, and asking
 the operator to re-set the value after every rebuild defeats the whole
 "build once, validate once, publish forever" workflow.
