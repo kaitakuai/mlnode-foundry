@@ -84,14 +84,14 @@ RUN --mount=type=cache,target=/var/lib/apt/lists \
 ENV PATH="/usr/local/openssl-1.1/bin:${PATH}" \
     LD_LIBRARY_PATH="/usr/local/openssl-1.1/lib:$LD_LIBRARY_PATH"
 
-# vLLM PoC runtime patches (kaitakuai/vllm PR #8 kv_scratch dtype guard +
-# product-science/vllm PR #36 apply_householder torch.compile). Required for
-# FP8-KV / NVFP4 / int8-quantized models (MiniMax-M2.7, future int8 deploys);
-# no-op for fp16/bf16/fp32. Applied here in Stage B so every Stage 4 image
-# inherits the patched vLLM — avoids duplicating the edit across per-profile
-# hw-patches. Idempotent; safe to re-run.
-COPY stage3/scripts/patch-vllm-poc-runtime.py /tmp/
-RUN python3 /tmp/patch-vllm-poc-runtime.py && rm /tmp/patch-vllm-poc-runtime.py
+# (Dropped on the vllm-poc PLUGIN base.) The old kv_scratch dtype-guard patch
+# edited the fat-fork monolith's in-tree vllm/poc/poc_model_runner.py. On the
+# vllm-poc plugin base that tree no longer exists — PoC math ships in the
+# gonka-poc package, where the kv_scratch dtype skip already lives
+# (gonka_poc.poc.poc_model_runner._select_poc_kv_scratch). Running the patch
+# here fails (anchor file absent), so it is removed. The householder
+# torch.compile wrap is likewise a gonka-poc-internal concern now (see the
+# b300-minimax profile's dropped poc-householder-compile hw-patch).
 
 ################################################################################
 # Stage C — builder: poetry + venv install (per-package poetry projects)
