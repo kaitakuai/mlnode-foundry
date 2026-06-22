@@ -5,14 +5,14 @@
   "image": {
     "package": "ghcr.io/kaitakuai/mlnode-b300-minimax-m2-7",
     "tag": "0.2.13-vllm0.23.0-k1",
-    "digest": "sha256:8517cc9b7e897bf6330077615adca3505473ab537e84e8c12fb9848b1537b3ea",
-    "built_at": "2026-06-22T04:13:11Z",
+    "digest": "sha256:a186547432e732e382c2712e2419e74a039a92923f7b0badd61019c6437f29fb",
+    "built_at": "2026-06-22T04:43:15Z",
     "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main"
   },
   "validation": {
     "build_smoke": {
       "result": "pass",
-      "at": "2026-06-22T04:13:11Z"
+      "at": "2026-06-22T04:43:15Z"
     }
   }
 }
