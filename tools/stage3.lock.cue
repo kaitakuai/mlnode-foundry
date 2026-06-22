@@ -31,11 +31,12 @@ stage2: {
 	image: "ghcr.io/kaitakuai/vllm-poc"
 	// 0.23.0 is the vllm-poc tag (vLLM 0.23 residual base + gonka-poc); the build
 	// chain pins by the digest below. The mutable `0.23.0` and immutable
-	// `0.23.0-7f4a032a6` (gonka-poc @ 7f4a032a6) tags both resolve to this index
+	// `0.23.0-9045c7491` (gonka-poc @ 9045c7491) tags both resolve to this index
 	// digest. Built + pushed + cosign-signed by kaitakuai/vllm build-vllm-poc.yml
-	// on 2026-06-22 (residual S1 sha256:581955f0… on CUDA-13 base + gonka-poc 7f4a032a61e7…).
+	// on 2026-06-22 (residual S1 sha256:581955f0… on CUDA-13 base + gonka-poc
+	// 9045c7491 — includes the Starlette-1.3 middleware-stack fix from B300 GPU acceptance).
 	tag:    "0.23.0"
-	digest: "sha256:df525e4cfb637099a801b502a3ee8d355c1d3ca133f59f51d76c82dd56137705"
+	digest: "sha256:4dc6b71554ea4730910470d80491cb196098600a497cb17ad9d09605ed2de484"
 	// CUDA 13.0: the residual S1 now bases on vLLM's recommended default image
 	// (vllm/vllm-openai:v0.23.0 → CUDA 13.0.2), not the pinned cu129 (12.9).
 	// This matches the 5 fat-fork 0.20 profiles (also CUDA 13.0), so the single
