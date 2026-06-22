@@ -1,18 +1,18 @@
 {
   "profile": "profiles/b300-minimax-m2-7.cue",
-  "profile_hash": "43bd550cd31c54a7a181dd20393615aa34f64028c077c013a77ffcde2a3e66a1",
+  "profile_hash": "592fde0897077aa7ce8d0753a5f318a61902dd5d95655bb0becf44e9b1789bde",
   "status": "draft",
   "image": {
     "package": "ghcr.io/kaitakuai/mlnode-b300-minimax-m2-7",
     "tag": "0.2.13-vllm0.23.0-k1",
-    "digest": "sha256:8bc9459e704b72474c8eea0f148128f518b69fe1c6c77c38d53c99d360a58dfd",
-    "built_at": "2026-06-22T01:57:14Z",
+    "digest": "sha256:8517cc9b7e897bf6330077615adca3505473ab537e84e8c12fb9848b1537b3ea",
+    "built_at": "2026-06-22T04:13:11Z",
     "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main"
   },
   "validation": {
     "build_smoke": {
       "result": "pass",
-      "at": "2026-06-22T01:57:14Z"
+      "at": "2026-06-22T04:13:11Z"
     }
   }
 }
