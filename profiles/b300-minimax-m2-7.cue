@@ -21,7 +21,8 @@
 //   - env adds MLNODE_VLLM_MODULE so the mlnode runner launches the composed
 //     gonka-poc entrypoint instead of vLLM's stock api_server.
 //   - runner_patch injects the plugin-specific forced engine args (worker
-//     extension class, enforce-eager, processed logprobs, FLASHINFER backend).
+//     extension class, processed logprobs, FLASHINFER backend). It does NOT
+//     force --enforce-eager — PoC eager is handled by gonka-poc's skip_compiled.
 //
 // Throughput/quality claims below are INHERITED from the fat-fork validation
 // (1×B300 SXM6, 2026-05-23) and are NOT yet re-validated on the 0.23 plugin
@@ -101,8 +102,10 @@ b300_minimax_m2_7: #BaseProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 		    server: stock build_app + PoC router + gating middleware).
 		  - runner-patch forces --worker-extension-cls gonka_poc.worker.PoCWorkerExtension
 		    (worker-side PoC execution via public collective_rpc), plus
-		    --enforce-eager, --logprobs-mode processed_logprobs,
-		    --attention-backend FLASHINFER.
+		    --logprobs-mode processed_logprobs and --attention-backend FLASHINFER.
+		    It does NOT force --enforce-eager: the PoC forward is already eager via
+		    gonka_poc.poc.poc_model_runner (skip_compiled=True), so inference keeps
+		    CUDA graphs (no throughput regression) while PoC stays bit-compatible.
 		  - poc-householder-compile hw-patch DROPPED — the householder
 		    torch.compile wrap targeted the monolith's vllm/poc/gpu_random.py,
 		    which is not a Stage-4-patchable file on the plugin base.
@@ -120,9 +123,10 @@ b300_minimax_m2_7: #BaseProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 		cross-validate with the 2×B200 baseline (mean L2 0.266, PASS under the
 		MiniMax chain gate 0.75/0.10). These are NOT yet re-validated on the 0.23
 		plugin base; re-benchmark on B300 hardware before this image is
-		considered production-validated. CUDA note: the 0.23 base ships CUDA
-		12.9.1 (cu129), but the shared stage3.lock cuda field stays 13.0 for the
-		non-migrated fat-fork profiles — per-profile cuda is a follow-up.
+		considered production-validated. CUDA note: the residual S1 bases on
+		vLLM's recommended default image (vllm/vllm-openai:v0.23.0 → CUDA 13.0.2),
+		matching the validated fat-fork 0.20 B300 image and the shared
+		stage3.lock cuda field.
 		"""
 	tuning_notes: [
 		{

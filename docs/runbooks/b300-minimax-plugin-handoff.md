@@ -58,8 +58,9 @@ are present in the running container — a missing one silently breaks PoC:
 The runner-patch (`tools/runner-patches/b300-minimax-plugin.py`) additionally
 **forces** these engine args (operator / chain broadcast cannot drop them):
 `--worker-extension-cls gonka_poc.worker.PoCWorkerExtension`,
-`--logprobs-mode processed_logprobs`, `--attention-backend FLASHINFER`,
-`--enforce-eager`.
+`--logprobs-mode processed_logprobs`, `--attention-backend FLASHINFER`. It does
+**not** force `--enforce-eager`: PoC eager is handled inside gonka-poc
+(`poc_model_runner` `skip_compiled=True`), so inference keeps CUDA graphs.
 
 Chain-governance MiniMax args (`--max-model-len 180000`, `--kv-cache-dtype fp8`,
 `--tool-call-parser minimax_m2`, `--reasoning-parser minimax_m2_append_think`,
@@ -143,8 +144,8 @@ test; the governance arg set that MUST land in `additional_args` is:
   propagated) — hard fail.
 - [ ] The forced engine args are present in the launched command line:
   `--worker-extension-cls gonka_poc.worker.PoCWorkerExtension`,
-  `--enforce-eager`, `--logprobs-mode processed_logprobs`,
-  `--attention-backend FLASHINFER`.
+  `--logprobs-mode processed_logprobs`, `--attention-backend FLASHINFER`.
+  (`--enforce-eager` is intentionally ABSENT — see the eager note below.)
 
 ### Gate 3 — PoC router mounted
 
@@ -182,9 +183,9 @@ test; the governance arg set that MUST land in `additional_args` is:
   that (even if still under 0.75) is a yellow flag worth escalating before
   fleet rollout, because eager bit-compat should be preserved across the base
   bump.
-- [ ] If mean L2 > 0.75 or mismatch > 0.10: hard fail. Most likely cause is a
-  silent loss of `--enforce-eager` (compiled drift) or a logprobs-mode
-  mismatch — re-check Gate 2 args.
+- [ ] If mean L2 > 0.75 or mismatch > 0.10: hard fail. Most likely cause is the
+  PoC forward not running eager (gonka-poc's `skip_compiled` path broken →
+  compiled drift) or a logprobs-mode mismatch — re-check Gate 2 args.
 
 ### Gate 6 — inference serves
 
@@ -234,14 +235,11 @@ test; the governance arg set that MUST land in `additional_args` is:
   and the 5 others now resolve to `mlnode-base:0.2.13-vllm0.23.0-k1`. The OLD
   profile is retained only as a rollback baseline; its own
   `identity.version.vllm` stays `0.20.0`.
-- **CUDA: real base is 12.9, shared dashboard field stays 13.0.** The pinned
-  vllm-poc 0.23 base (`vllm/vllm-openai:v0.23.0-cu129`) ships **CUDA 12.9.1**
-  (confirmed from the image config). But `stage2.cuda` is a single shared field
-  rendered into the dashboard view for ALL profiles, including the 5 fat-fork
-  0.20 profiles that are genuinely CUDA 13.0 — so it is deliberately kept at
-  `"13.0"` to keep their views (and `test_render_registry_view`) correct.
-  Making `cuda` per-profile is a follow-up for when those profiles migrate to
-  0.23. **This image's actual CUDA is 12.9.1.**
+- **CUDA 13.0 (vLLM's recommended default).** The residual S1 bases on
+  `vllm/vllm-openai:v0.23.0` (bare tag → **CUDA 13.0.2**), not the pinned
+  `-cu129` (12.9). This matches the 5 fat-fork 0.20 profiles (also CUDA 13.0)
+  and the previously validated 0.20 B300 image, so the shared `stage2.cuda`
+  field is accurate for every profile. **This image's actual CUDA is 13.0.2.**
 - **householder-compile is intentionally GONE on this base.** The fat-fork's
   `poc-householder-compile` hw-patch edited the monolith's
   `vllm/poc/gpu_random.py`, which does not exist on the plugin base (PoC math
@@ -249,9 +247,16 @@ test; the governance arg set that MUST land in `additional_args` is:
   gonka-poc-internal concern, not a foundry hw-patch. Its perf delta is
   UNMEASURED on the plugin base — do not expect the fat-fork +10-12% on this
   image until gonka-poc reintroduces an equivalent and it is re-benchmarked.
-- **`--enforce-eager` is non-negotiable for PoC.** Compiled drift fails the
-  cross-validator L2 gate → epoch exclusion. The runner-patch forces it; if
-  Gate 5 regresses, the first suspect is a lost `--enforce-eager`.
+- **PoC must run eager — but via `skip_compiled`, not global `--enforce-eager`.**
+  The PoC forward is eager via gonka-poc's `poc_model_runner`
+  (`skip_compiled=True`), the same mechanism the fat-fork used — so the
+  runner-patch deliberately does **not** force global `--enforce-eager` (that
+  would also drop CUDA graphs for ordinary inference, a throughput regression
+  for no PoC benefit; the fat-fork b300 image ran with no `--enforce-eager` and
+  still produced L2-valid nonces). Compiled drift in the PoC forward still fails
+  the cross-validator L2 gate → epoch exclusion; if Gate 5 regresses, the
+  suspect is a broken `skip_compiled` path in gonka-poc, not a missing
+  `--enforce-eager`.
 - **Do not benchmark on a fleet-attached node by hand.** The DAPI owns the
   inference lifecycle; manual `up`/`inference` on an attached node conflicts
   with it. Use a detached node for acceptance, or coordinate with the
