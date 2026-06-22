@@ -35,11 +35,14 @@ Forces (overwrite if present — operator / chain broadcast cannot drop them):
         (ADR-0013 Layer 1). Without it the composed entrypoint
         (MLNODE_VLLM_MODULE=gonka_poc.entrypoint.api_router) has no worker
         method to drive and PoC forwards fail.
-    --enforce-eager
-        PoC forward MUST run eager for cross-validator bit-compatibility;
-        compiled drift fails the L2 gate → epoch exclusion. (The fat-fork
-        relied on vllm/poc/ skip_compiled=True; on the plugin base we pin
-        eager at the engine level to be unambiguous.)
+    NOT forced: --enforce-eager. The PoC forward already runs eager via
+        gonka_poc.poc.poc_model_runner (set_forward_context(..., skip_compiled=True),
+        same mechanism the fat-fork used), so bit-compat is guaranteed at the
+        PoC-forward level. A global --enforce-eager would ALSO disable CUDA
+        graphs for ordinary inference (throughput regression) for no PoC
+        benefit — the fat-fork b300 image ran with NO --enforce-eager and
+        still produced L2-valid nonces. So inference keeps CUDA graphs; only
+        the PoC forward is eager.
     --logprobs-mode processed_logprobs
         PoC v2 correctness — processed (post-sampler) logprobs are what the
         cross-node validation compares.
@@ -95,9 +98,9 @@ INJECTION_LINES = [
     "        self.additional_args[self.additional_args.index(_flag) + 1] = _value",
     "    else:",
     "        self.additional_args.extend([_flag, _value])",
-    "# --enforce-eager is a valueless flag; ensure it is present exactly once.",
-    "if '--enforce-eager' not in self.additional_args:",
-    "    self.additional_args.append('--enforce-eager')",
+    "# NOTE: --enforce-eager is intentionally NOT forced — the PoC forward is",
+    "# already eager via gonka_poc.poc.poc_model_runner (skip_compiled=True);",
+    "# forcing global eager would needlessly drop CUDA graphs for inference.",
     "# --- end Kaitaku B300-MiniMax plugin hardcodes ---",
 ]
 

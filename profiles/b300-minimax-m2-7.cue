@@ -21,7 +21,8 @@
 //   - env adds MLNODE_VLLM_MODULE so the mlnode runner launches the composed
 //     gonka-poc entrypoint instead of vLLM's stock api_server.
 //   - runner_patch injects the plugin-specific forced engine args (worker
-//     extension class, enforce-eager, processed logprobs, FLASHINFER backend).
+//     extension class, processed logprobs, FLASHINFER backend). It does NOT
+//     force --enforce-eager — PoC eager is handled by gonka-poc's skip_compiled.
 //
 // Throughput/quality claims below are INHERITED from the fat-fork validation
 // (1×B300 SXM6, 2026-05-23) and are NOT yet re-validated on the 0.23 plugin
@@ -101,8 +102,10 @@ b300_minimax_m2_7: #BaseProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 		    server: stock build_app + PoC router + gating middleware).
 		  - runner-patch forces --worker-extension-cls gonka_poc.worker.PoCWorkerExtension
 		    (worker-side PoC execution via public collective_rpc), plus
-		    --enforce-eager, --logprobs-mode processed_logprobs,
-		    --attention-backend FLASHINFER.
+		    --logprobs-mode processed_logprobs and --attention-backend FLASHINFER.
+		    It does NOT force --enforce-eager: the PoC forward is already eager via
+		    gonka_poc.poc.poc_model_runner (skip_compiled=True), so inference keeps
+		    CUDA graphs (no throughput regression) while PoC stays bit-compatible.
 		  - poc-householder-compile hw-patch DROPPED — the householder
 		    torch.compile wrap targeted the monolith's vllm/poc/gpu_random.py,
 		    which is not a Stage-4-patchable file on the plugin base.
