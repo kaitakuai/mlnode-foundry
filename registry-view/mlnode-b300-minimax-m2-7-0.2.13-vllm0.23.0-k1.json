@@ -52,11 +52,11 @@
     "tensor_parallel_size=1": "Validated single-B300 (275 GiB HBM) configuration on the fat-fork base \u2014 MiniMax-M2.7 FP8 (230 GB) fits with 1.23\u00d7 concurrency at max_model_len=180000. Phase 3 batch sweep on B300: 8\u21921392, 16\u21921728, 32\u21921792 (best), 64\u2192hang. The chain VRam=320 GB nominal requirement is conservative; 1\u00d7B300 cross-validates with the B200 fleet under the MiniMax chain gate.",
     "max_num_seqs=128 (batch_size=64 hard ceiling)": "Phase 3 sweep on B300 (fat-fork) confirms batch_size=64 hangs the PoC engine (OOM-stuck, not crash \u2014 engine never recovers). Same failure mode as B200/H200/H100/A100 MiniMax profiles. max_num_seqs=128 from MINIMAX_M2_7 base is safe because vLLM runtime caps actual batch by KV cache; the hazard is operator-supplied PoC batch override. Not re-swept on the plugin base."
   },
-  "digest": "sha256:c1c8d8ba96cd472590685da719c917660a66b595489462ffc9a659adf83bba4e",
+  "digest": "sha256:8bc9459e704b72474c8eea0f148128f518b69fe1c6c77c38d53c99d360a58dfd",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main",
   "slsa_attestation_url": null,
   "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-05/minimax_m27_1xb300_sxm6/README.md",
-  "uploaded_by": "github-actions[bot]",
+  "uploaded_by": "Mykola Baichak",
   "nonces": null,
   "weight": null
 }
