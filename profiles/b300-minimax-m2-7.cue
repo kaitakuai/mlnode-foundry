@@ -120,9 +120,10 @@ b300_minimax_m2_7: #BaseProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 		cross-validate with the 2×B200 baseline (mean L2 0.266, PASS under the
 		MiniMax chain gate 0.75/0.10). These are NOT yet re-validated on the 0.23
 		plugin base; re-benchmark on B300 hardware before this image is
-		considered production-validated. CUDA note: the 0.23 base ships CUDA
-		12.9.1 (cu129), but the shared stage3.lock cuda field stays 13.0 for the
-		non-migrated fat-fork profiles — per-profile cuda is a follow-up.
+		considered production-validated. CUDA note: the residual S1 bases on
+		vLLM's recommended default image (vllm/vllm-openai:v0.23.0 → CUDA 13.0.2),
+		matching the validated fat-fork 0.20 B300 image and the shared
+		stage3.lock cuda field.
 		"""
 	tuning_notes: [
 		{

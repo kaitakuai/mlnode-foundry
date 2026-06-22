@@ -33,16 +33,14 @@ stage2: {
 	// chain pins by the digest below. The mutable `0.23.0` and immutable
 	// `0.23.0-7f4a032a6` (gonka-poc @ 7f4a032a6) tags both resolve to this index
 	// digest. Built + pushed + cosign-signed by kaitakuai/vllm build-vllm-poc.yml
-	// on 2026-06-21 (residual S1 sha256:2f133c14… + gonka-poc 7f4a032a61e7…).
+	// on 2026-06-22 (residual S1 sha256:581955f0… on CUDA-13 base + gonka-poc 7f4a032a61e7…).
 	tag:    "0.23.0"
-	digest: "sha256:619713dea9bc1b380adae6d63182ff023c63a93a902c410b3a5e9b97b922048b"
-	// NOTE: this 0.23 vllm-poc base actually ships CUDA 12.9.1 (base
-	// vllm/vllm-openai:v0.23.0-cu129), but `cuda` is a single SHARED field
-	// rendered into the dashboard view for ALL profiles — including the 5
-	// fat-fork 0.20 profiles that are genuinely CUDA 13.0. Kept at 13.0 so
-	// their views (and test_render_registry_view) stay correct; making cuda
-	// per-profile is a follow-up for when those profiles migrate to 0.23. The
-	// b300 plugin image's real CUDA is 12.9 (documented in the handoff runbook).
+	digest: "sha256:df525e4cfb637099a801b502a3ee8d355c1d3ca133f59f51d76c82dd56137705"
+	// CUDA 13.0: the residual S1 now bases on vLLM's recommended default image
+	// (vllm/vllm-openai:v0.23.0 → CUDA 13.0.2), not the pinned cu129 (12.9).
+	// This matches the 5 fat-fork 0.20 profiles (also CUDA 13.0), so the single
+	// SHARED cuda field is accurate for every profile — no per-profile cuda
+	// split needed.
 	cuda: "13.0"
 }
 

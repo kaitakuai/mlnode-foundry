@@ -234,14 +234,11 @@ test; the governance arg set that MUST land in `additional_args` is:
   and the 5 others now resolve to `mlnode-base:0.2.13-vllm0.23.0-k1`. The OLD
   profile is retained only as a rollback baseline; its own
   `identity.version.vllm` stays `0.20.0`.
-- **CUDA: real base is 12.9, shared dashboard field stays 13.0.** The pinned
-  vllm-poc 0.23 base (`vllm/vllm-openai:v0.23.0-cu129`) ships **CUDA 12.9.1**
-  (confirmed from the image config). But `stage2.cuda` is a single shared field
-  rendered into the dashboard view for ALL profiles, including the 5 fat-fork
-  0.20 profiles that are genuinely CUDA 13.0 — so it is deliberately kept at
-  `"13.0"` to keep their views (and `test_render_registry_view`) correct.
-  Making `cuda` per-profile is a follow-up for when those profiles migrate to
-  0.23. **This image's actual CUDA is 12.9.1.**
+- **CUDA 13.0 (vLLM's recommended default).** The residual S1 bases on
+  `vllm/vllm-openai:v0.23.0` (bare tag → **CUDA 13.0.2**), not the pinned
+  `-cu129` (12.9). This matches the 5 fat-fork 0.20 profiles (also CUDA 13.0)
+  and the previously validated 0.20 B300 image, so the shared `stage2.cuda`
+  field is accurate for every profile. **This image's actual CUDA is 13.0.2.**
 - **householder-compile is intentionally GONE on this base.** The fat-fork's
   `poc-householder-compile` hw-patch edited the monolith's
   `vllm/poc/gpu_random.py`, which does not exist on the plugin base (PoC math
