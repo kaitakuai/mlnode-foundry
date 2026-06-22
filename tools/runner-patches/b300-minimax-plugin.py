@@ -1,14 +1,31 @@
 """B300 MiniMax-M2.7 PLUGIN-base hardcodes for MLNode runner.py.
 
-Inserts a small block right after `self.additional_args = additional_args or []`
-in `VLLMRunner.__init__`. Additive — no upstream code is removed; fails loud if
-the marker line is missing (= upstream refactored, re-verify the patch).
+Two edits to `VLLMRunner` in `runner.py`:
 
-Why: this image builds on the vllm-poc PLUGIN base (residual vLLM + gonka-poc
-package; see ADR-0013), NOT the fat-fork monolith. The PoC math is no longer in
-the vLLM tree — it ships as an out-of-tree plugin attached via vLLM's official
-extension points. Two args wire that plugin in, and two more pin the
-correctness/throughput knobs this profile needs:
+1. Insert a forced-args block right after `self.additional_args =
+   additional_args or []` in `__init__` (worker-extension-cls + correctness/
+   throughput knobs).
+2. Swap the launched vLLM module so the subprocess runs the gonka-poc COMPOSED
+   entrypoint instead of vLLM's stock api_server. The `"-m",
+   "vllm.entrypoints.openai.api_server"` literal becomes `"-m",
+   os.getenv("MLNODE_VLLM_MODULE", "vllm.entrypoints.openai.api_server")`, so
+   the baked `MLNODE_VLLM_MODULE=gonka_poc.entrypoint.api_router` env takes
+   effect. This is the SERVER-side half of the plugin flip and is REQUIRED:
+   the PoC HTTP routes (/api/v1/pow/*) and gating middleware are mounted only
+   by `gonka_poc.entrypoint.api_router` (app.include_router) — stock
+   api_server does NOT mount them even with the plugin auto-loaded
+   (gonka_poc.plugin.register is a sentinel, not a route installer). Without
+   this swap the subprocess serves stock vLLM with no /pow routes and PoC
+   fails. (Equivalent to the upstream PR-A change to gonka mlnode; done here
+   as a build-time patch because foundry pins stock mlnode f3b3893.)
+
+Additive/surgical — no upstream code is removed; fails loud if either anchor is
+missing (= upstream refactored, re-verify the patch).
+
+Why the plugin base: this image builds on the vllm-poc PLUGIN base (residual
+vLLM + gonka-poc package; see ADR-0013), NOT the fat-fork monolith. The PoC
+math is no longer in the vLLM tree — it ships as an out-of-tree plugin attached
+via vLLM's official extension points.
 
 Forces (overwrite if present — operator / chain broadcast cannot drop them):
     --worker-extension-cls gonka_poc.worker.PoCWorkerExtension
@@ -57,6 +74,14 @@ FILE = "/app/packages/api/src/api/inference/vllm/runner.py"
 MARKER = "self.additional_args = additional_args or []"
 INDENT = " " * 8  # VLLMRunner.__init__ method body indent
 
+# Edit 2: launch-module swap. runner.py already imports `os` (used for
+# VLLM_PYTHON_PATH), so os.getenv is safe. The literal below is matched exactly
+# and replaced in place (indentation preserved — only the substring changes).
+MODULE_MARKER = '"-m", "vllm.entrypoints.openai.api_server",'
+MODULE_REPLACEMENT = (
+    '"-m", os.getenv("MLNODE_VLLM_MODULE", "vllm.entrypoints.openai.api_server"),'
+)
+
 INJECTION_LINES = [
     "",
     "# --- Kaitaku B300-MiniMax plugin hardcodes (tools/runner-patches/b300-minimax-plugin.py) ---",
@@ -85,6 +110,7 @@ def main() -> int:
     with open(FILE) as f:
         src = f.read()
 
+    # --- Preconditions (fail loud if upstream refactored either anchor) ---
     if MARKER not in src:
         sys.stderr.write(
             f"ERROR: Kaitaku B300-MiniMax plugin patch: marker {MARKER!r} not found in {FILE}. "
@@ -92,28 +118,53 @@ def main() -> int:
         )
         return 1
 
-    if "Kaitaku B300-MiniMax plugin hardcodes" in src:
-        print("runner.py already patched — skipping")
-        return 0
-
-    lines = src.splitlines(keepends=True)
-    new_lines: list[str] = []
-    inserted = False
-    for line in lines:
-        new_lines.append(line)
-        if not inserted and MARKER in line:
-            new_lines.append(injection)
-            inserted = True
-
-    if not inserted:
+    already_swapped = MODULE_REPLACEMENT in src
+    if MODULE_MARKER not in src and not already_swapped:
         sys.stderr.write(
-            "ERROR: Kaitaku B300-MiniMax plugin patch: marker present but insertion did not fire\n"
+            f"ERROR: Kaitaku B300-MiniMax plugin patch: launch-module line {MODULE_MARKER!r} "
+            f"not found in {FILE}. Upstream runner.py may have been refactored — re-verify "
+            "the MLNODE_VLLM_MODULE swap.\n"
         )
         return 1
 
+    already_injected = "Kaitaku B300-MiniMax plugin hardcodes" in src
+    if already_injected and already_swapped:
+        print("runner.py already patched — skipping")
+        return 0
+
+    out = src
+
+    # --- Edit 1: inject the forced-args block after the additional_args marker ---
+    if not already_injected:
+        lines = out.splitlines(keepends=True)
+        new_lines: list[str] = []
+        inserted = False
+        for line in lines:
+            new_lines.append(line)
+            if not inserted and MARKER in line:
+                new_lines.append(injection)
+                inserted = True
+        if not inserted:
+            sys.stderr.write(
+                "ERROR: Kaitaku B300-MiniMax plugin patch: marker present but insertion did not fire\n"
+            )
+            return 1
+        out = "".join(new_lines)
+
+    # --- Edit 2: swap the launched module to honour MLNODE_VLLM_MODULE ---
+    if not already_swapped:
+        if MODULE_MARKER not in out:
+            sys.stderr.write(
+                "ERROR: Kaitaku B300-MiniMax plugin patch: launch-module marker vanished before swap\n"
+            )
+            return 1
+        out = out.replace(MODULE_MARKER, MODULE_REPLACEMENT, 1)
+
     with open(FILE, "w") as f:
-        f.writelines(new_lines)
-    print("runner.py patched for B300-MiniMax plugin hardcodes")
+        f.write(out)
+    print(
+        "runner.py patched for B300-MiniMax plugin hardcodes + MLNODE_VLLM_MODULE launch swap"
+    )
     return 0
 
 
