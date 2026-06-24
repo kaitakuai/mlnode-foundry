@@ -15,22 +15,27 @@ Two edits to VLLMRunner in runner.py (same shape as b300-kimi-k2-6-plugin.py):
      --kv-cache-dtype fp8_e4m3        (accepted natively on sm_100)
      --tool-call-parser glm47
      --reasoning-parser glm45
-     --compilation-config '{"mode": 0, "cudagraph_mode": "NONE"}'  (EAGER — PoC
-                                       mining is ~+25% eager vs cudagraph mode 3
-                                       on GLM; an inference node would use mode 3)
      --logprobs-mode processed_logprobs
      --worker-extension-cls gonka_poc.worker.PoCWorkerExtension   (PLUGIN: worker-
                                        side PoC via collective_rpc)
      (flags) --trust-remote-code, --enable-auto-tool-choice
 
    NOT forced: --attention-backend. GLM-5.2 is a DSA model (NOT MLA), so do NOT
-   pin CUTLASS_MLA (that is a Kimi/DeepSeek-MLA backend). DeepGEMM/FlashInfer-MoE
-   are disabled via env (VLLM_USE_DEEP_GEMM=0 / VLLM_USE_FLASHINFER_MOE_FP8=0 in
-   the GLM_5_2 base) — triton MoE is the only working backend on our 0.23 image.
+   pin CUTLASS_MLA (that is a Kimi/DeepSeek-MLA backend). MoE-DeepGEMM is enabled
+   while the block-FP8 LINEAR kernel is routed to Cutlass — both via env in the
+   GLM_5_2 base (VLLM_MOE_USE_DEEP_GEMM=1 + VLLM_DISABLED_KERNELS=...), not here.
 
-   REMOVES --enforce-eager: eager is set via --compilation-config (mode=0), and
-   vLLM rejects --enforce-eager alongside --compilation-config. PoC-forward eager
-   (bit-compat) is handled inside gonka-poc's poc_model_runner (skip_compiled).
+   NOT forced: compilation / --enforce-eager. Inference runs COMPILED by default
+   (vLLM CompilationMode.VLLM_COMPILE + CUDA graphs) for decode throughput; the
+   PoC forward runs eager on its own via gonka-poc poc_model_runner
+   (set_forward_context skip_compiled=True). So one image gives eager PoC +
+   compiled inference. Forcing global eager (--compilation-config mode:0 /
+   --enforce-eager) would drop CUDA graphs for inference (~5x decode loss on GLM:
+   157 vs 817 tok/s). For the EXCEPTIONAL case where inference must also be eager,
+   the operator passes --enforce-eager at launch; this patch neither forces nor
+   strips it, so the override is honored. (Same policy as b300-minimax-plugin.py;
+   b300-kimi-k2-6-plugin.py is the documented exception — cudagraph hangs on Kimi
+   MLA at batch=128, so it does force eager.)
 
 2. Swap the launched vLLM module so the subprocess runs the gonka-poc COMPOSED
    entrypoint (mounts /api/v1/pow/* + gating) instead of stock api_server:
@@ -70,7 +75,6 @@ INJECTION_LINES = [
     "    ('--kv-cache-dtype', 'fp8_e4m3'),",
     "    ('--tool-call-parser', 'glm47'),",
     "    ('--reasoning-parser', 'glm45'),",
-    "    ('--compilation-config', '{\"mode\": 0, \"cudagraph_mode\": \"NONE\"}'),",
     "    ('--logprobs-mode', 'processed_logprobs'),",
     "    ('--worker-extension-cls', 'gonka_poc.worker.PoCWorkerExtension'),",
     "]",
@@ -78,8 +82,6 @@ INJECTION_LINES = [
     "    '--trust-remote-code',",
     "    '--enable-auto-tool-choice',",
     "]",
-    "# --enforce-eager conflicts with --compilation-config; eager is set via mode=0.",
-    "_b200_glm_plugin_remove = ['--enforce-eager']",
     "for _flag, _value in _b200_glm_plugin_forced:",
     "    if _flag in self.additional_args:",
     "        self.additional_args[self.additional_args.index(_flag) + 1] = _value",
@@ -88,9 +90,16 @@ INJECTION_LINES = [
     "for _flag in _b200_glm_plugin_flags:",
     "    if _flag not in self.additional_args:",
     "        self.additional_args.append(_flag)",
-    "for _flag in _b200_glm_plugin_remove:",
-    "    while _flag in self.additional_args:",
-    "        self.additional_args.pop(self.additional_args.index(_flag))",
+    "# NOTE: compilation/eager is intentionally NOT forced here. Inference runs",
+    "# COMPILED by default (vLLM CompilationMode.VLLM_COMPILE + CUDA graphs) for",
+    "# decode throughput; the PoC forward runs eager on its own via gonka_poc",
+    "# poc_model_runner (set_forward_context skip_compiled=True), so we get",
+    "# eager PoC + compiled inference in one image. Forcing global eager",
+    "# (--compilation-config mode:0 / --enforce-eager) would drop CUDA graphs",
+    "# for inference (~5x decode throughput loss on GLM). For the EXCEPTIONAL",
+    "# case where inference must also be eager, the operator passes",
+    "# --enforce-eager (or --compilation-config '{\"mode\":0,...}') at launch;",
+    "# we neither force nor strip it so that override is honored.",
     "# --- end Kaitaku B200-GLM-5.2 plugin hardcodes ---",
 ]
 

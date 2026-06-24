@@ -3,24 +3,27 @@
 // Composition: #BaseProfile & B200 & GLM_5_2 with TP=8, built on the vllm-poc
 // PLUGIN base (residual vLLM 0.23 + gonka-poc package; ADR-0013). New model on
 // the foundry — first GLM profile. Config is the operator-supplied GLM-5.2
-// recommendation (zai-org/GLM-5.2-FP8) plus the PoC additions (eager mining,
-// plugin worker wiring, triton-only MoE).
+// recommendation (zai-org/GLM-5.2-FP8) plus the PoC additions (eager PoC +
+// compiled inference, plugin worker wiring, DeepGEMM MoE + Cutlass linear).
 //
 // GLM-5.2 = GlmMoeDsaForCausalLM: DeepSeek-style MLA + DSA sparse attention
 // (index_topk=2048), 753B total / ~40B active, 256 experts × top-8, FP8 block
-// e4m3 [128,128]. On our 0.23 image DeepGEMM crashes (cudaErrorInvalidValue in
-// the BlockScaledMM LINEAR kernel — a DSA-arch bug, NOT the MoE workspace lock)
-// and FlashInfer-CUTLASS MoE hangs → triton MoE is the only backend that
-// composes (forced off via the GLM_5_2 base env). Because DeepGEMM is disabled,
-// the MoE WorkspaceManager-lock path is not exercised here — no workspace risk.
+// e4m3 [128,128]. DeepGEMM is SPLIT on our 0.23 image: MoE experts run on
+// DeepGEMM (throughput lever) while the block-FP8 LINEAR kernel is routed to
+// Cutlass — GLM's fused_qkv_a_proj (N=2624, N%128==64 partial block) crashes the
+// DeepGEMM linear kernel at memory profiling. Both via the GLM_5_2 base env
+// (VLLM_MOE_USE_DEEP_GEMM=1 + VLLM_DISABLED_KERNELS=...). The MoE PoC-forward
+// workspace lock is covered by gonka-poc df73e1c (unlock/relock).
 //
 // Plugin flip vs a stock serve:
 //   - env adds MLNODE_VLLM_MODULE → the runner launches the composed gonka-poc
 //     entrypoint; runner_patch forces --worker-extension-cls (worker-side PoC).
-//   - eager via --compilation-config (mode=0 / cudagraph NONE) for PoC mining
-//     (+~25% nonces vs cudagraph mode 3 on GLM); NO --enforce-eager (it conflicts
-//     with --compilation-config; PoC-forward eager bit-compat is handled inside
-//     gonka-poc poc_model_runner skip_compiled=True).
+//   - compilation NOT forced: inference runs COMPILED (vLLM default + CUDA
+//     graphs) for decode throughput; the PoC forward runs eager on its own via
+//     gonka-poc poc_model_runner (skip_compiled=True). Forcing global eager would
+//     drop inference CUDA graphs (~5× decode loss on GLM: 157 vs 817 tok/s);
+//     operator passes --enforce-eager only for the exceptional eager-inference
+//     case (neither forced nor stripped here).
 //   - NOT pinned: --attention-backend. GLM-5.2 is DSA (not MLA) — do NOT force
 //     CUTLASS_MLA (a Kimi/DeepSeek-MLA backend); let vLLM auto-select.
 //
@@ -65,12 +68,14 @@ b200_glm_5_2: #BaseProfile & bases.B200 & bases.GLM_5_2 & {
 		MLNODE_VLLM_MODULE: "gonka_poc.entrypoint.api_router"
 		// Required for the worker extension's collective_rpc msgpack channel.
 		VLLM_ALLOW_INSECURE_SERIALIZATION: "1"
-		// DeepGEMM/FlashInfer-MoE off (triton-only) + long runner timeout +
+		// DeepGEMM split (MoE on / linear→Cutlass) + long runner timeout +
 		// first-healthy grace come from the GLM_5_2 base.
 	}
-	// Eager path (compilation_mode=0 / cudagraph_mode=NONE) is the GLM_5_2 base
-	// default — kept for PoC mining (eager is ~+25% over cudagraph mode 3 on GLM).
-	// Surfaced here for the dashboard; forced via the runner-patch.
+	// Compiled inference (compilation_mode=3 / vLLM default cudagraph) from the
+	// GLM_5_2 base — the PoC forward is eager on its own via gonka-poc
+	// skip_compiled. Surfaced for the dashboard; compilation is NOT forced by the
+	// runner-patch (operator passes --enforce-eager only for the exceptional
+	// eager-inference case).
 	runtime_defaults: {
 		// Operator-supplied GLM-5.2 recommendation; forced via the runner-patch,
 		// reproduced here for dashboard display.
@@ -88,7 +93,7 @@ b200_glm_5_2: #BaseProfile & bases.B200 & bases.GLM_5_2 & {
 		// NO attention_backend: GLM-5.2 is DSA, not MLA — let vLLM auto-select.
 		// NO enable_expert_parallel: the operator recommendation omits it.
 	}
-	description: "B200 Blackwell SXM6 (×8) + GLM-5.2 FP8 (TP=8, eager, DeepGEMM MoE + Cutlass linear) — vllm-poc PLUGIN base (gonka-poc entrypoint + worker extension)"
+	description: "B200 Blackwell SXM6 (×8) + GLM-5.2 FP8 (TP=8, eager PoC / compiled inference, DeepGEMM MoE + Cutlass linear) — vllm-poc PLUGIN base (gonka-poc entrypoint + worker extension)"
 	notes: """
 		First GLM-5.2 profile on the foundry (0.23 plugin base). Config is the
 		operator-supplied GLM-5.2 recommendation: TP=8, gpu-memory-utilization 0.85,
@@ -101,10 +106,12 @@ b200_glm_5_2: #BaseProfile & bases.B200 & bases.GLM_5_2 & {
 		  - MLNODE_VLLM_MODULE=gonka_poc.entrypoint.api_router (composed server).
 		  - runner-patch forces --worker-extension-cls gonka_poc.worker.PoCWorkerExtension
 		    (worker-side PoC via collective_rpc).
-		  - eager via --compilation-config '{"mode": 0, "cudagraph_mode": "NONE"}'
-		    (+~25% PoC nonces vs cudagraph mode 3 on GLM). --enforce-eager removed
-		    (conflicts with --compilation-config). PoC-forward eager (bit-compat)
-		    comes from gonka-poc skip_compiled.
+		  - compilation NOT forced: inference runs COMPILED by default (vLLM
+		    VLLM_COMPILE + CUDA graphs, GLM 817 vs 157 tok/s eager) while the PoC
+		    forward runs eager on its own via gonka-poc skip_compiled (+~25% nonces).
+		    Global eager is NOT forced — it would drop inference CUDA graphs (~5×
+		    decode loss). Operator passes --enforce-eager only for the exceptional
+		    eager-inference case (the patch neither forces nor strips it).
 		  - DeepGEMM strategy is SPLIT (GLM_5_2 base): MoE experts ON DeepGEMM
 		    (VLLM_USE_DEEP_GEMM=1 + VLLM_MOE_USE_DEEP_GEMM=1 + E8M0=1, the throughput
 		    lever) while the block-FP8 LINEAR kernel is routed to Cutlass via
@@ -161,9 +168,9 @@ b200_glm_5_2: #BaseProfile & bases.B200 & bases.GLM_5_2 & {
 			added_at: "2026-06-24"
 		},
 		{
-			knob:     "compilation_mode=0 (eager, cudagraph NONE)"
-			source:   "GLM_5_2 base default (eager PoC; GLM benchmark in the validation-report note)"
-			reason:   "Eager for PoC mining: 1016 nonces/min @ batch 64 vs 768 under cudagraph mode 3 (+~25%). Forced via --compilation-config (NOT --enforce-eager — that conflicts with it). A future inference-serving leaf can flip to mode 3 (+6.8× decode tok/s)."
+			knob:     "compiled inference + eager PoC (compilation NOT forced)"
+			source:   "GLM_5_2 base + gonka-poc skip_compiled + b300-minimax-plugin policy"
+			reason:   "Inference runs COMPILED by default (vLLM VLLM_COMPILE + CUDA graphs): GLM decode 817 vs 157 tok/s eager (+6.8× TPOT). The PoC forward is eager on its own via gonka-poc poc_model_runner (set_forward_context skip_compiled=True): eager PoC is +~25% (1016 vs 768 nonces/min) AND bit-compat. The runner-patch does NOT force --compilation-config / --enforce-eager (forcing global eager would drop inference CUDA graphs). Operator passes --enforce-eager only for the EXCEPTIONAL eager-inference case."
 			added_at: "2026-06-24"
 		},
 		{
