@@ -112,4 +112,17 @@ models: [
 		status:       "active"
 		notes:        "Activates on chain at epoch 271 (v0.2.13 upgrade). vLLM args mandated by chain: --enable-auto-tool-choice --kv-cache-dtype fp8 --tool-call-parser minimax_m2 --reasoning-parser minimax_m2_append_think. PoC seq_len=1024, ThroughputPerNonce=5000, VRam=320 GB total."
 	},
+	{
+		family:       "glm"
+		revision:     "5-2"
+		display_name: "GLM 5.2"
+		hf_repo:      "zai-org/GLM-5.2-FP8"
+		hf_revision:  "31cba24fb749908a485082bdeed6eb1ac6cffc2f"
+		params_b:     753.0
+		// Native context; the b200 profile caps max_model_len at 350000 (warning).
+		context_max:  1048576
+		license:      "MIT"
+		status:       "active"
+		notes:        "GlmMoeDsaForCausalLM (verbatim DeepseekV2 subclass) — DeepSeek-style MLA + DSA sparse attention (index_topk=2048), 753B total / ~40B active, 256 experts × top-8, 78 layers, FP8 block-wise e4m3 [128,128]. DeepGEMM split on vLLM 0.23: MoE experts run on DeepGEMM (throughput lever) but the block-FP8 LINEAR kernel must be routed to Cutlass via VLLM_DISABLED_KERNELS — GLM's fused_qkv_a_proj N=2624 (N%128==64 partial block) + E8M0 requant crashes the DeepGEMM linear kernel (cudaErrorInvalidValue) at memory profiling. MoE workspace lock handled by gonka-poc df73e1c. See b200-glm-5-2 profile + experiments/2026-06/glm-5.2-fp8-8xb200."
+	},
 ]
