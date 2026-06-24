@@ -1,0 +1,18 @@
+{
+  "profile": "profiles/b200-glm-5-2.cue",
+  "profile_hash": "a39cd9816f75f99a341f527ce39d94b9f3a17fbcaa1f70fdf4c7a97e0c61c07c",
+  "status": "draft",
+  "image": {
+    "package": "ghcr.io/kaitakuai/mlnode-b200-glm-5-2",
+    "tag": "0.2.13-vllm0.23.0-k1",
+    "digest": "sha256:dd5bc47e3e9106234bfaa43d25d7039954fac4fa031a4ce183f26a76ec6a43f5",
+    "built_at": "2026-06-24T04:05:52Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main"
+  },
+  "validation": {
+    "build_smoke": {
+      "result": "pass",
+      "at": "2026-06-24T04:05:52Z"
+    }
+  }
+}
