@@ -162,7 +162,7 @@ b200_glm_5_2: #BaseProfile & bases.B200 & bases.GLM_5_2 & {
 		},
 		{
 			knob:     "compilation_mode=0 (eager, cudagraph NONE)"
-			source:   "GLM_5_2 base + experiments/2026-06/glm-5.2-fp8-8xb200"
+			source:   "GLM_5_2 base default (eager PoC; GLM benchmark in the validation-report note)"
 			reason:   "Eager for PoC mining: 1016 nonces/min @ batch 64 vs 768 under cudagraph mode 3 (+~25%). Forced via --compilation-config (NOT --enforce-eager — that conflicts with it). A future inference-serving leaf can flip to mode 3 (+6.8× decode tok/s)."
 			added_at: "2026-06-24"
 		},
