@@ -39,10 +39,16 @@ GLM_5_2: {
 		WATCHER_GRACE_FIRST_HEALTHY: "1"
 	}
 	runtime_defaults: {
-		// Eager (mode=0 / cudagraph NONE) for PoC mining: on GLM, eager PoC is
-		// ~+25% (1016 vs 768 nonces/min) over cudagraph mode 3. Defaultable so a
-		// future inference-serving leaf can flip to mode 3 (+6.8× decode tok/s).
-		compilation_mode: *0 | int
-		cudagraph_mode:   *"NONE" | string
+		// Inference runs COMPILED by default (vLLM CompilationMode.VLLM_COMPILE +
+		// CUDA graphs) for decode throughput — on GLM that is 817 vs 157 tok/s
+		// (+6.8× TPOT) over eager. The PoC forward runs EAGER on its own via
+		// gonka-poc poc_model_runner (set_forward_context skip_compiled=True), so
+		// one image gives eager PoC (bit-compat, ~+25% nonces) + compiled inference.
+		// NOT forced by the runner-patch (matches b300-minimax) — these are the
+		// effective vLLM defaults, shown for the dashboard. For the EXCEPTIONAL
+		// case where inference must also be eager, the operator passes
+		// --enforce-eager at launch (the patch neither forces nor strips it).
+		compilation_mode: *3 | int           // VLLM_COMPILE (compiled inference)
+		cudagraph_mode:   *"PIECEWISE" | string // vLLM compiled default; not forced
 	}
 }
