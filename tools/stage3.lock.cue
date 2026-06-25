@@ -33,11 +33,15 @@ stage2: {
 	// chain pins by the digest below. The mutable `0.23.0` and immutable
 	// `0.23.0-df73e1cf6` (gonka-poc @ df73e1cf6) tags both resolve to this index
 	// digest. Built + pushed + cosign-signed by kaitakuai/vllm build-vllm-poc.yml
-	// on 2026-06-24 (residual S1 sha256:581955f0… on CUDA-13 base + gonka-poc
-	// df73e1cf6 — adds the DeepGEMM MoE-workspace unlock/lock fix on top of the
-	// Starlette-1.3 fix, both from B300 GPU acceptance).
+	// on 2026-06-25 (residual S1 sha256:4225271109… on CUDA-13 base + gonka-poc
+	// df73e1cf6 — UNCHANGED). The new S1 adds the enforced_tokens request-ingestion
+	// layer (REBASE.md row 7: vllm/validation.py + ChatCompletionRequest
+	// enforced_tokens/enforced_str/logprobs_mode + the serving bridge), fixing
+	// inference validation (a validator's enforced_tokens payload was silently
+	// dropped). Prior S2 sha256:5a6bd7d2… (S1 581955f0…) carried only the
+	// sampler-side enforcement + the DeepGEMM workspace + Starlette fixes.
 	tag:    "0.23.0"
-	digest: "sha256:5a6bd7d2d414f1488558fc55fe2064aeef7897da9283ad192872a47b77830f15"
+	digest: "sha256:835aa90ca80667770be7d2c55fffe4cfe3ade580a06c48da8fb3eaa6c439d2b9"
 	// CUDA 13.0: the residual S1 now bases on vLLM's recommended default image
 	// (vllm/vllm-openai:v0.23.0 → CUDA 13.0.2), not the pinned cu129 (12.9).
 	// This matches the 5 fat-fork 0.20 profiles (also CUDA 13.0), so the single
