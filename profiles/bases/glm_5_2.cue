@@ -4,37 +4,16 @@ package bases
 
 GLM_5_2: {
 	env: {
-		// GLM-5.2 (GlmMoeDsaForCausalLM) DeepGEMM strategy on vLLM 0.23 — split the
-		// two independent DeepGEMM flags so the MoE wins while the linear stays safe:
-		//   - MoE experts ON DeepGEMM (the throughput lever; same path MiniMax/Kimi
-		//     use). MoE-DeepGEMM is AND-gated on BOTH VLLM_USE_DEEP_GEMM=1 AND
-		//     VLLM_MOE_USE_DEEP_GEMM=1 (fused_moe/oracle/fp8.py:360-361). Its
-		//     PoC-forward workspace lock is handled by gonka-poc df73e1c
-		//     (unlock/relock around the PoC forward — same fix as MiniMax).
-		//   - LINEAR block-FP8 kernel routed to Cutlass via VLLM_DISABLED_KERNELS.
-		//     GLM's MLA fused_qkv_a_proj is N=2624 (N%64==0 so the DeepGEMM linear
-		//     kernel is SELECTED, but N%128==64 = partial last block); with E8M0
-		//     requant on Blackwell this trips cudaErrorInvalidValue at memory
-		//     profiling (Pasha's "image didn't start" crash). Disabling the two
-		//     DeepGEMM/FlashInfer-DeepGEMM block-FP8 LINEAR kernels falls the
-		//     selector through to CutlassFp8BlockScaledMMKernel (pads to 16-align,
-		//     handles N%128!=0) — startup-safe, MoE keeps DeepGEMM+E8M0.
-		// NONCE NOTE: routing the linear off DeepGEMM changes that layer's FP8
-		// rounding (Cutlass float32 scales vs DeepGEMM UE8M0) — NOT nonce-bit-
-		// identical to a pure-DeepGEMM validator. Acceptable while GLM is in the
-		// benchmark phase (not governance-activated; no live L2 gate). Before GLM
-		// goes to production mining, re-confirm fused_qkv_a_proj L2-equivalence
-		// against the validator's kernel path.
-		// FALLBACK if Fix A still won't start on GPU: drop VLLM_DISABLED_KERNELS and
-		// set VLLM_USE_DEEP_GEMM_E8M0=0 (clears the crash but loses MoE E8M0 perf);
-		// last resort triton-only: VLLM_USE_DEEP_GEMM=0 + VLLM_MOE_USE_DEEP_GEMM=0.
-		VLLM_USE_DEEP_GEMM:          "1"
-		VLLM_MOE_USE_DEEP_GEMM:      "1"
-		VLLM_USE_DEEP_GEMM_E8M0:     "1"
-		VLLM_USE_FLASHINFER_MOE_FP8: "0"
-		VLLM_DISABLED_KERNELS:       "DeepGemmFp8BlockScaledMMKernel,FlashInferFp8DeepGEMMDynamicBlockScaledKernel"
-		// 753B FP8 (~ full 8×B200) load + DSA warmup is slow — long runner
-		// timeout + first-healthy grace.
+		// COMMON GLM-5.2 env only. The MoE/linear BACKEND env (DeepGEMM on/off,
+		// VLLM_DISABLED_KERNELS, E8M0, FlashInfer-MoE, KV dtype) is GPU-SPECIFIC and
+		// lives in each leaf profile — Blackwell (b200/b300, sm_100) runs DeepGEMM
+		// (MoE-DeepGEMM + linear→Cutlass split); Hopper (h200, sm_90) runs DeepGEMM
+		// OFF + triton MoE (FLASHMLA_SPARSE rejects fp8_e4m3, so it also flips KV to
+		// bf16/auto). Keeping those keys out of this shared base is what lets H200
+		// run a different backend than B200/B300 — see the per-profile env blocks.
+		//
+		// 753B FP8 load + DSA warmup is slow on every card — long runner timeout +
+		// first-healthy grace are the only universally-safe GLM env, kept here.
 		VLLM_RUNNER_TIMEOUT:         "3600"
 		WATCHER_GRACE_FIRST_HEALTHY: "1"
 	}
