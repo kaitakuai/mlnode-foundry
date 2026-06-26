@@ -68,8 +68,26 @@ b200_glm_5_2: #BaseProfile & bases.B200 & bases.GLM_5_2 & {
 		MLNODE_VLLM_MODULE: "gonka_poc.entrypoint.api_router"
 		// Required for the worker extension's collective_rpc msgpack channel.
 		VLLM_ALLOW_INSECURE_SERIALIZATION: "1"
-		// DeepGEMM split (MoE on / linear→Cutlass) + long runner timeout +
-		// first-healthy grace come from the GLM_5_2 base.
+		// DeepGEMM split (B200 sm_100) — GPU-specific, lives in THIS leaf (moved out
+		// of the GLM_5_2 base so H200 can run DeepGEMM-off):
+		//   - MoE experts ON DeepGEMM (AND-gated on USE_DEEP_GEMM + MOE_USE_DEEP_GEMM;
+		//     PoC workspace lock handled by gonka-poc df73e1c).
+		//   - LINEAR block-FP8 kernel routed to Cutlass via VLLM_DISABLED_KERNELS:
+		//     GLM's fused_qkv_a_proj (N=2624, N%128==64) + E8M0 trips
+		//     cudaErrorInvalidValue in the DeepGEMM linear kernel at memory profiling;
+		//     Cutlass pads to 16-align and starts clean, MoE keeps DeepGEMM+E8M0.
+		// E8M0 is image-inherited (baked in mlnode-b200-glm-5-2; the deepgemm-8xb200
+		// experiment started cleanly WITH it) — not independently experiment-proven.
+		// NONCE NOTE: the Cutlass linear is NOT bit-identical to a pure-DeepGEMM
+		// validator — fine in benchmark phase (GLM not governance-activated); re-confirm
+		// L2 before production. FALLBACK if it won't start: drop VLLM_DISABLED_KERNELS +
+		// set VLLM_USE_DEEP_GEMM_E8M0=0; last resort triton-only (both flags 0).
+		VLLM_USE_DEEP_GEMM:          "1"
+		VLLM_MOE_USE_DEEP_GEMM:      "1"
+		VLLM_USE_DEEP_GEMM_E8M0:     "1"
+		VLLM_USE_FLASHINFER_MOE_FP8: "0"
+		VLLM_DISABLED_KERNELS:       "DeepGemmFp8BlockScaledMMKernel,FlashInferFp8DeepGEMMDynamicBlockScaledKernel"
+		// VLLM_RUNNER_TIMEOUT / WATCHER_GRACE_FIRST_HEALTHY come from the GLM_5_2 base.
 	}
 	// Compiled inference (compilation_mode=3 / vLLM default cudagraph) from the
 	// GLM_5_2 base — the PoC forward is eager on its own via gonka-poc
@@ -81,7 +99,7 @@ b200_glm_5_2: #BaseProfile & bases.B200 & bases.GLM_5_2 & {
 		// reproduced here for dashboard display.
 		tensor_parallel_size:    8
 		gpu_memory_utilization:  0.85
-		max_model_len:           350000
+		max_model_len:           400000
 		max_num_batched_tokens:  16384
 		max_num_seqs:            16
 		kv_cache_dtype:          "fp8_e4m3"
@@ -97,7 +115,7 @@ b200_glm_5_2: #BaseProfile & bases.B200 & bases.GLM_5_2 & {
 	notes: """
 		First GLM-5.2 profile on the foundry (0.23 plugin base). Config is the
 		operator-supplied GLM-5.2 recommendation: TP=8, gpu-memory-utilization 0.85,
-		max-model-len 350000 (capped below the native 1048576 to fit 8×B200 KV),
+		max-model-len 400000 (capped below the native 1048576 to fit 8×B200 KV),
 		max-num-batched-tokens 16384, max-num-seqs 16, kv-cache-dtype fp8_e4m3,
 		glm47 tool-call parser + glm45 reasoning parser, --trust-remote-code,
 		--enable-auto-tool-choice.
@@ -143,9 +161,9 @@ b200_glm_5_2: #BaseProfile & bases.B200 & bases.GLM_5_2 & {
 			added_at: "2026-06-24"
 		},
 		{
-			knob:     "max_model_len=350000"
+			knob:     "max_model_len=400000 (operator-forced; +14% over the 350000 GPU-proven fit)"
 			source:   "operator GLM-5.2 recommendation"
-			reason:   "Cut from the native 1048576 context. KV at fp8_e4m3 for 753B on 8×B200 cannot hold the full window at useful concurrency; 350000 keeps headroom. Operators needing longer contexts must add GPUs or drop concurrency."
+			reason:   "Operator directive (Pasha): 400000 on all GLM GPUs. The deepgemm-8xb200 experiment proved 350000 at fp8_e4m3/gmu0.85; 400000 is +14% and NOT GPU-validated — re-confirm it does not OOM at memory profiling on 8×B200 before production. Cut from native 1048576 (full window won't hold at useful concurrency)."
 			severity: "warning"
 			added_at: "2026-06-24"
 		},
@@ -158,13 +176,13 @@ b200_glm_5_2: #BaseProfile & bases.B200 & bases.GLM_5_2 & {
 		{
 			knob:     "max_num_seqs=16"
 			source:   "operator GLM-5.2 recommendation"
-			reason:   "Concurrency cap for the large 753B model at max_model_len=350000. Couples to max_num_batched_tokens=16384. Info, not a regression vs upstream."
+			reason:   "Concurrency cap for the large 753B model at max_model_len=400000. Couples to max_num_batched_tokens=16384. Info, not a regression vs upstream."
 			added_at: "2026-06-24"
 		},
 		{
 			knob:     "kv_cache_dtype=fp8_e4m3"
 			source:   "operator GLM-5.2 recommendation"
-			reason:   "FP8 KV halves the cache footprint, enabling max_model_len=350000 at max_num_seqs=16 on 8×B200. Accepted natively on sm_100. Standard for the FP8 Blackwell profiles."
+			reason:   "FP8 KV halves the cache footprint, enabling max_model_len=400000 at max_num_seqs=16 on 8×B200. Accepted natively on sm_100. Standard for the FP8 Blackwell profiles."
 			added_at: "2026-06-24"
 		},
 		{
