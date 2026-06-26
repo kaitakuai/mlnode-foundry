@@ -37,7 +37,7 @@
     "gpu_memory_utilization=0.85",
     "kv_cache_dtype=fp8_e4m3",
     "logprobs_mode=processed_logprobs",
-    "max_model_len=350000",
+    "max_model_len=400000",
     "max_num_batched_tokens=16384",
     "max_num_seqs=16",
     "reasoning_parser=glm45",
@@ -46,27 +46,27 @@
     "trust_remote_code=True"
   ],
   "flag_warnings": {
-    "max_model_len=350000": "Cut from the native 1048576 context. KV at fp8_e4m3 for 753B on 8\u00d7B200 cannot hold the full window at useful concurrency; 350000 keeps headroom. Operators needing longer contexts must add GPUs or drop concurrency.",
+    "max_model_len=400000 (operator-forced; +14% over the 350000 GPU-proven fit)": "Operator directive (Pasha): 400000 on all GLM GPUs. The deepgemm-8xb200 experiment proved 350000 at fp8_e4m3/gmu0.85; 400000 is +14% and NOT GPU-validated \u2014 re-confirm it does not OOM at memory profiling on 8\u00d7B200 before production. Cut from native 1048576 (full window won't hold at useful concurrency).",
     "MoE backend=DeepGEMM (linear\u2192Cutlass via VLLM_DISABLED_KERNELS)": "DeepGEMM's two flags are split: MoE experts ON DeepGEMM (the throughput lever, AND-gated on VLLM_USE_DEEP_GEMM=1 + VLLM_MOE_USE_DEEP_GEMM=1 + E8M0=1) while the block-FP8 LINEAR path is disabled (DeepGemmFp8BlockScaledMMKernel + FlashInferFp8DeepGEMMDynamicBlockScaledKernel) so fused_qkv_a_proj (N=2624, N%128==64) falls to CutlassFp8BlockScaledMMKernel instead of crashing the DeepGEMM linear kernel at memory profiling. MoE workspace lock handled by gonka-poc df73e1c. The earlier 'triton only' read was wrong \u2014 DeepGEMM-MoE runs once the linear is routed off it. GPU-confirm start + throughput.",
     "validation-report": "GLM-5.2 throughput from the standalone experiment (eager PoC 1016 nonces/min @ batch 64; triton-only MoE). NOT yet re-validated on the vllm-poc 0.23 PLUGIN base \u2014 re-benchmark on 8\u00d7B200 and verify nonces L2-cross-validate under the GLM chain gate before production."
   },
   "flag_descriptions": {
     "tensor_parallel_size=8": "753B FP8 (~full 8\u00d7B200 HBM) requires TP=8 to fit the weights + KV; single-instance per 8-GPU box. Validated in the standalone GLM experiment.",
-    "max_model_len=350000": "Cut from the native 1048576 context. KV at fp8_e4m3 for 753B on 8\u00d7B200 cannot hold the full window at useful concurrency; 350000 keeps headroom. Operators needing longer contexts must add GPUs or drop concurrency.",
+    "max_model_len=400000 (operator-forced; +14% over the 350000 GPU-proven fit)": "Operator directive (Pasha): 400000 on all GLM GPUs. The deepgemm-8xb200 experiment proved 350000 at fp8_e4m3/gmu0.85; 400000 is +14% and NOT GPU-validated \u2014 re-confirm it does not OOM at memory profiling on 8\u00d7B200 before production. Cut from native 1048576 (full window won't hold at useful concurrency).",
     "max_num_batched_tokens=16384": "Chunked-prefill budget (above the upstream 8192 default) paired with max_num_seqs=16. Perf opt, no baseline violation; info.",
-    "max_num_seqs=16": "Concurrency cap for the large 753B model at max_model_len=350000. Couples to max_num_batched_tokens=16384. Info, not a regression vs upstream.",
-    "kv_cache_dtype=fp8_e4m3": "FP8 KV halves the cache footprint, enabling max_model_len=350000 at max_num_seqs=16 on 8\u00d7B200. Accepted natively on sm_100. Standard for the FP8 Blackwell profiles.",
+    "max_num_seqs=16": "Concurrency cap for the large 753B model at max_model_len=400000. Couples to max_num_batched_tokens=16384. Info, not a regression vs upstream.",
+    "kv_cache_dtype=fp8_e4m3": "FP8 KV halves the cache footprint, enabling max_model_len=400000 at max_num_seqs=16 on 8\u00d7B200. Accepted natively on sm_100. Standard for the FP8 Blackwell profiles.",
     "compiled inference + eager PoC (compilation NOT forced)": "Inference runs COMPILED by default (vLLM VLLM_COMPILE + CUDA graphs): GLM decode 817 vs 157 tok/s eager (+6.8\u00d7 TPOT). The PoC forward is eager on its own via gonka-poc poc_model_runner (set_forward_context skip_compiled=True): eager PoC is +~25% (1016 vs 768 nonces/min) AND bit-compat. The runner-patch does NOT force --compilation-config / --enforce-eager (forcing global eager would drop inference CUDA graphs). Operator passes --enforce-eager only for the EXCEPTIONAL eager-inference case.",
     "MoE backend=DeepGEMM (linear\u2192Cutlass via VLLM_DISABLED_KERNELS)": "DeepGEMM's two flags are split: MoE experts ON DeepGEMM (the throughput lever, AND-gated on VLLM_USE_DEEP_GEMM=1 + VLLM_MOE_USE_DEEP_GEMM=1 + E8M0=1) while the block-FP8 LINEAR path is disabled (DeepGemmFp8BlockScaledMMKernel + FlashInferFp8DeepGEMMDynamicBlockScaledKernel) so fused_qkv_a_proj (N=2624, N%128==64) falls to CutlassFp8BlockScaledMMKernel instead of crashing the DeepGEMM linear kernel at memory profiling. MoE workspace lock handled by gonka-poc df73e1c. The earlier 'triton only' read was wrong \u2014 DeepGEMM-MoE runs once the linear is routed off it. GPU-confirm start + throughput.",
     "no attention_backend pin (DSA, not MLA)": "GLM-5.2 uses DSA sparse attention, not MLA \u2014 do NOT pin CUTLASS_MLA (a Kimi/DeepSeek-MLA backend). The runner-patch deliberately omits --attention-backend; vLLM auto-selects the DSA path.",
     "MLNODE_VLLM_MODULE=gonka_poc.entrypoint.api_router": "Server-side plugin flip \u2014 launches the composed gonka-poc entrypoint (PoC router + gating) instead of stock api_server. Required on the plugin base. No throughput trade-off; info.",
     "validation-report": "GLM-5.2 throughput from the standalone experiment (eager PoC 1016 nonces/min @ batch 64; triton-only MoE). NOT yet re-validated on the vllm-poc 0.23 PLUGIN base \u2014 re-benchmark on 8\u00d7B200 and verify nonces L2-cross-validate under the GLM chain gate before production."
   },
-  "digest": "sha256:9ae5a0be64feedbf217c1a58042f5d5b20acdc9909cb09add6e98d023bacfeec",
+  "digest": "sha256:f92a7031b7ebe3a4dee1ddd3656db5a160bfd52c8ca4602b9316d1e98d546804",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main",
   "slsa_attestation_url": null,
   "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-06/glm-5.2-fp8-8xb200/README.md",
-  "uploaded_by": "github-actions[bot]",
+  "uploaded_by": "Mykola Baichak",
   "nonces": null,
   "weight": null
 }
