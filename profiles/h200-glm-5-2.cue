@@ -6,10 +6,15 @@
 //
 // HOPPER (sm_90) IS DIFFERENT from Blackwell (b200/b300, sm_100) — three
 // load-bearing changes vs the b200/b300 GLM profiles:
-//   1. kv-cache-dtype = auto (bf16). FLASHMLA_SPARSE (the attention backend
-//      auto-selected for GLM-DSA on sm_90) REJECTS fp8_e4m3 → 'No valid attention
-//      backend' at startup. fp8_ds_mla is the only fp8 KV FLASHMLA_SPARSE accepts,
-//      and only for max-context serving — a operator-launch override, NOT baked.
+//   1. kv-cache-dtype = fp8. On sm_90 GLM-DSA the attention backend is
+//      FLASHMLA_SPARSE, where 'fp8' is the supported alias for fp8_ds_mla (a
+//      656-byte compressed MLA KV format) — NOT the plain fp8_e4m3 that
+//      FLASHMLA_SPARSE REJECTS ('No valid attention backend'). Pasha verified
+//      --kv-cache-dtype fp8 + --max-num-batched-tokens 16384 on the built H200
+//      image (2026-06-26); the compressed KV gives more headroom for the 400000
+//      context. (The earlier experiment baked auto/bf16 for PoC; fp8 is the
+//      post-test update. NONCE NOTE: fp8 KV changes the attention math vs bf16 — the
+//      H200↔B200 L2-PASS was on bf16, so re-confirm nonce L2 on fp8 if mining.)
 //   2. DeepGEMM OFF (triton MoE). DeepGEMM is a Blackwell sm_100 path; on Hopper
 //      it is off, so there is no DeepGEMM linear crash and NO VLLM_DISABLED_KERNELS
 //      / E8M0. The FP8 MoE auto-selector must be pinned to triton (env
@@ -78,9 +83,9 @@ h200_glm_5_2: #BaseProfile & bases.H200 & bases.GLM_5_2 & {
 		tensor_parallel_size:    8
 		gpu_memory_utilization:  0.90
 		max_model_len:           400000
-		max_num_batched_tokens:  65536
+		max_num_batched_tokens:  16384
 		max_num_seqs:            128
-		kv_cache_dtype:          "auto"
+		kv_cache_dtype:          "fp8"
 		tool_call_parser:        "glm45"
 		reasoning_parser:        "glm45"
 		moe_backend:             "triton"
@@ -91,19 +96,22 @@ h200_glm_5_2: #BaseProfile & bases.H200 & bases.GLM_5_2 & {
 		// NO attention_backend: GLM-5.2 is DSA — FLASHMLA_SPARSE auto-selects on
 		// sm_90; do NOT pin CUTLASS_MLA.
 	}
-	description: "H200 Hopper SXM5 (×8) + GLM-5.2 FP8 (TP=8, eager PoC / compiled inference, triton MoE, bf16 KV) — vllm-poc PLUGIN base"
+	description: "H200 Hopper SXM5 (×8) + GLM-5.2 FP8 (TP=8, eager PoC / compiled inference, triton MoE, fp8_ds_mla KV) — vllm-poc PLUGIN base"
 	notes: """
-		GLM-5.2 FP8 on H200 (Hopper sm_90), from experiments/2026-06/glm-5.2-fp8-8xh200.
+		GLM-5.2 FP8 on H200 (Hopper sm_90), from experiments/2026-06/glm-5.2-fp8-8xh200
+		+ Pasha's post-test directive (2026-06-26: kv fp8 + mnbt 16384 on the built image).
 		Config: TP=8, gpu-memory-utilization 0.90 (sparse_decode_fwd needs ~2 GB/card
-		scratch; gmu 0.97 OOMs), max-model-len 400000 (operator-forced; H200 bf16 KV
-		holds ~553K at gmu0.90 so this is comfortable), max-num-batched-tokens 65536
-		(H200 OOMs on KV profiling at 131072+bf16 → negative KV cache), max-num-seqs
-		128, glm45 tool-call + glm45 reasoning parsers, --enable-expert-parallel.
+		scratch; gmu 0.97 OOMs), max-model-len 400000 (operator-forced), kv-cache-dtype
+		fp8 (= FLASHMLA_SPARSE fp8_ds_mla alias, compressed), max-num-batched-tokens
+		16384, max-num-seqs 128, glm45 tool-call + glm45 reasoning parsers,
+		--enable-expert-parallel.
 
 		Hopper-specific (vs b200/b300 GLM):
-		  - kv-cache-dtype=auto (bf16): FLASHMLA_SPARSE REJECTS fp8_e4m3 on sm_90 ('No
-		    valid attention backend'). fp8_ds_mla is the only fp8 KV it accepts and only
-		    for max-context serving — operator override, NOT baked.
+		  - kv-cache-dtype=fp8: on sm_90 GLM-DSA the backend is FLASHMLA_SPARSE, where
+		    'fp8' is the supported alias for fp8_ds_mla (656-byte compressed MLA KV) —
+		    plain fp8_e4m3 is REJECTED ('No valid attention backend'). Pasha-verified on
+		    the built image. NONCE: fp8 changes attention math vs the bf16 the H200↔B200
+		    L2-PASS used — re-confirm nonce L2 on fp8 if mining.
 		  - DeepGEMM OFF → triton MoE (env VLLM_USE_FLASHINFER_MOE_FP8=0 + CLI
 		    --moe-backend triton); no VLLM_DISABLED_KERNELS / E8M0.
 		  - tool-call-parser glm45 (NOT glm47), --enable-expert-parallel ON.
@@ -122,9 +130,9 @@ h200_glm_5_2: #BaseProfile & bases.H200 & bases.GLM_5_2 & {
 		"""
 	tuning_notes: [
 		{
-			knob:     "kv_cache_dtype=auto (bf16 — NOT fp8_e4m3)"
-			source:   "https://github.com/kaitakuai/experiments/tree/main/2026-06/glm-5.2-fp8-8xh200"
-			reason:   "LOAD-BEARING H200 difference: FLASHMLA_SPARSE (sm_90 GLM-DSA attention) rejects fp8_e4m3 → 'No valid attention backend' at startup. bf16/auto is the PoC default; fp8_ds_mla is a serving-only operator override for max context, NOT baked."
+			knob:     "kv_cache_dtype=fp8 (FLASHMLA_SPARSE fp8_ds_mla alias — NOT fp8_e4m3)"
+			source:   "Pasha post-test directive (2026-06-26) on the built H200 image"
+			reason:   "LOAD-BEARING: on sm_90 GLM-DSA the backend is FLASHMLA_SPARSE, where 'fp8' is the supported alias for fp8_ds_mla (656-byte compressed MLA KV); plain fp8_e4m3 is REJECTED ('No valid attention backend'). Pasha verified fp8 + mnbt 16384 on hardware. Compressed KV → more headroom for 400000. NONCE: fp8 changes attention math vs the bf16 the H200↔B200 L2-PASS used — re-confirm nonce L2 on fp8 if mining."
 			severity: "warning"
 			added_at: "2026-06-26"
 		},
@@ -142,15 +150,15 @@ h200_glm_5_2: #BaseProfile & bases.H200 & bases.GLM_5_2 & {
 			added_at: "2026-06-26"
 		},
 		{
-			knob:     "max_num_batched_tokens=65536"
-			source:   "glm-5.2-fp8-8xh200 config.env"
-			reason:   "Lowered from 131072: H200 OOMs on KV profiling at 131072 + bf16 KV ('Available KV cache: -3.95 GiB'). Mandatory on H200; NOT the small-mnbt DeepGEMM constraint of B200/B300 (different cause)."
+			knob:     "max_num_batched_tokens=16384"
+			source:   "Pasha post-test directive (2026-06-26)"
+			reason:   "Pasha-verified on the built H200 image alongside kv-cache-dtype=fp8. (The pre-test experiment used 65536 to dodge a 131072+bf16 KV-profiling OOM; with the compressed fp8_ds_mla KV the footprint is smaller, and 16384 also matches B200/B300.)"
 			added_at: "2026-06-26"
 		},
 		{
 			knob:     "max_model_len=400000 (operator-forced)"
 			source:   "Pasha directive + glm-5.2-fp8-8xh200"
-			reason:   "400000 on all GLM GPUs. H200 SAFE: experiment measured ~553,668-token bf16 KV cache at gmu0.90; 400000 is CUT DOWN from the proven 450000 serving ceiling, so bf16 KV holds it without fp8_ds_mla."
+			reason:   "400000 on all GLM GPUs. H200 SAFE: experiment measured ~553,668-token bf16 KV cache at gmu0.90; 400000 is below the proven 450000 ceiling, and the compressed fp8_ds_mla KV (now baked) gives even more headroom."
 			added_at: "2026-06-26"
 		},
 		{
