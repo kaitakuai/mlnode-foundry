@@ -10,16 +10,18 @@ H200 = Hopper sm_90, so the backend/KV story differs materially):
      --tensor-parallel-size 8
      --gpu-memory-utilization 0.90    (sparse_decode_fwd needs ~2 GB/card scratch;
                                        gmu 0.97 OOMs with 500 errors)
-     --max-model-len 400000           (operator-forced; H200 bf16 KV holds ~553K
-                                       at gmu0.90, so 400000 is comfortable)
-     --max-num-batched-tokens 65536   (H200 OOMs on KV profiling at 131072 + bf16 →
-                                       'Available KV cache: -3.95 GiB'; 65536 fixes it)
+     --max-model-len 400000           (operator-forced; comfortable with fp8 KV)
+     --max-num-batched-tokens 16384   (Pasha-verified on the built H200 image; the
+                                       compressed fp8_ds_mla KV makes the small mnbt
+                                       fit, and it matches B200/B300)
      --max-num-seqs 128
-     --kv-cache-dtype auto            (bf16 — FLASHMLA_SPARSE REJECTS fp8_e4m3 on
-                                       sm_90 → 'No valid attention backend'. This is
-                                       the LOAD-BEARING H200 difference vs B200/B300.
-                                       fp8_ds_mla is a serving-only operator override
-                                       for max-context, NOT the baked PoC default.)
+     --kv-cache-dtype fp8             (LOAD-BEARING H200: on sm_90 GLM-DSA the backend
+                                       is FLASHMLA_SPARSE, where 'fp8' is the supported
+                                       alias for fp8_ds_mla (656-byte compressed MLA
+                                       KV) — plain fp8_e4m3 is REJECTED ('No valid
+                                       attention backend'). Pasha-verified post-test
+                                       2026-06-26. NONCE: fp8 changes attention math vs
+                                       bf16 — re-confirm nonce L2 on fp8 if mining.)
      --tool-call-parser glm45         (H200 difference: glm45, NOT glm47 like B200/B300)
      --reasoning-parser glm45
      --moe-backend triton             (DeepGEMM is off on sm_90; force triton
@@ -78,9 +80,9 @@ INJECTION_LINES = [
     "    ('--tensor-parallel-size', '8'),",
     "    ('--gpu-memory-utilization', '0.90'),",
     "    ('--max-model-len', '400000'),",
-    "    ('--max-num-batched-tokens', '65536'),",
+    "    ('--max-num-batched-tokens', '16384'),",
     "    ('--max-num-seqs', '128'),",
-    "    ('--kv-cache-dtype', 'auto'),",
+    "    ('--kv-cache-dtype', 'fp8'),",
     "    ('--tool-call-parser', 'glm45'),",
     "    ('--reasoning-parser', 'glm45'),",
     "    ('--moe-backend', 'triton'),",
