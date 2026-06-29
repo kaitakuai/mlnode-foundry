@@ -1,10 +1,25 @@
-// Profile: B200 Blackwell + Kimi-K2.6 INT4 (experimental tune k=2)
+// Profile: B200 Blackwell (×4) + Kimi-K2.6 INT4 — vllm-poc PLUGIN base.
 //
-// Most-promising tuning candidate as of 2026-05-19 — moves off rev=1's eager
-// defaults onto a compiled cudagraph path with a smaller batch envelope.
-// Args are baked into mlnode runner.py via tools/runner-patches/b200-kimi-k2-6-int4.py
-// so the image is reproducible end-to-end for hardware validation (operator
-// just `docker run` and the chain-broadcast args get overridden by the patcher).
+// Composition: #BaseProfile & B200 & KIMI_INT4 with TP=4, on the vllm-poc PLUGIN
+// base (residual vLLM 0.23 + gonka-poc package; ADR-0013). Migrated in place from
+// the fat-fork 0.20 rev=2 tune (which this validated config came from). Config is
+// the B200 Kimi experiment kimi_k26_int4_4xb200_q-int4-k2: TP=4, CUDA graphs
+// (compilation mode=3 / FULL_AND_PIECEWISE), gmu 0.93, batch=32 (mnbt 32768),
+// max-model-len 120000, CUTLASS_MLA, expert-parallel, kimi_k2 parsers,
+// mm-encoder-tp-mode data — ~2240 nonces/min @ batch=32 on a single 4×B200.
+//
+// COMPILATION vs b300-kimi: b300-kimi FORCES EAGER (cudagraph hangs at batch=128 on
+// Kimi MLA on B300). B200 runs the SMALLER batch=32 envelope (178/183 GiB/GPU), and
+// at batch=32 CUDA graphs work fine (the experiment ran them). The experiment showed
+// CUDA graphs do NOT change PoC throughput (PoC is a separate forward path), so we
+// keep mode=3 FULL_AND_PIECEWISE for faster inference at no PoC cost — UNLIKE b300.
+// The PoC forward still runs eager on its own via gonka-poc skip_compiled.
+//
+// Plugin differences vs the fat-fork b200-kimi rev=2:
+//   - env adds MLNODE_VLLM_MODULE → the runner launches the composed gonka-poc
+//     entrypoint; runner_patch forces --worker-extension-cls (worker-side PoC).
+//   - HF_HUB_OFFLINE=1 baked (Kimi tokenizer workaround; pre-stage weights).
+//   - --enforce-eager removed (conflicts with the forced --compilation-config).
 package profiles
 
 import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
@@ -15,23 +30,21 @@ b200_kimi_k2_6: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
 			gpu:            "b200"
 			model:          "kimi"
 			model_revision: "k2-6"
-			// quant axis intentionally omitted — Kimi-K2.6 is shipped only as INT4
-			// today (compressed-tensors W4A16 — see tools/model-registry.cue).
-			// Adding `quant: "int4"` would suffix the tag with `-q.int4`, which
-			// adds noise without distinguishing anything: only one Kimi quant exists.
-			// Re-add when (and only when) a second quant variant (fp8, nvfp4, ...) ships.
+			// quant axis omitted — Kimi-K2.6 ships only as INT4 (compressed-tensors
+			// W4A16). Mirrors b300-kimi-k2-6.cue.
 		}
 		version: {
 			mlnode: "0.2.13"
-			vllm:   "0.20.0"
-			// rev=2: experimental tune with compilation mode=3 + FULL_AND_PIECEWISE
-			// cudagraph + expert-parallel + smaller batch (32 vs 128). rev=1 was
-			// the eager-only baseline ported from legacy b200-k5-kimi-1.
-			rev: 2
+			vllm:   "0.23.0"
+			rev:    1
 		}
 	}
 	mode: "kaitakuai-base"
-	// Same hw-patches as rev=1; experimental tune doesn't add or remove any.
+	// B200 GPU-env hw-patches + cold-start-tolerance (753B-class INT4 + MLA warmup
+	// is a slow first init; B200 base omits cold-start, added here — same as the
+	// b200-glm leaf / the Kimi-INT4 note in bases/b200.cue). The fat-fork's
+	// poc-householder-compile is NOT referenced — it edited the monolith's
+	// vllm/poc/ tree, absent on the plugin base.
 	hw_patches: [
 		"triton-ptxas-from-system-cuda",
 		"flashinfer-jit-uninstall",
@@ -39,101 +52,106 @@ b200_kimi_k2_6: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
 		"nvidia-headers-symlinks",
 		"cold-start-tolerance",
 	]
-	runner_patch: "b200-kimi-k2-6"
+	runner_patch: "b200-kimi-k2-6-plugin"
 	env: {
+		// Server-side plugin flip: launch the gonka-poc composed entrypoint
+		// (build_app + PoC router + gating) instead of stock api_server (ADR-0013).
+		MLNODE_VLLM_MODULE: "gonka_poc.entrypoint.api_router"
+		// Required for the worker extension's collective_rpc msgpack channel.
+		VLLM_ALLOW_INSECURE_SERIALIZATION: "1"
+		// Kimi-K2.6's newer revision ships a buggy tokenization_kimi_fast.py;
+		// HF_HUB_OFFLINE forces the cached (pre-staged) tokenizer. Requires weights
+		// pre-staged in the HF cache (true on fleet nodes; pre-stage before a
+		// standalone run). See [[project_kimi_hf_hub_offline]].
+		HF_HUB_OFFLINE:      "1"
+		// Long Kimi-K2.6 INT4 load (~530 GiB on TP=4) + MLA warmup.
 		VLLM_RUNNER_TIMEOUT: "3600"
 	}
 	runtime_defaults: {
-		// Override KIMI_INT4 base defaults (mode=0 / NONE → mode=3 / FULL_AND_PIECEWISE).
-		compilation_mode:       3
-		cudagraph_mode:         "FULL_AND_PIECEWISE"
-		// Forced via runner-patch — values reproduced here for dashboard display.
-		tensor_parallel_size:   4
-		gpu_memory_utilization: 0.93
-		max_num_batched_tokens: 32768
-		max_model_len:          120000
-		max_num_seqs:           32
-		attention_backend:      "CUTLASS_MLA"
-		tool_call_parser:       "kimi_k2"
-		reasoning_parser:       "kimi_k2"
-		mm_encoder_tp_mode:     "data"
-		logprobs_mode:          "processed_logprobs"
-		trust_remote_code:      true
+		// CUDA graphs (override the KIMI_INT4 base eager default: mode=0/NONE →
+		// mode=3/FULL_AND_PIECEWISE). Works at B200's batch=32 (unlike B300 batch=128
+		// where cudagraph hangs → b300-kimi forces eager). Forced via the runner-patch;
+		// reproduced here for the dashboard. PoC forward is eager via gonka-poc
+		// skip_compiled regardless.
+		compilation_mode:        3
+		cudagraph_mode:          "FULL_AND_PIECEWISE"
+		tensor_parallel_size:    4
+		gpu_memory_utilization:  0.93
+		max_num_batched_tokens:  32768
+		max_model_len:           120000
+		max_num_seqs:            32
+		attention_backend:       "CUTLASS_MLA"
+		tool_call_parser:        "kimi_k2"
+		reasoning_parser:        "kimi_k2"
+		mm_encoder_tp_mode:      "data"
+		logprobs_mode:           "processed_logprobs"
+		trust_remote_code:       true
 		enable_auto_tool_choice: true
 		enable_expert_parallel:  true
 	}
-	description: "B200 Blackwell SXM (×4) + Kimi-K2.6 INT4 — experimental tune k=2 (compiled + EP + smaller batch)"
+	description: "B200 Blackwell SXM (×4) + Kimi-K2.6 INT4 (TP=4, CUDA graphs, EP, batch=32) — vllm-poc PLUGIN base (gonka-poc entrypoint + worker extension)"
 	notes: """
-		Replaces rev=1's eager defaults with:
-		  - compilation-config '{"mode": 3, "cudagraph_mode": "FULL_AND_PIECEWISE"}'
-		  - --enable-expert-parallel
-		  - --gpu-memory-utilization 0.93 (was 0.95 / 0.85 baseline)
-		  - --max-num-batched-tokens 32768 (was 131072)
-		  - --max-num-seqs 32 (was 128)
-		  - --max-model-len 120000 (caps below native 256k to fit cudagraph capture)
-		  - removed --enforce-eager
-		Operator handoff: docker pull + run, the runner-patch forces these args
-		over anything chain epoch_models broadcasts.
+		B200 Kimi-K2.6 INT4 on the 0.23 plugin base. Config from the validated B200
+		Kimi experiment (kimi_k26_int4_4xb200_q-int4-k2): TP=4, CUDA graphs
+		(compilation mode=3 / FULL_AND_PIECEWISE), gpu-memory-utilization 0.93,
+		batch=32 (max-num-batched-tokens 32768 = 32×1024), max-num-seqs 32,
+		max-model-len 120000, CUTLASS_MLA, expert-parallel, kimi_k2 tool/reasoning
+		parsers, mm-encoder-tp-mode data, INT4 FlashInfer MoE (KIMI_INT4 base).
+
+		Memory envelope (vs b300-kimi's batch=128/uncapped 256K): B200's 178-183
+		GiB/GPU caps the cudagraph capture, so batch=32 + max-model-len 120000
+		(prompts >120k truncate). Model loads ~141 GiB/card; ~14 GiB KV pool at
+		gmu 0.93. ~2240 nonces/min @ batch=32 on a single 4×B200 instance.
+
+		Plugin flip vs the fat-fork rev=2:
+		  - MLNODE_VLLM_MODULE=gonka_poc.entrypoint.api_router (composed server).
+		  - runner-patch forces --worker-extension-cls gonka_poc.worker.PoCWorkerExtension
+		    (worker-side PoC via collective_rpc), plus the experiment tune above.
+		  - --enforce-eager removed (conflicts with --compilation-config; mode=3 is
+		    the compiled path, PoC-forward eager comes from gonka-poc skip_compiled).
+		  - HF_HUB_OFFLINE=1 baked (Kimi tokenizer workaround) — pre-stage weights.
+
+		COMPILATION differs from b300-kimi (which forces EAGER because cudagraph hangs
+		at batch=128 on Kimi MLA on B300). At B200's batch=32 cudagraph works, and the
+		experiment showed CUDA graphs do not change PoC throughput (separate forward
+		path) — so mode=3 keeps faster inference at no PoC cost.
+
+		NOT yet re-validated on the vllm-poc 0.23 PLUGIN base — re-benchmark on 4×B200
+		(start clean, no MLA assert, PoC ~2240/min @ batch=32, INT4 nonces L2-valid
+		under the Kimi gate) before treating as production.
 		"""
 	tuning_notes: [
 		{
 			knob:     "validation-report"
 			source:   "https://github.com/kaitakuai/experiments/blob/main/2026-05/kimi_k26_int4_4xb200_q-int4-k2/README.md"
-			reason:   "Hardware validation report — 4×B200 (Vast.ai), PoC nonces flowing, no MLA assert after kaitakuai/vllm#9 (seq_lens_cpu_upper_bound restore in Stage 2). First tuning_note with an experiments URL → picked up by render_registry_view._report_url as the image's report_url (dashboard ‘verified’ chip)."
-			added_at: "2026-05-21"
+			reason:   "Hardware validation on 4×B200 (Vast.ai): ~2240 nonces/min @ batch=32, no MLA assert (after kaitakuai/vllm#9 seq_lens_cpu_upper_bound restore), INT4 nonces L2-PASS vs B300 (0.1888, 1.5%) and B200-k5 (0.1874, 2.5%). Config is fat-fork-proven; NOT yet re-benchmarked on the vllm-poc 0.23 PLUGIN base — re-confirm on 4×B200 before production."
+			severity: "warning"
+			added_at: "2026-06-26"
 		},
-		// IMPORTANT: `knob` MUST exactly match the chip label rendered on the
-		// dashboard (which comes from `profile.env` / `profile.runtime_defaults`
-		// flattened to `key=value`, snake_case + single = sign). Otherwise
-		// warning highlights don't fire — the lookup in
-		// dashboard/app/web/public/index.html is `flag_warnings[chipLabel]`.
-		// Don't combine multiple keys into one comma-separated knob string —
-		// that string matches no chip and the warning is silently orphaned.
-		// SEVERITY DISCIPLINE (matches mlnode/registry/schema.json::flag_warnings):
-		//   `warning` ONLY for: value BELOW upstream/recommended baseline AND
-		//                       has a measurable consequence (truncation,
-		//                       throughput cap, memory cap, latency hit).
-		//   `info`    (default) for everything else — mode switches,
-		//                       experimental paths, performance opts, knobs
-		//                       without a hard upstream baseline.
-		// Avoid warning-noise: only the truly notable downside should wear
-		// the amber triangle. Operators learn to ignore over-warned cards.
 		{
 			knob:     "compilation_mode=3"
-			source:   "operator iteration 2026-05-19 (handoff to colleague for benchmark)"
-			reason:   "Replaces rev=1 mode=0/NONE eager defaults with compiled+cudagraph path. Throughput claim untested — this image is the test."
-			added_at: "2026-05-19"
-		},
-		{
-			knob:     "cudagraph_mode=FULL_AND_PIECEWISE"
-			source:   "operator iteration 2026-05-19"
-			reason:   "Pairs with compilation_mode=3 (CompilationMode 3 + FULL_AND_PIECEWISE cudagraph). Compile-cache OOMs above 32768 batched tokens on Kimi MLA on B200 — see max_num_batched_tokens / max_num_seqs / max_model_len for the coupled budget."
-			added_at: "2026-05-19"
-		},
-		{
-			knob:     "enable_expert_parallel=True"
-			source:   "operator iteration 2026-05-19"
-			reason:   "Adds EP=4 over the TP=4 sharding. Legacy B300 Kimi config showed +5% EP gain; replicate on B200 here."
-			added_at: "2026-05-19"
+			source:   "kimi_k26_int4_4xb200_q-int4-k2 experiment"
+			reason:   "CUDA graphs (mode 3 + FULL_AND_PIECEWISE). Unlike b300-kimi (forced eager — cudagraph hangs at batch=128 on B300), B200 runs batch=32 where cudagraph works; the experiment confirmed CUDA graphs do not change PoC throughput (PoC is a separate forward path), so mode=3 keeps faster inference at no PoC cost. PoC forward eager via gonka-poc skip_compiled."
+			added_at: "2026-06-26"
 		},
 		{
 			knob:     "max_num_batched_tokens=32768"
-			source:   "operator iteration 2026-05-19"
-			reason:   "Above vLLM upstream chunked-prefill default 8192 but below rev=1's 131072. Cudagraph FULL_AND_PIECEWISE OOMs above 32768 on Kimi MLA at B200's 178 GiB/GPU. No upstream-baseline violation — info."
-			added_at: "2026-05-19"
-		},
-		{
-			knob:     "max_num_seqs=32"
-			source:   "operator iteration 2026-05-19"
-			reason:   "Coupled to max_num_batched_tokens=32768: one prefill chunk = batch × seq_len = 32 × 1024. No hard upstream default for max_num_seqs; this is a coupling note, not a regression vs upstream."
-			added_at: "2026-05-19"
+			source:   "kimi_k26_int4_4xb200_q-int4-k2 experiment"
+			reason:   "Caps PoC effective batch at 32 (32×1024). Batch 64/128 exceed the token budget and OOM at B200's 178 GiB/GPU under cudagraph FULL_AND_PIECEWISE. Above upstream chunked-prefill default 8192 — perf opt, no baseline violation."
+			added_at: "2026-06-26"
 		},
 		{
 			knob:     "max_model_len=120000"
-			source:   "operator iteration 2026-05-19"
-			reason:   "Capped below Kimi-K2.6's native 262144 context window (~54% reduction). Cudagraph FULL captures KV-cache shapes at 256k that OOM at B200's 178 GiB/GPU. Long-context prompts (>120k tokens) get truncated."
+			source:   "kimi_k26_int4_4xb200_q-int4-k2 experiment"
+			reason:   "Capped below Kimi-K2.6's native 262144 (~54% cut). Cudagraph FULL captures KV shapes at 256k that OOM at B200's 178 GiB/GPU. Prompts >120k truncate. (B300 leaves 256K uncapped — 275 GiB/GPU has room.)"
 			severity: "warning"
-			added_at: "2026-05-19"
+			added_at: "2026-06-26"
+		},
+		{
+			knob:     "enable_expert_parallel=True"
+			source:   "kimi_k26_int4_4xb200_q-int4-k2 experiment"
+			reason:   "EP=4 over the TP=4 sharding (legacy B300 Kimi showed +5% EP gain). Enabled in the validated B200 config."
+			added_at: "2026-06-26"
 		},
 	]
 }
