@@ -63,6 +63,6 @@
   "slsa_attestation_url": null,
   "report_url": "https://github.com/kaitakuai/experiments/tree/main/2026-06/glm-5.2-deepgemm-4xb300",
   "uploaded_by": "Mykola Baichak",
-  "nonces": null,
-  "weight": null
+  "nonces": 1792,
+  "weight": 11243
 }
