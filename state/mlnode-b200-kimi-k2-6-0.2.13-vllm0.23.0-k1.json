@@ -1,0 +1,18 @@
+{
+  "profile": "profiles/b200-kimi-k2-6.cue",
+  "profile_hash": "3d98fb090942520455e45e537e5258c1f99c33916f9823b20d3dc384d3d50d79",
+  "status": "draft",
+  "image": {
+    "package": "ghcr.io/kaitakuai/mlnode-b200-kimi-k2-6",
+    "tag": "0.2.13-vllm0.23.0-k1",
+    "digest": "sha256:62c1d3882406a6a7703869586ab11229386fc9f5101e754a0cd3508455352059",
+    "built_at": "2026-06-29T17:50:11Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main"
+  },
+  "validation": {
+    "build_smoke": {
+      "result": "pass",
+      "at": "2026-06-29T17:50:11Z"
+    }
+  }
+}
