@@ -63,6 +63,6 @@
   "slsa_attestation_url": null,
   "report_url": "https://github.com/kaitakuai/experiments/tree/main/2026-06/glm-5.2-fp8-8xh200",
   "uploaded_by": "Mykola Baichak",
-  "nonces": null,
-  "weight": null
+  "nonces": 489,
+  "weight": 3068
 }
