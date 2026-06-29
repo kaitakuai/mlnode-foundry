@@ -30,10 +30,10 @@ def test_b200_kimi_tag(naming: dict) -> None:
     profile = load_profile("b200-kimi-k2-6")
     pkg, tag = render_package_and_tag(profile, naming)
     assert pkg == "ghcr.io/kaitakuai/mlnode-b200-kimi-k2-6"
-    # rev=2 in profile.identity.version → -k2 suffix.
+    # Migrated to the vllm-poc 0.23 plugin base: vllm 0.23.0, rev=1 → -k1 suffix.
     # quant axis intentionally omitted from this profile, so the tag has no
     # `-q.int4` segment (Kimi-K2.6 ships only as INT4 today — see profile).
-    assert tag == "0.2.13-vllm0.20.0-k2"
+    assert tag == "0.2.13-vllm0.23.0-k1"
     assert "q." not in tag
 
 
