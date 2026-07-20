@@ -17,6 +17,23 @@ on:
       - 'stage3/**'
       - '.github/workflows/build-stage3.yml'
   workflow_dispatch:
+    inputs:
+      stage2_image:
+        description: 'Override Stage 2 image (package path, no tag). Default: from stage3.lock.cue. Use for one-off bases (e.g. a 0.25.1 mlnode-base) WITHOUT flipping the fleet lock.'
+        required: false
+        default: ''
+      stage2_digest:
+        description: 'Override Stage 2 digest (sha256:...). Required together with stage2_image. When set, this is a one-off override build: it does NOT commit state/.'
+        required: false
+        default: ''
+      stage3_tag:
+        description: 'Override the published Stage 3 tag (e.g. 0.2.13-vllm0.25.1-k1). Default: from stage3.lock.cue. Set for override builds so they do not collide with the locked tag.'
+        required: false
+        default: ''
+      vllm_version:
+        description: 'Override VLLM_VERSION build-arg / OCI label (e.g. 0.25.1). Default: derived from the stage2 tag in the lock.'
+        required: false
+        default: ''
 
 permissions:
   contents: write       # commit state/_stage3-vllm-env.json
@@ -65,6 +82,20 @@ jobs:
           STAGE3_PACKAGE=$(echo "$LOCK_JSON" | jq -r '.stage3.package')
           STAGE3_TAG=$(echo "$LOCK_JSON" | jq -r '.stage3.tag')
           VLLM_VERSION=$(echo "$LOCK_JSON" | jq -r '.stage2.tag' | sed 's/-poc.*$//; s/^v//')
+
+          # workflow_dispatch overrides for a one-off base (e.g. mlnode-base-0.25.1)
+          # WITHOUT mutating tools/stage3.lock.cue. A non-empty stage2_digest marks
+          # this as an override build (state/ commit is skipped below).
+          IS_OVERRIDE=false
+          if [ -n "${INPUT_STAGE2_IMAGE}" ]; then STAGE2_IMAGE="${INPUT_STAGE2_IMAGE}"; fi
+          if [ -n "${INPUT_STAGE2_DIGEST}" ]; then STAGE2_DIGEST="${INPUT_STAGE2_DIGEST}"; IS_OVERRIDE=true; fi
+          if [ -n "${INPUT_STAGE3_TAG}" ]; then STAGE3_TAG="${INPUT_STAGE3_TAG}"; fi
+          if [ -n "${INPUT_VLLM_VERSION}" ]; then VLLM_VERSION="${INPUT_VLLM_VERSION}"; fi
+          if [ "$IS_OVERRIDE" = "true" ] && [ -z "${INPUT_STAGE3_TAG}" ]; then
+            echo "::error::override build requires stage3_tag (must not collide with the locked $STAGE3_TAG)"; exit 1
+          fi
+          echo "IS_OVERRIDE=$IS_OVERRIDE (stage2=$STAGE2_IMAGE@$STAGE2_DIGEST -> $STAGE3_PACKAGE:$STAGE3_TAG, vllm=$VLLM_VERSION)"
+
           {
             echo "upstream_repo=$UPSTREAM_REPO"
             echo "upstream_commit=$UPSTREAM_COMMIT"
@@ -72,7 +103,13 @@ jobs:
             echo "base_image=$STAGE2_IMAGE@$STAGE2_DIGEST"
             echo "stage3_full_tag=$STAGE3_PACKAGE:$STAGE3_TAG"
             echo "vllm_version=$VLLM_VERSION"
+            echo "is_override=$IS_OVERRIDE"
           } >> "$GITHUB_OUTPUT"
+        env:
+          INPUT_STAGE2_IMAGE: ${{ github.event.inputs.stage2_image }}
+          INPUT_STAGE2_DIGEST: ${{ github.event.inputs.stage2_digest }}
+          INPUT_STAGE3_TAG: ${{ github.event.inputs.stage3_tag }}
+          INPUT_VLLM_VERSION: ${{ github.event.inputs.vllm_version }}
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -148,6 +185,7 @@ jobs:
           cat state/_stage3-vllm-env.json
 
       - name: Commit state/_stage3-vllm-env.json
+        if: steps.lock.outputs.is_override != 'true'
         env:
           STATE_PUSH_TOKEN: ${{ secrets.STATE_PUSH_TOKEN }}
         run: |
