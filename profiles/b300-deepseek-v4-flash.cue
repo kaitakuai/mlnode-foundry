@@ -34,19 +34,22 @@ b300_deepseek_v4_flash: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH &
 		}
 		version: {
 			// Overlay identity: the "upstream" here is OUR one-off 0.25.1
-			// mlnode-base, not a product-science release. rev=1 = first cut.
-			// Tag renders as ...:0.2.13-vllm0.25.1-overlay-k1.
+			// mlnode-base, not a product-science release. rev=2 = base bumped
+			// to the gonka-poc#14 chain (per-group metadata / positions /
+			// pseudo ids — first rev whose PoC actually works on V4).
+			// Tag renders as ...:0.2.13-vllm0.25.1-overlay-k2.
 			upstream: "0.2.13-vllm0.25.1"
-			rev:      1
+			rev:      2
 		}
 	}
 	mode: "upstream-overlay"
 	base: {
 		image: "ghcr.io/kaitakuai/mlnode-base"
-		// One-off mlnode-base:0.2.13-vllm0.25.1-k1, built via build-stage3
-		// workflow_dispatch override (run 29773842256) from S2 vllm-poc:0.25.1
-		// @sha256:0b7421a7...; tools/stage3.lock.cue NOT changed.
-		digest:           "sha256:1284d3ae375fd98f9adbbb63f071c42051da5afed9b6d156b92334844c966f58"
+		// One-off mlnode-base:0.2.13-vllm0.25.1-k2, built via build-stage3
+		// workflow_dispatch override (run 29779914304) from S2 vllm-poc:0.25.1
+		// @sha256:806db7b2... (gonka-poc 3a119d8 = PR#14 per-group/positions/
+		// pseudo-ids + v0_25 mirror); tools/stage3.lock.cue NOT changed.
+		digest:           "sha256:84aaf71a564f1aaa8f008987e0ad2e49861462669ba2be7551f69b5628af975c"
 		upstream_version: "0.2.13-vllm0.25.1"
 	}
 	// hw_patches inherited from bases.B300 (triton-ptxas, flashinfer-jit-uninstall,
@@ -87,7 +90,9 @@ b300_deepseek_v4_flash: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH &
 		Overlay-mode: builds FROM base{} mlnode-base-0.2.13-vllm0.25.1 digest, NOT
 		tools/stage3.lock.cue — the 0.23 fleet's shared lock is untouched. The base
 		is the one-off 0.25.1 mlnode-base (S1 poc-sampler-residual-v0.25 -> S2
-		vllm-poc:0.25.1 -> mlnode-base). registry-view will label line=mlnode-overlay
+		vllm-poc:0.25.1 -> mlnode-base). k1 was PoC-inoperative on V4 (gonka-poc
+		predated PR#14 — per-group KV layouts missing); k2 rides gonka-poc 3a119d8
+		with the per-group/positions/pseudo-ids fixes — first PoC-capable V4 rev. registry-view will label line=mlnode-overlay
 		/ vllm_base_version=null (known overlay cost).
 
 		Backend/compilation left to V4 defaults on purpose (see header + runner-patch):
