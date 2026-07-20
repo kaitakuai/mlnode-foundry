@@ -125,4 +125,22 @@ models: [
 		status:       "active"
 		notes:        "GlmMoeDsaForCausalLM (verbatim DeepseekV2 subclass) — DeepSeek-style MLA + DSA sparse attention (index_topk=2048), 753B total / ~40B active, 256 experts × top-8, 78 layers, FP8 block-wise e4m3 [128,128]. DeepGEMM split on vLLM 0.23: MoE experts run on DeepGEMM (throughput lever) but the block-FP8 LINEAR kernel must be routed to Cutlass via VLLM_DISABLED_KERNELS — GLM's fused_qkv_a_proj N=2624 (N%128==64 partial block) + E8M0 requant crashes the DeepGEMM linear kernel (cudaErrorInvalidValue) at memory profiling. MoE workspace lock handled by gonka-poc df73e1c. See b200-glm-5-2 profile + experiments/2026-06/glm-5.2-fp8-8xb200."
 	},
+	{
+		family:       "deepseek"
+		revision:     "v4-flash"
+		display_name: "DeepSeek V4 Flash"
+		hf_repo:      "deepseek-ai/DeepSeek-V4-Flash"
+		// PROVISIONAL pin = current main HEAD (2026-07-20). V4-Flash has no
+		// chain governance model yet (gonka-ai/gonka#1408 is still discussion).
+		// This SHA MUST be reconciled with — and match — the future governance
+		// hf_revision before any production/chain use, or operators fail chain
+		// validation (see minimax hf_revision precedent). Kept explicit so a
+		// silent upstream re-push does not change what our image resolves to.
+		hf_revision:  "60d8d70770c6776ff598c94bb586a859a38244f1"
+		params_b:     291.0
+		context_max:  1048576
+		license:      "MIT"
+		status:       "active"
+		notes:        "DeepseekV4ForCausalLM, model_type deepseek_v4 — ~291B total / 149 GiB FP8 weights, 43 layers, 256 experts × top-6, MXFP4 experts (group-32 ue8m0) + FP8-block linears with NATIVE ue8m0 scales (unlike GLM, no float32-requant DeepGEMM crash), 3 hash-MoE layers (route via tid2eid[input_ids] — PoC needs deterministic pseudo input_ids, gonka-poc#14), sparse MLA index_topk=512, SWA compressor block=8. Requires --kv-cache-dtype fp8 (FlashMLA fp8_ds_mla layout; assert otherwise). Attention backend deterministic FlashMLA-DSV4 (do NOT pin — FlashInfer-DSV4 has placeholder FP8 scales, consensus-unsafe). vLLM auto-forces CompilationMode.NONE + breakable-cudagraph. sm_80 (A100) and sm_120 (RTX PRO 6000) statically excluded — both sparse backends need sm major in [9,10]. FIRST-CLASS support in vLLM 0.25.1 (0.23 works via gonka-poc#14). See .work/deepseek-v4-flash/ + project_deepseek_v4_flash_plan."
+	},
 ]
