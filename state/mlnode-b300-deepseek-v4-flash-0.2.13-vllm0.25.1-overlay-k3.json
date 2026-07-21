@@ -1,0 +1,18 @@
+{
+  "profile": "profiles/b300-deepseek-v4-flash.cue",
+  "profile_hash": "f55588b098e52b7ebca5f97e37621996f6c2dcbfa6e504009688b602f9446d6e",
+  "status": "draft",
+  "image": {
+    "package": "ghcr.io/kaitakuai/mlnode-b300-deepseek-v4-flash",
+    "tag": "0.2.13-vllm0.25.1-overlay-k3",
+    "digest": "sha256:b6862349dcb9243d3faddfc54a56eb51953d08a92aa11b829ae0f8fbc839c89d",
+    "built_at": "2026-07-21T00:41:57Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main"
+  },
+  "validation": {
+    "build_smoke": {
+      "result": "pass",
+      "at": "2026-07-21T00:41:57Z"
+    }
+  }
+}
