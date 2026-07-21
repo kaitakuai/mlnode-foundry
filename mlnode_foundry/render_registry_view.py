@@ -25,7 +25,8 @@ from pathlib import Path
 from typing import Any
 
 from .cue import cue_export
-from .render_bake import REPO_ROOT, load_profile
+from .paths import REPO_ROOT
+from .render_bake import load_profile
 from .render_name_tag import load_naming, render_package_and_tag
 from .validate import load_model_registry
 

@@ -9,8 +9,9 @@ from pathlib import Path
 import typer
 
 from .build_hash import compute_profile_hash
-from .expand import expand_profile
-from .render_bake import REPO_ROOT, load_profile, render_build_args
+from .paths import REPO_ROOT
+from .profile_factory import DEFAULT_MLNODE_VERSION, DEFAULT_VLLM_VERSION
+from .render_bake import load_profile, render_build_args
 from .render_name_tag import load_naming, render_package_and_tag
 from .runner import list_runners, select_runner
 from .validate import validate_profile
@@ -53,8 +54,13 @@ def hash(profile: str) -> None:  # noqa: A001 — shadows builtin intentionally 
 
 @app.command()
 def expand(profile: str) -> None:
-    """Print self-contained resolved profile (all bases inlined) as JSON."""
-    resolved = expand_profile(profile)
+    """Print self-contained resolved profile (all bases inlined) as JSON.
+
+    Useful for audit (see exactly what `cue export` resolved a profile to),
+    sharing (send one JSON instead of the whole repo), and debugging tag
+    rendering (what axes are actually set?).
+    """
+    resolved = load_profile(profile)
     typer.echo(json.dumps(resolved, indent=2))
 
 
@@ -213,8 +219,8 @@ def profile_new(
         ..., help="Model revision (e.g., k26); must exist in tools/model-registry.cue"
     ),
     quant: str | None = typer.Option(None, help="Quantization (e.g., int4); omit for none"),
-    mlnode: str = typer.Option("0.2.13", help="mlnode version"),
-    vllm: str = typer.Option("0.20.0", help="vLLM version"),
+    mlnode: str = typer.Option(DEFAULT_MLNODE_VERSION, help="mlnode version"),
+    vllm: str = typer.Option(DEFAULT_VLLM_VERSION, help="vLLM version"),
     rev: int = typer.Option(1, help="Kaitaku revision (k<N>)"),
 ) -> None:
     """Generate a new profile .cue file from template."""

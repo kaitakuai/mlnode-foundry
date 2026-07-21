@@ -220,4 +220,5 @@ jobs:
           echo "- **Digest**: \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Upstream commit**: \`${{ steps.lock.outputs.upstream_commit }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Stage 2 base**: \`${{ steps.lock.outputs.base_image }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Patches applied**: \`patches/0001-content-type-middleware.patch\`" >> $GITHUB_STEP_SUMMARY
+          patch_list=$(ls patches/*.patch | sed 's/.*/`&`/' | paste -sd, - | sed 's/,/, /g')
+          echo "- **Patches applied**: $patch_list" >> $GITHUB_STEP_SUMMARY
