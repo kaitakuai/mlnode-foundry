@@ -57,4 +57,6 @@ stage3: {
 
 patches: [
 	"patches/0001-content-type-middleware.patch",
+	"patches/0002-api-watcher-grace.patch",
+	"patches/0003-mlnode-heartbeat-liveness.patch",
 ]

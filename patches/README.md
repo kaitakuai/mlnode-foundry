@@ -11,6 +11,8 @@ Standard `git format-patch -1 <sha>` output, applied via `git apply --3way`.
 | File | Files touched | What it does |
 |------|---------------|--------------|
 | `0001-content-type-middleware.patch` | `mlnode/packages/api/src/api/app.py`, `proxy.py` | Adds `ContentTypeInjector` ASGI middleware injecting `Content-Type: application/json` for header-less POSTs from Go-http-client. Needed for vLLM 0.20 (Pydantic v2 strict mode). |
+| `0002-api-watcher-grace.patch` | `mlnode/packages/api` (watcher) | Session-aware watcher grace window replacing the 3-strike auto-shutdown (slow cold starts of big-TP MoE models). |
+| `0003-mlnode-heartbeat-liveness.patch` | `runner.py`, `proxy.py` (+unit tests) | Scheduler-heartbeat liveness (`vllm:iteration_tokens_total_count` instead of `/health`) + damped proxy probe (3-strike, 10s timeout). Extracted from upstream PR gonka-ai/gonka#1421 (open; drop this patch and bump the pin once merged). `MLNODE_HANG_GRACE_SEC` default 120, `0` disables. |
 
 ## Patch source / provenance
 
