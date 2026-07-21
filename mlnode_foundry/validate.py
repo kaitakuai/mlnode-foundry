@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from .cue import cue_export, cue_vet
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
+from .paths import REPO_ROOT
 
 
 class ModelRegistryError(ValueError):

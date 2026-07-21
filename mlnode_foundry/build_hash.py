@@ -21,7 +21,8 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from .render_bake import REPO_ROOT, load_profile
+from .paths import REPO_ROOT
+from .render_bake import load_profile
 
 
 def _hash_file(path: Path) -> bytes:

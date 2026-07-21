@@ -7,11 +7,8 @@ for "what should this profile's GHCR coordinates be" lives in
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from .cue import cue_export
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
+from .paths import REPO_ROOT
 
 
 def load_naming() -> dict:

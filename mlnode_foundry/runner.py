@@ -9,7 +9,8 @@ Phase 3 work — see ADR-0009.
 from __future__ import annotations
 
 from .cue import cue_export
-from .render_bake import REPO_ROOT, load_profile
+from .paths import REPO_ROOT
+from .render_bake import load_profile
 
 
 def list_runners() -> dict[str, dict]:

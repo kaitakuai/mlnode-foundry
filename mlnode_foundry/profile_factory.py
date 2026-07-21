@@ -9,10 +9,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .render_bake import REPO_ROOT
+from .paths import REPO_ROOT
 
 PROFILES_DIR = REPO_ROOT / "profiles"
 BASES_DIR = PROFILES_DIR / "bases"
+
+# Current fleet pin — keep in sync with tools/stage3.lock.cue (deriving these
+# from the lock file is a possible follow-up). Used as scaffold defaults by
+# all generators and the `profile new` CLI options.
+DEFAULT_MLNODE_VERSION = "0.2.13"
+DEFAULT_VLLM_VERSION = "0.23.0"
 
 
 _TEMPLATE = """\
@@ -37,7 +43,9 @@ import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
 \t\t}}
 \t}}
 \tmode:         "kaitakuai-base"
-\trunner_patch: "{runner_patch}"
+\t// TODO: set to "{runner_patch_suggestion}-plugin" once that patcher exists
+\t// under tools/runner-patches/ (empty = no runner patch).
+\trunner_patch: ""
 \tenv: {{}}
 \truntime_defaults: {{}}
 \tdescription: "{description}"
@@ -86,8 +94,8 @@ def generate_profile(
     model: str,
     model_revision: str,
     quant: str | None = None,
-    mlnode: str = "0.2.13",
-    vllm: str = "0.20.0",
+    mlnode: str = DEFAULT_MLNODE_VERSION,
+    vllm: str = DEFAULT_VLLM_VERSION,
     rev: int = 1,
 ) -> Path:
     """Generate a new profile .cue file. Returns path. Refuses to overwrite."""
@@ -109,7 +117,9 @@ def generate_profile(
         mlnode=mlnode,
         vllm=vllm,
         rev=rev,
-        runner_patch=f"{gpu}-{model}" if quant is None else f"{gpu}-{model}-{quant}",
+        runner_patch_suggestion=(
+            f"{gpu}-{model}" if quant is None else f"{gpu}-{model}-{quant}"
+        ),
         bases_chain=_bases_chain(gpu, model, quant),
     )
     path.write_text(content)
@@ -122,8 +132,8 @@ def bulk_add_model(
     model_revision: str,
     gpus: list[str],
     quant: str | None = None,
-    mlnode: str = "0.2.13",
-    vllm: str = "0.20.0",
+    mlnode: str = DEFAULT_MLNODE_VERSION,
+    vllm: str = DEFAULT_VLLM_VERSION,
     rev: int = 1,
 ) -> list[Path]:
     """Generate profiles for `model` across multiple GPUs."""
@@ -146,8 +156,8 @@ def bulk_add_gpu(
     *,
     gpu: str,
     models: list[tuple[str, str]],
-    mlnode: str = "0.2.13",
-    vllm: str = "0.20.0",
+    mlnode: str = DEFAULT_MLNODE_VERSION,
+    vllm: str = DEFAULT_VLLM_VERSION,
     rev: int = 1,
 ) -> list[Path]:
     """Generate profiles for `gpu` across multiple (model, revision) tuples."""

@@ -11,9 +11,9 @@ Substitutes three placeholders:
   {{ENV_BLOCK}}        — `ENV K1=V1 \\\n    K2=V2 \\\n    ...` from profile.env.
 
   {{TUNING_LABEL}}     — `gonka.kaitaku.tuning_notes="<compact-json>"` from
-                         profile.tuning_notes (omitted if empty; renders as
-                         a harmless count=0 label to keep the LABEL chain
-                         syntactically valid).
+                         profile.tuning_notes (empty tuning_notes still
+                         emits a harmless count=0 label so the chained
+                         LABEL continuation stays valid).
 
 This removes the fixed-list ENV ARG/ENV block that lived in the old static
 Dockerfile, so any profile can introduce arbitrary ENV vars without editing
@@ -29,7 +29,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+from .paths import REPO_ROOT
 
 TEMPLATE_PATH = REPO_ROOT / "stage4" / "Dockerfile.tmpl"
 DEFAULT_OUTPUT = REPO_ROOT / "stage4" / "Dockerfile.rendered"
@@ -47,10 +47,9 @@ def _render_env_block(env: dict[str, str]) -> str:
 
 def _render_tuning_label(tuning_notes: list[dict] | None) -> str:
     # Render to a single LABEL key=value line that fits into the chained LABEL block.
-    # Empty profile → empty (just trailing backslash continuation) — drop the line entirely
-    # so the LABEL chain stays valid.
+    # Empty tuning_notes still emits a harmless count=0 label so the chained
+    # LABEL continuation stays valid.
     if not tuning_notes:
-        # Keep one harmless label so the line continuation in the template stays valid.
         return 'gonka.kaitaku.tuning_notes_count="0"'
     payload = json.dumps(tuning_notes, separators=(",", ":"), sort_keys=True)
     # Escape backslashes and quotes for safe embedding in a Dockerfile LABEL value.

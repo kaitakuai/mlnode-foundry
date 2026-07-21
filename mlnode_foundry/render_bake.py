@@ -4,21 +4,19 @@ Resolves BASE_IMAGE per profile.mode:
 - `kaitakuai-base`: from tools/stage3.lock.cue (Stage 3 published image)
 - `upstream-overlay`: from profile.base (explicit image+digest)
 
-Falls back to SPIKE_BASE_IMAGE if Stage 3 hasn't been published yet (set
-via MLNODE_FOUNDRY_SPIKE_BASE env var; useful for local dev before CI runs
-build-stage3 for the first time).
+MLNODE_FOUNDRY_SPIKE_BASE=1 replaces the resolved base with SPIKE_BASE_IMAGE
+— an unconditional override for local dev before the first Stage 3 publish
+(applies to every mode, including upstream-overlay).
 """
 
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
 from .cue import cue_export
+from .paths import REPO_ROOT
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-
-# Phase 1 spike base — used as fallback if MLNODE_FOUNDRY_SPIKE_BASE=1 in env.
+# Phase 1 spike base — unconditional override when MLNODE_FOUNDRY_SPIKE_BASE=1 in env.
 SPIKE_BASE_IMAGE = "ghcr.io/product-science/mlnode:3.0.13-alpha5"
 
 
