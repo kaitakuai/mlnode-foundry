@@ -34,23 +34,23 @@ b300_deepseek_v4_flash: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH &
 		}
 		version: {
 			// Overlay identity: the "upstream" here is OUR one-off 0.25.1
-			// mlnode-base, not a product-science release. rev=3 = base bumped
-			// to the FULL stack: gonka-poc#14 (per-group/positions/pseudo-ids)
-			// + gonka-poc#18 (borrowed-lease validation — inference keeps
-			// running; probe-gated, ADR-0015 in gonka-poc).
-			// Tag renders as ...:0.2.13-vllm0.25.1-overlay-k3.
+			// mlnode-base, not a product-science release. rev=4 = k3 stack
+			// (gonka-poc#14 V4 PoC + gonka-poc#18 borrowed-lease validation)
+			// + patches/0003 mlnode heartbeat liveness / damped proxy probe
+			// (upstream PR gonka-ai/gonka#1421, hang-fix stack).
+			// Tag renders as ...:0.2.13-vllm0.25.1-overlay-k4.
 			upstream: "0.2.13-vllm0.25.1"
-			rev:      3
+			rev:      4
 		}
 	}
 	mode: "upstream-overlay"
 	base: {
 		image: "ghcr.io/kaitakuai/mlnode-base"
-		// One-off mlnode-base:0.2.13-vllm0.25.1-k3, built via build-stage3
-		// workflow_dispatch override (run 29788645515) from S2 vllm-poc:0.25.1
-		// @sha256:72423e85... (gonka-poc e24861a = PR#14 V4 fixes + PR#18
-		// borrowed-lease validation); tools/stage3.lock.cue NOT changed.
-		digest:           "sha256:c58ed30df4e0671c806cf9e8a5fe2fca2b1ca09cc9f7c67fdb9d81ade535c80d"
+		// One-off mlnode-base:0.2.13-vllm0.25.1-k4, built via build-stage3
+		// workflow_dispatch override (run 29791913102) from S2 vllm-poc:0.25.1
+		// @sha256:72423e85... (gonka-poc e24861a = PR#14 + PR#18) + mlnode
+		// patches/0003 heartbeat liveness; tools/stage3.lock.cue NOT changed.
+		digest:           "sha256:d4f72e623f6b6da03ef78a1ee4ad8f66e76ae8feff7767dab260f174d901f93e"
 		upstream_version: "0.2.13-vllm0.25.1"
 	}
 	// hw_patches inherited from bases.B300 (triton-ptxas, flashinfer-jit-uninstall,
@@ -82,10 +82,11 @@ b300_deepseek_v4_flash: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH &
 		FIRST DeepSeek-V4-Flash image + first overlay-mode leaf, on the vLLM 0.25.1
 		PoC chain. TEST bring-up for the experiment programme (.work/deepseek-v4-flash/
 		EXPERIMENTS.md) — NOT production, no chain governance model yet (#1408).
-		k3 = FULL stack for hardware validation: 9 sampler-residual rows +
+		k4 = FULL stack for hardware validation: 9 sampler-residual rows +
 		gonka-poc#14 (V4 per-group PoC) + gonka-poc#18 (borrowed-lease
 		validation, probe-gated — V4 is fp8-KV/scratch-free so the feature
-		self-enables; experiment A7 covers it).
+		self-enables; experiment A7 covers it) + mlnode patches/0003
+		(heartbeat liveness + damped proxy probe, gonka-ai/gonka#1421).
 
 		Config: TP=1 (149 GiB FP8 on one B300; box = 8 TP=1 engines), gmu 0.90,
 		max-model-len 200000 (TEST cap; V4 native is 1,048,576 — real cap is a
