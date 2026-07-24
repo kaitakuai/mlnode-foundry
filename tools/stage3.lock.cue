@@ -32,12 +32,18 @@ stage2: {
 	// monolith remains a valid Stage 2 lineage for the 5 non-migrated profiles
 	// (a100/b200/h100/h200-minimax + b200-kimi) — the schema accepts both.
 	image: "ghcr.io/kaitakuai/vllm-poc"
-	// 0.25.1 is the vllm-poc tag (vLLM 0.25.1 residual S1 + gonka-poc plugin
-	// @e24861a03). Build chain pins by the digest below — the verified working S2
-	// (residual + out-of-tree plugin, DeepSeek-V4 capable). Was 0.23.0 @835aa90…
-	// before the 0.23 -> 0.25.1 base migration.
+	// 0.25.1 is the vllm-poc tag (vLLM 0.25.1 residual S1 + gonka-poc plugin).
+	// Build chain pins by the digest below — the verified working S2 (residual +
+	// out-of-tree plugin, DeepSeek-V4 capable). Was 0.23.0 @835aa90… before the
+	// 0.23 -> 0.25.1 base migration.
+	//
+	// This digest is the rebuild that pins the plugin to its first tag,
+	// gonka-poc v0.1.0a0 (commit 2833a57cf), instead of the untagged e24861a03
+	// the previous S2 (@72423e85…) carried. The plugin repository is being handed
+	// over to the gonka-ai organisation, so builds must resolve to something that
+	// survives the ownership change rather than to a branch.
 	tag:    "0.25.1"
-	digest: "sha256:72423e85385aad9eb0e4de38d82dd4b554baf72f679d8f8cd27adb8f966c3976"
+	digest: "sha256:1e345a726032755b25d6692e0b23dca1bf3498766be9cecaf81626fdd42e46fb"
 	// CUDA 13.0: the residual S1 bases on vLLM's recommended default image
 	// (vllm/vllm-openai:v0.25.1 → CUDA 13.0.2), not the pinned cu129 (12.9).
 	// This matches the 5 fat-fork 0.20 profiles (also CUDA 13.0), so the single
@@ -48,7 +54,7 @@ stage2: {
 
 stage3: {
 	package: "ghcr.io/kaitakuai/mlnode-base"
-	tag:     "0.2.14-vllm0.25.1-k1"
+	tag:     "0.2.14-vllm0.25.1-k2"
 }
 
 patches: [
