@@ -1,29 +1,8 @@
-From e4a85c35810e7cac624cc817ad616296bcd05a7d Mon Sep 17 00:00:00 2001
-From: Mykola Baichak <n.baychak@gmail.com>
-Date: Tue, 7 Jul 2026 17:02:40 +0100
+From 55bbe41054d9c8ddf3e19862dda1bf39cbbf1222 Mon Sep 17 00:00:00 2001
+From: x <x@x>
+Date: Fri, 24 Jul 2026 01:32:01 +0000
 Subject: [PATCH] fix(mlnode): heartbeat liveness for vLLM runner + damped
- proxy probe
 
-vLLM /health is wrong in both directions: it returns 200 during a
-scheduler deadlock (check_health only reads the `errored` flag) and
-misses its deadline while merely busy -- so healthy nodes got restarted
-under load while real hangs served nothing silently.
-
-runner.py: key is_available() off vllm:iteration_tokens_total_count,
-which advances on every engine step and freezes only on a stall.
-Split as _scrape_heartbeat (per-port /metrics read; ConnectTimeout is
-saturation, refused is dead) + _heartbeat_verdict (per-port state
-machine: re-baselines across engine restarts, aggregates multi-registry
-scrapes, a failed scrape cannot pass for idle, three consecutive frozen
-verdicts before unhealthy). MLNODE_HANG_GRACE_SEC tunes the window
-(default 120, 0 disables).
-
-proxy.py: damp the backend prober -- timeout 2s -> 10s, unhealthy only
-after 3 consecutive failures, instant recovery.
-
-21 unit tests. Validated on a 4xB300 Kimi-K2.6 fleet: false restarts
--> 0 (incl. 1h at full saturation), real stalls detected in ~2 min,
-proxy flap cycles -> 0.
 ---
  .../api/src/api/inference/vllm/runner.py      | 114 +++++++-
  mlnode/packages/api/src/api/proxy.py          |  20 +-
@@ -33,7 +12,7 @@ proxy flap cycles -> 0.
  create mode 100644 mlnode/packages/api/tests/unit/test_runner_heartbeat.py
 
 diff --git a/mlnode/packages/api/src/api/inference/vllm/runner.py b/mlnode/packages/api/src/api/inference/vllm/runner.py
-index 7e0ea35e0..438c54553 100644
+index 5b29d1c6..ae326759 100644
 --- a/mlnode/packages/api/src/api/inference/vllm/runner.py
 +++ b/mlnode/packages/api/src/api/inference/vllm/runner.py
 @@ -1,4 +1,5 @@
@@ -136,9 +115,9 @@ index 7e0ea35e0..438c54553 100644
          self.processes: List[subprocess.Popen] = []
 +        self._hb = {}  # per-port heartbeat state; outlives engine restarts
  
-     def _get_arg_value(self, name: str, default: int = 1) -> int:
-         if name in self.additional_args:
-@@ -224,15 +307,28 @@ class VLLMRunner(IVLLMRunner):
+     def get_config_summary(self) -> dict:
+         """Public config snapshot for observability (metrics exporter).
+@@ -241,15 +324,28 @@ class VLLMRunner(IVLLMRunner):
      def is_available(self) -> bool:
          if not self.is_running():
              return False
@@ -177,12 +156,12 @@ index 7e0ea35e0..438c54553 100644
      def get_error_if_exist(self) -> Optional[str]:
          for p in self.processes:
 diff --git a/mlnode/packages/api/src/api/proxy.py b/mlnode/packages/api/src/api/proxy.py
-index f3912e715..a841e1612 100644
+index de9cfa5e..3e0993ee 100644
 --- a/mlnode/packages/api/src/api/proxy.py
 +++ b/mlnode/packages/api/src/api/proxy.py
-@@ -22,6 +22,9 @@ LIMITS = httpx.Limits(
- 
- vllm_backend_ports: List[int] = []
+@@ -25,6 +25,9 @@ vllm_backend_ports: List[int] = []
+ # lets consumers like the metrics exporter detect a model switch lazily.
+ vllm_setup_generation: int = 0
  vllm_healthy: Dict[int, bool] = {}
 +# /health prober damping -- contract in _apply_health_damping.
 +HEALTH_FAIL_STREAK: int = 3
@@ -190,7 +169,7 @@ index f3912e715..a841e1612 100644
  vllm_counts: Dict[int, int] = {}
  poc_status_by_port: Dict[int, str] = {}  # PoC status: "IDLE", "GENERATING", "STOPPED", or ""
  pow_generate_rr_index: int = 0
-@@ -189,6 +192,19 @@ async def call_backend(port: int, method: str, path: str, json_body: dict = None
+@@ -192,6 +195,19 @@ async def call_backend(port: int, method: str, path: str, json_body: dict = None
          raise ValueError(f"Unsupported method: {method}")
  
  
@@ -210,7 +189,7 @@ index f3912e715..a841e1612 100644
  async def _health_check_vllm(interval: float = 2.0):
      """Health check for vLLM backends and manage compatibility server."""
      logger.info("Health check loop started, checking every %s seconds", interval)
-@@ -205,12 +221,14 @@ async def _health_check_vllm(interval: float = 2.0):
+@@ -208,12 +224,14 @@ async def _health_check_vllm(interval: float = 2.0):
                  if vllm_client is None:
                      logger.warning(f"Health check skipped for port {p}: vllm_client is None")
                      continue
@@ -227,7 +206,7 @@ index f3912e715..a841e1612 100644
              if prev != ok:
                  logger.info("%s:%d is %s", VLLM_HOST, p, "UP" if ok else "DOWN")
 diff --git a/mlnode/packages/api/tests/unit/test_proxy.py b/mlnode/packages/api/tests/unit/test_proxy.py
-index 760d6010d..864c2bf62 100644
+index 760d6010..864c2bf6 100644
 --- a/mlnode/packages/api/tests/unit/test_proxy.py
 +++ b/mlnode/packages/api/tests/unit/test_proxy.py
 @@ -442,4 +442,61 @@ async def test_resource_cleanup_verification():
@@ -296,7 +275,7 @@ index 760d6010d..864c2bf62 100644
 +    assert proxy_module.vllm_healthy[5002] is True
 diff --git a/mlnode/packages/api/tests/unit/test_runner_heartbeat.py b/mlnode/packages/api/tests/unit/test_runner_heartbeat.py
 new file mode 100644
-index 000000000..263695138
+index 00000000..26369513
 --- /dev/null
 +++ b/mlnode/packages/api/tests/unit/test_runner_heartbeat.py
 @@ -0,0 +1,275 @@

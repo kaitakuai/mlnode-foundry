@@ -1,52 +1,27 @@
-From 827d5ffe401f0482c46090fbf79ec693b385a5b0 Mon Sep 17 00:00:00 2001
-From: Mykola Baichak <n.baychak@gmail.com>
-Date: Fri, 1 May 2026 02:07:33 +0100
+From ebc8d0ae96842293948093125a122a1b58e124a9 Mon Sep 17 00:00:00 2001
+From: x <x@x>
+Date: Fri, 24 Jul 2026 01:32:01 +0000
 Subject: [PATCH] fix(mlnode): inject Content-Type:application/json for
- header-less POSTs
 
-Network DAPI (Go-http-client/1.1) sends JSON bodies to
-/api/v1/inference/up and /api/v1/inference/pow/init/generate
-without setting Content-Type. Pydantic v2, shipped with the
-FastAPI/Starlette pin used by the vllm 0.20 base, requires
-Content-Type:application/json to interpret the body as JSON;
-without it the bytes are surfaced to model_validate as a
-string value, producing 422 model_attributes_type
-"Input should be a valid dictionary or object".
-
-The vllm 0.15.1 base predates Pydantic v2 strictness, which is
-why production mlnode-009 accepts the same DAPI request shape
-unchanged and only the vllm 0.20 mlnode image hits the regression.
-
-Add a tiny plain-ASGI ContentTypeInjector middleware that adds
-Content-Type:application/json to POST /api/* requests when the
-header is missing. Applied as outermost middleware so the header
-is in scope before any downstream parsing.
-
-Verified end-to-end on RTX PRO 6000 SE running vllm 0.20.0 PoC v2:
-- POST /api/v1/inference/up (no Content-Type): 422 -> 200 OK
-- POST /api/v1/inference/pow/init/generate (no Content-Type):
-  body parses; reaches vLLM backend
-- Live DAPI on network-002 transitions through inference/up,
-  stop, and pow/init/generate cleanly; PoC v2 generation runs.
 ---
  mlnode/packages/api/src/api/app.py   |  5 +++-
  mlnode/packages/api/src/api/proxy.py | 34 ++++++++++++++++++++++++++++
  2 files changed, 38 insertions(+), 1 deletion(-)
 
 diff --git a/mlnode/packages/api/src/api/app.py b/mlnode/packages/api/src/api/app.py
-index d81c15e3..24a2c19e 100644
+index 7c756b5f..2a1abf3a 100644
 --- a/mlnode/packages/api/src/api/app.py
 +++ b/mlnode/packages/api/src/api/app.py
-@@ -28,7 +28,7 @@ from api.service_management import (
- )
- from api.routes import router as api_router
+@@ -31,7 +31,7 @@ from api.metrics.routes import router as metrics_router, metrics_enabled
+ from api.metrics.allowlist import SCHEMA_VERSION, VLLM_ALLOWLIST
+ from api.metrics import xid_source
  from api.watcher import watch_managers
 -from api.proxy import ProxyMiddleware, start_vllm_proxy, stop_vllm_proxy, setup_vllm_proxy, start_backward_compatibility, stop_backward_compatibility
 +from api.proxy import ContentTypeInjector, ProxyMiddleware, start_vllm_proxy, stop_vllm_proxy, setup_vllm_proxy, start_backward_compatibility, stop_backward_compatibility
  
+ from common.logger import create_logger
  
- WATCH_INTERVAL = 2
-@@ -84,6 +84,9 @@ app = FastAPI(lifespan=lifespan)
+@@ -103,6 +103,9 @@ app = FastAPI(lifespan=lifespan)
  app.include_router(health_router)
  
  app.add_middleware(ProxyMiddleware)
@@ -57,10 +32,10 @@ index d81c15e3..24a2c19e 100644
  app.include_router(
      pow_router,
 diff --git a/mlnode/packages/api/src/api/proxy.py b/mlnode/packages/api/src/api/proxy.py
-index f3912e71..d1c7933b 100644
+index de9cfa5e..86660df0 100644
 --- a/mlnode/packages/api/src/api/proxy.py
 +++ b/mlnode/packages/api/src/api/proxy.py
-@@ -38,6 +38,40 @@ compatibility_server: Optional[object] = None  # uvicorn.Server instance
+@@ -41,6 +41,40 @@ compatibility_server: Optional[object] = None  # uvicorn.Server instance
  health_check_task: Optional[asyncio.Task] = None
  
  
@@ -102,5 +77,5 @@ index f3912e71..d1c7933b 100644
      """Middleware to handle routing between /api and /v1 endpoints."""
      
 -- 
-2.48.1
+2.53.0
 
