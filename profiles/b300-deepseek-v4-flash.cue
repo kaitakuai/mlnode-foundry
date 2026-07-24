@@ -33,25 +33,26 @@ b300_deepseek_v4_flash: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH &
 			// (MXFP4 experts + FP8-block linears) checkpoint today.
 		}
 		version: {
-			// Overlay identity: the "upstream" here is OUR one-off 0.25.1
-			// mlnode-base, not a product-science release. rev=4 = k3 stack
-			// (gonka-poc#14 V4 PoC + gonka-poc#18 borrowed-lease validation)
-			// + patches/0003 mlnode heartbeat liveness / damped proxy probe
-			// (upstream PR gonka-ai/gonka#1421, hang-fix stack).
-			// Tag renders as ...:0.2.13-vllm0.25.1-overlay-k4.
-			upstream: "0.2.13-vllm0.25.1"
-			rev:      4
+			// Overlay identity: the "upstream" here is OUR 0.25.1 mlnode-base, not a
+			// product-science release. rev=5 = k4 stack (gonka-poc#14 V4 PoC +
+			// gonka-poc#18 borrowed-lease + patches/0003 heartbeat) PLUS the node-side
+			// metrics exporter (#14) and the mlnode bump 0.2.13 -> 0.2.14.
+			// Tag renders as ...:0.2.14-vllm0.25.1-overlay-k5.
+			upstream: "0.2.14-vllm0.25.1"
+			rev:      5
 		}
 	}
 	mode: "upstream-overlay"
 	base: {
 		image: "ghcr.io/kaitakuai/mlnode-base"
-		// One-off mlnode-base:0.2.13-vllm0.25.1-k4, built via build-stage3
-		// workflow_dispatch override (run 29791913102) from S2 vllm-poc:0.25.1
-		// @sha256:72423e85... (gonka-poc e24861a = PR#14 + PR#18) + mlnode
-		// patches/0003 heartbeat liveness; tools/stage3.lock.cue NOT changed.
-		digest:           "sha256:d4f72e623f6b6da03ef78a1ee4ad8f66e76ae8feff7767dab260f174d901f93e"
-		upstream_version: "0.2.13-vllm0.25.1"
+		// mlnode-base:0.2.14-vllm0.25.1-k1, built via build-stage3 workflow_dispatch
+		// override (run 30059426473) from S2 vllm-poc:0.25.1 @sha256:72423e85...
+		// (gonka-poc e24861a03) + mlnode 0.2.14 with the node-side metrics exporter
+		// (#14, kaitakuai/gonka@26f7db5) + patches/0001+0002+0003. Monitoring-enabled
+		// base for hardware testing; tools/stage3.lock.cue on main NOT changed (the
+		// fleet flip to 0.25.1 is a separate migration).
+		digest:           "sha256:fb38d047177e255cc5956bc3edb018c5e70ef59bf4631ed21e9a40262e7f92dd"
+		upstream_version: "0.2.14-vllm0.25.1"
 	}
 	// hw_patches inherited from bases.B300 (triton-ptxas, flashinfer-jit-uninstall,
 	// libcuda-compat-580-driver, nvidia-headers-symlinks, cold-start-tolerance) —

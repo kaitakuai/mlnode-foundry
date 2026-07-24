@@ -35,9 +35,13 @@ b300_kimi_k2_6: #BaseProfile & bases.B300 & bases.KIMI_INT4 & {
 			// Mirrors b200-kimi-k2-6.cue.
 		}
 		version: {
-			mlnode: "0.2.13"
-			vllm:   "0.23.0"
-			rev:    1
+			// Bumped 0.23.0 -> 0.25.1 / 0.2.13 -> 0.2.14 to ride the new monitoring
+			// mlnode-base (0.2.14-vllm0.25.1-k1) resolved from tools/stage3.lock.cue
+			// on this branch. rev=2 so profile_hash/tag reflect the base change.
+			// TEST image for B300 hardware validation on the 0.25.1 plugin base.
+			mlnode: "0.2.14"
+			vllm:   "0.25.1"
+			rev:    2
 		}
 	}
 	mode: "kaitakuai-base"
