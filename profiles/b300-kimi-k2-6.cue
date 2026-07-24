@@ -41,7 +41,7 @@ b300_kimi_k2_6: #BaseProfile & bases.B300 & bases.KIMI_INT4 & {
 			// TEST image for B300 hardware validation on the 0.25.1 plugin base.
 			mlnode: "0.2.14"
 			vllm:   "0.25.1"
-			rev:    2
+			rev:    3
 		}
 	}
 	mode: "kaitakuai-base"

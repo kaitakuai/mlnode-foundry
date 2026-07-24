@@ -37,21 +37,21 @@ b300_deepseek_v4_flash: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH &
 			// product-science release. rev=5 = k4 stack (gonka-poc#14 V4 PoC +
 			// gonka-poc#18 borrowed-lease + patches/0003 heartbeat) PLUS the node-side
 			// metrics exporter (#14) and the mlnode bump 0.2.13 -> 0.2.14.
-			// Tag renders as ...:0.2.14-vllm0.25.1-overlay-k5.
+			// Tag renders as ...:0.2.14-vllm0.25.1-overlay-k6.
 			upstream: "0.2.14-vllm0.25.1"
-			rev:      5
+			rev:      6
 		}
 	}
 	mode: "upstream-overlay"
 	base: {
 		image: "ghcr.io/kaitakuai/mlnode-base"
-		// mlnode-base:0.2.14-vllm0.25.1-k1, built via build-stage3 workflow_dispatch
-		// override (run 30059426473) from S2 vllm-poc:0.25.1 @sha256:72423e85...
-		// (gonka-poc e24861a03) + mlnode 0.2.14 with the node-side metrics exporter
+		// mlnode-base:0.2.14-vllm0.25.1-k2, built via build-stage3 workflow_dispatch
+		// override (run 30122929290) from S2 vllm-poc:0.25.1 @sha256:1e345a72...
+		// (gonka-poc v0.1.0a0 = 2833a57cf) + mlnode 0.2.14 with the node-side metrics exporter
 		// (#14, kaitakuai/gonka@26f7db5) + patches/0001+0002+0003. Monitoring-enabled
 		// base for hardware testing; tools/stage3.lock.cue on main NOT changed (the
 		// fleet flip to 0.25.1 is a separate migration).
-		digest:           "sha256:fb38d047177e255cc5956bc3edb018c5e70ef59bf4631ed21e9a40262e7f92dd"
+		digest:           "sha256:6c157cf492e38fbc7c2764ae96cbce7a4636c186214c14e00261602380778266"
 		upstream_version: "0.2.14-vllm0.25.1"
 	}
 	// hw_patches inherited from bases.B300 (triton-ptxas, flashinfer-jit-uninstall,
