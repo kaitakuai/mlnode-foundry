@@ -37,13 +37,15 @@ stage2: {
 	// out-of-tree plugin, DeepSeek-V4 capable). Was 0.23.0 @835aa90… before the
 	// 0.23 -> 0.25.1 base migration.
 	//
-	// This digest is the rebuild that pins the plugin to its first tag,
-	// gonka-poc v0.1.0a0 (commit 2833a57cf), instead of the untagged e24861a03
-	// the previous S2 (@72423e85…) carried. The plugin repository is being handed
-	// over to the gonka-ai organisation, so builds must resolve to something that
-	// survives the ownership change rather than to a branch.
+	// This digest is the first S2 built from the upstream sources on both
+	// sides: the residual comes from gonka-ai/vllm release/v0.25.1 (the port
+	// merged as gonka-ai/vllm#78 plus vbgd0's completions logprobs_mode
+	// forwarding), and the plugin from gonka-ai/gonka-vllm-plugins v0.1.1
+	// (469aaf2ae — abort-by-internal-id fix, 0.23 support dropped). The
+	// previous digest (@1e345a72…) carried the same sampler logic from our
+	// pre-merge branch with plugin v0.1.0a0.
 	tag:    "0.25.1"
-	digest: "sha256:1e345a726032755b25d6692e0b23dca1bf3498766be9cecaf81626fdd42e46fb"
+	digest: "sha256:5453a9b03c386983cd39dfb746016dee4e5568d107e9c4c5e2caeeef92d9e361"
 	// CUDA 13.0: the residual S1 bases on vLLM's recommended default image
 	// (vllm/vllm-openai:v0.25.1 → CUDA 13.0.2), not the pinned cu129 (12.9).
 	// This matches the 5 fat-fork 0.20 profiles (also CUDA 13.0), so the single
@@ -54,7 +56,7 @@ stage2: {
 
 stage3: {
 	package: "ghcr.io/kaitakuai/mlnode-base"
-	tag:     "0.2.14-vllm0.25.1-k2"
+	tag:     "0.2.14-vllm0.25.1-k3"
 }
 
 patches: [
