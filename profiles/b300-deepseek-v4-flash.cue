@@ -38,17 +38,19 @@ b300_deepseek_v4_flash: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH &
 			// upstream sources: gonka-ai/vllm release/v0.25.1 (port merged as #78) +
 			// gonka-ai/gonka-vllm-plugins v0.1.1 (abort-by-internal-id fix, 0.23
 			// dropped) + mlnode 0.2.14 with the node-side metrics exporter.
-			// Tag renders as ...:0.2.14-vllm0.25.1-overlay-k9 — the release
-			// CANDIDATE: every layer from upstream sources, all merged fixes in
-			// (vllm release @04a165c0 = #78+#79+#80+#82, plugin v0.1.1).
+			// Tag renders as ...:0.2.14-vllm0.25.1-overlay-k10 — the release
+			// CANDIDATE: vllm release @04a165c0 (#78+#79+#80+#82) + plugin
+			// v0.1.1 + mlnode from the gonka-ai RELEASE BRANCH
+			// vllm-0.25.1-upgrade @1b07e5c6 (exporter + hardened heartbeat),
+			// i.e. bit-for-bit what Monday's release finalises.
 			upstream: "0.2.14-vllm0.25.1"
-			rev:      9
+			rev:      10
 		}
 	}
 	mode: "upstream-overlay"
 	base: {
 		image: "ghcr.io/kaitakuai/mlnode-base"
-		// mlnode-base:0.2.14-vllm0.25.1-k4 (release candidate base):
+		// mlnode-base:0.2.14-vllm0.25.1-k5 (release-branch base, patches 0001+0002 only):
 		// (run 30476136950) from S2 vllm-poc:0.25.1 @sha256:5453a9b0... -- the first
 		// S2 whose both inputs are the upstream sources: gonka-ai/vllm
 		// release/v0.25.1 (#78 merged) + gonka-ai/gonka-vllm-plugins v0.1.1
@@ -56,7 +58,7 @@ b300_deepseek_v4_flash: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH &
 		// (#1501, kaitakuai/gonka@26f7db5) + patches/0001+0002+0003. Monitoring-enabled
 		// base for hardware testing; tools/stage3.lock.cue on main NOT changed (the
 		// fleet flip to 0.25.1 is a separate migration).
-		digest:           "sha256:952e921d229b96cb56bce615bf08c176bcd801ffc9d6dce92f463200b7e9bbb6"
+		digest:           "sha256:4dbcfed2f42ea92ac75a772958e23956310a84e879d4bf1dafe75c7f0e0f6312"
 		upstream_version: "0.2.14-vllm0.25.1"
 	}
 	// hw_patches inherited from bases.B300 (triton-ptxas, flashinfer-jit-uninstall,
