@@ -14,14 +14,13 @@
 package tools
 
 upstream: {
-	// Pinned to our fork branch kaitakuai/gonka `feat/mlnode-metrics-exporter-v0.2.14`
-	// (26f7db5 = mlnode 0.2.14 + node-side metrics exporter #14, rebased onto
-	// gonka-ai/gonka v0.2.14 ee730031). Sourced from the fork because the exporter is
-	// not yet merged upstream; recorded in the kaitakuai/gonka fork README per rules.
-	// patches/0001 and 0003 were regenerated to apply directly onto this commit — the
-	// exporter shifted context around their anchors in runner.py/proxy.py/app.py.
-	repo:           "kaitakuai/gonka"
-	commit:         "26f7db559711ab5368633a46c70a192472e2fa12"
+	// Pinned to gonka-ai/gonka branch `vllm-0.25.1-upgrade` (PR #1534) —
+	// the release branch for the 0.25.1 update. First stage-3 pin pointing at
+	// the UPSTREAM repo rather than our fork: the metrics exporter and the
+	// heartbeat liveness (vbgd0's hardened revision) are both carried by the
+	// branch itself, which is why patches/0003 is gone.
+	repo:           "gonka-ai/gonka"
+	commit:         "1b07e5c6ce7a549d513d66af7fab03e365c1c4b9"
 	mlnode_version: "0.2.14"
 }
 
@@ -56,11 +55,10 @@ stage2: {
 
 stage3: {
 	package: "ghcr.io/kaitakuai/mlnode-base"
-	tag:     "0.2.14-vllm0.25.1-k3"
+	tag:     "0.2.14-vllm0.25.1-k5"
 }
 
 patches: [
 	"patches/0001-content-type-middleware.patch",
 	"patches/0002-api-watcher-grace.patch",
-	"patches/0003-mlnode-heartbeat-liveness.patch",
-]
+	]
