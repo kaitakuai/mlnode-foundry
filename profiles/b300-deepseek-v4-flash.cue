@@ -38,19 +38,19 @@ b300_deepseek_v4_flash: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH &
 			// upstream sources: gonka-ai/vllm release/v0.25.1 (port merged as #78) +
 			// gonka-ai/gonka-vllm-plugins v0.1.1 (abort-by-internal-id fix, 0.23
 			// dropped) + mlnode 0.2.14 with the node-side metrics exporter.
-			// Tag renders as ...:0.2.14-vllm0.25.1-overlay-k10 — the release
-			// CANDIDATE: vllm release @04a165c0 (#78+#79+#80+#82) + plugin
-			// v0.1.1 + mlnode from the gonka-ai RELEASE BRANCH
-			// vllm-0.25.1-upgrade @1b07e5c6 (exporter + hardened heartbeat),
-			// i.e. bit-for-bit what Monday's release finalises.
+			// Tag renders as ...:0.2.14-vllm0.25.1-overlay-k11 — TEST image for the
+			// V2-runner replay hooks (gonka-ai/vllm#92): k10 stack + the hooks
+			// and WITHOUT the VLLM_USE_V2_MODEL_RUNNER=0 pin, so dspark
+			// speculation on DeepSeek-V4-Flash-0731 can run while replay
+			// validation stays correct. Not for fleet until #92 merges.
 			upstream: "0.2.14-vllm0.25.1"
-			rev:      10
+			rev:      11
 		}
 	}
 	mode: "upstream-overlay"
 	base: {
 		image: "ghcr.io/kaitakuai/mlnode-base"
-		// mlnode-base:0.2.14-vllm0.25.1-k5 (release-branch base, patches 0001+0002 only):
+		// mlnode-base:0.2.14-vllm0.25.1-k5-v2hooks (S1 carries vllm#92, no V2 pin):
 		// (run 30476136950) from S2 vllm-poc:0.25.1 @sha256:5453a9b0... -- the first
 		// S2 whose both inputs are the upstream sources: gonka-ai/vllm
 		// release/v0.25.1 (#78 merged) + gonka-ai/gonka-vllm-plugins v0.1.1
@@ -58,7 +58,7 @@ b300_deepseek_v4_flash: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH &
 		// (#1501, kaitakuai/gonka@26f7db5) + patches/0001+0002+0003. Monitoring-enabled
 		// base for hardware testing; tools/stage3.lock.cue on main NOT changed (the
 		// fleet flip to 0.25.1 is a separate migration).
-		digest:           "sha256:4dbcfed2f42ea92ac75a772958e23956310a84e879d4bf1dafe75c7f0e0f6312"
+		digest:           "sha256:274660b5845b8c35c852e35bcf1ef0063384864575f1f40966e2029365baa703"
 		upstream_version: "0.2.14-vllm0.25.1"
 	}
 	// hw_patches inherited from bases.B300 (triton-ptxas, flashinfer-jit-uninstall,
