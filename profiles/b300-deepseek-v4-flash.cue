@@ -58,7 +58,7 @@ b300_deepseek_v4_flash: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH &
 		// (#1501, kaitakuai/gonka@26f7db5) + patches/0001+0002+0003. Monitoring-enabled
 		// base for hardware testing; tools/stage3.lock.cue on main NOT changed (the
 		// fleet flip to 0.25.1 is a separate migration).
-		digest:           "sha256:274660b5845b8c35c852e35bcf1ef0063384864575f1f40966e2029365baa703"
+		digest:           "sha256:fe3e984fed7c5eef29959b2ca3f6aa7f29eee14f395534f23393d9e98196be01"
 		upstream_version: "0.2.14-vllm0.25.1"
 	}
 	// hw_patches inherited from bases.B300 (triton-ptxas, flashinfer-jit-uninstall,
