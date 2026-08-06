@@ -4,7 +4,8 @@ Production profile for the vLLM 0.25.1 release line. Two edits to VLLMRunner
 (same shape as every *-plugin.py patch): a forced-args block after
 `self.additional_args = additional_args or []`, and the launch-module swap.
 
-Forced config — 149 GiB FP8 weights fit on ONE B300/275 GiB; an 8-GPU box runs 8 independent TP=1 engines:
+Forced config — 149 GiB FP8 weights fit on ONE B300/275 GiB; an 8-GPU box runs 8 independent TP=1
+  engines:
 
     --tensor-parallel-size 1
     --gpu-memory-utilization 0.90
@@ -29,14 +30,13 @@ NOT forced — deliberately, for consensus safety:
       but is slower, so the default stays off.
 """
 
+import os
 import sys
 
 # Release-line Dockerfile installs mlnode under /app/packages/api/src; the
 # pre-0.25.1 fat-fork used /app/src. Resolve at runtime so one patch works
 # on both, and FAIL if neither exists (a silent skip ships an unconfigured
 # image -- see the stage-4 fail-loud guard).
-import os
-
 _CANDIDATES = (
     "/app/packages/api/src/api/inference/vllm/runner.py",
     "/app/src/api/inference/vllm/runner.py",
@@ -52,7 +52,7 @@ MODULE_REPLACEMENT = (
 
 INJECTION_LINES = [
     "",
-    "# --- Kaitaku B300-DeepSeek-V4-Flash-0731 plugin hardcodes (tools/runner-patches/b300-deepseek-v4-flash-0731-plugin.py) ---",
+    "# --- Kaitaku B300-DeepSeek-V4-Flash-0731 plugin hardcodes (tools/runner-patches/b300-deepseek-v4-flash-0731-plugin.py) ---",  # noqa: E501
     "_dsv4_0731_forced = [",
     "    ('--tensor-parallel-size', '1'),",
     "    ('--gpu-memory-utilization', '0.90'),",

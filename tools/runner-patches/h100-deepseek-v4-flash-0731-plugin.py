@@ -4,7 +4,8 @@ Production profile for the vLLM 0.25.1 release line. Two edits to VLLMRunner
 (same shape as every *-plugin.py patch): a forced-args block after
 `self.additional_args = additional_args or []`, and the launch-module swap.
 
-Forced config — 4x H100/80 GiB: memory-tightest topology; gmu 0.85 + maxnbt 16384 is the only cell holding 400k inference AND PoC (experiments 2026-08/deepseek-v4-flash-0731-dspark-4xh100):
+Forced config — 4x H100/80 GiB: memory-tightest topology; gmu 0.85 + maxnbt 16384 is the only cell
+  holding 400k inference AND PoC (experiments 2026-08/deepseek-v4-flash-0731-dspark-4xh100):
 
     --tensor-parallel-size 4
     --gpu-memory-utilization 0.85
@@ -29,14 +30,13 @@ NOT forced — deliberately, for consensus safety:
       but is slower, so the default stays off.
 """
 
+import os
 import sys
 
 # Release-line Dockerfile installs mlnode under /app/packages/api/src; the
 # pre-0.25.1 fat-fork used /app/src. Resolve at runtime so one patch works
 # on both, and FAIL if neither exists (a silent skip ships an unconfigured
 # image -- see the stage-4 fail-loud guard).
-import os
-
 _CANDIDATES = (
     "/app/packages/api/src/api/inference/vllm/runner.py",
     "/app/src/api/inference/vllm/runner.py",
@@ -52,7 +52,7 @@ MODULE_REPLACEMENT = (
 
 INJECTION_LINES = [
     "",
-    "# --- Kaitaku H100-DeepSeek-V4-Flash-0731 plugin hardcodes (tools/runner-patches/h100-deepseek-v4-flash-0731-plugin.py) ---",
+    "# --- Kaitaku H100-DeepSeek-V4-Flash-0731 plugin hardcodes (tools/runner-patches/h100-deepseek-v4-flash-0731-plugin.py) ---",  # noqa: E501
     "_dsv4_0731_forced = [",
     "    ('--tensor-parallel-size', '4'),",
     "    ('--gpu-memory-utilization', '0.85'),",
