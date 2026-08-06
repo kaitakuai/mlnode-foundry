@@ -33,7 +33,7 @@ h100_minimax_m2_7: #BaseProfile & bases.H100 & bases.MINIMAX_M2_7 & {
 		}
 	}
 	mode:         "kaitakuai-base"
-	hw_patches:  list.Concat([bases.H100.hw_patches, ["poc-householder-compile"]])
+	hw_patches:  list.Concat([bases.H100.hw_patches, []])
 	runner_patch: "h100-minimax-m2-7-plugin"
 	env: {
 		// Plugin entrypoint + worker-extension RPC channel (0.25.1 line).
