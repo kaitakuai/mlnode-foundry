@@ -143,4 +143,20 @@ models: [
 		status:       "active"
 		notes:        "DeepseekV4ForCausalLM, model_type deepseek_v4 — ~291B total / 149 GiB FP8 weights, 43 layers, 256 experts × top-6, MXFP4 experts (group-32 ue8m0) + FP8-block linears with NATIVE ue8m0 scales (unlike GLM, no float32-requant DeepGEMM crash), 3 hash-MoE layers (route via tid2eid[input_ids] — PoC needs deterministic pseudo input_ids, gonka-poc#14), sparse MLA index_topk=512, SWA compressor block=8. Requires --kv-cache-dtype fp8 (FlashMLA fp8_ds_mla layout; assert otherwise). Attention backend deterministic FlashMLA-DSV4 (do NOT pin — FlashInfer-DSV4 has placeholder FP8 scales, consensus-unsafe). vLLM auto-forces CompilationMode.NONE + breakable-cudagraph. sm_80 (A100) and sm_120 (RTX PRO 6000) statically excluded — both sparse backends need sm major in [9,10]. FIRST-CLASS support in vLLM 0.25.1 (0.23 works via gonka-poc#14). See .work/deepseek-v4-flash/ + project_deepseek_v4_flash_plan."
 	},
+	{
+		family:       "deepseek"
+		revision:     "v4-flash-0731"
+		display_name: "DeepSeek V4 Flash 0731"
+		hf_repo:      "deepseek-ai/DeepSeek-V4-Flash-0731"
+		// Pinned to the checkpoint's main HEAD at campaign time (2026-07-31);
+		// matches the revision used by every 0731 experiments campaign and by
+		// the gonka-ai release-candidate node configs (gonka#1536). Reconcile
+		// with the governance hf_revision when one is declared on-chain.
+		hf_revision:  "9e165c30e2704aec5d9d593cce3eebd58bbef1cb"
+		params_b:     291.0
+		context_max:  1048576
+		license:      "MIT"
+		status:       "active"
+		notes:        "Weight refresh of v4-flash: same DeepseekV4ForCausalLM architecture, 43 layers, MXFP4+FP8 mix; adds dspark_* speculator config (V2-runner-only, optional). PoC throughput identical to v4-flash on every tested topology (1xB300, 2xB200, 2xH200, 4xH100 — experiments 2026-08). Same operational constraints as v4-flash: --kv-cache-dtype fp8 mandatory, backend NOT pinned, sm in [9,10]. Release config adds --tokenizer-mode deepseek_v4, tool-call and reasoning parsers (gonka#1536)."
+	},
 ]

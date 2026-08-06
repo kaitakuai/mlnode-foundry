@@ -4,6 +4,15 @@
 // instance per pair, two pairs per 4×H200 host). Same Hopper-FP8 caveat as
 // H100: TRITON MoE + FLASHINFER attention must be forced — auto-select picks
 // the slower FLASHINFER_CUTLASS / FLASH_ATTN paths on sm_90.
+// 0.25.1 MIGRATION NOTE (2026-08-06): base flipped to the release-line
+// mlnode-base 0.2.14-vllm0.25.1-k5 via tools/stage3.lock.cue; serving flags
+// are INHERITED from the vLLM 0.20 fat-fork validation campaigns
+// (experiments 2026-05/minimax-m27-*) and are NOT yet revalidated on the
+// 0.25.1 plugin stack. Backend selection is the sensitive part (TRTLLM
+// auto-select on Blackwell, forced triton on Hopper, marlin on A100 —
+// consensus-relevant, see the Marlin/DeepGEMM cross-hw precedent). Treat
+// these images as CANDIDATES until a hardware pass equivalent to the
+// deepseek 2026-08 campaigns is run.
 package profiles
 
 import (
@@ -21,13 +30,18 @@ h200_minimax_m2_7: #BaseProfile & bases.H200 & bases.MINIMAX_M2_7 & {
 		}
 		version: {
 			mlnode: "0.2.13"
-			vllm:   "0.20.0"
-			rev:    1
+			vllm:   "0.25.1"
+			rev:    2
 		}
 	}
 	mode:         "kaitakuai-base"
 	hw_patches:   list.Concat([bases.H200.hw_patches, ["poc-householder-compile"]])
-	runner_patch: ""
+	runner_patch: "h200-minimax-m2-7-plugin"
+	env: {
+		// Plugin entrypoint + worker-extension RPC channel (0.25.1 line).
+		MLNODE_VLLM_MODULE:                "gonka_poc.entrypoint.api_router"
+		VLLM_ALLOW_INSECURE_SERIALIZATION: "1"
+	}
 	env: {
 		// Stage 2/3 base bakes in VLLM_USE_FLASHINFER_MOE_FP8=1, which on
 		// Hopper sm_90 routes MoE through FLASHINFER_CUTLASS — measurably
