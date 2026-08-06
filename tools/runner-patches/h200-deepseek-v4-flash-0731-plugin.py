@@ -31,7 +31,17 @@ NOT forced — deliberately, for consensus safety:
 
 import sys
 
-FILE = "/app/src/api/inference/vllm/runner.py"
+# Release-line Dockerfile installs mlnode under /app/packages/api/src; the
+# pre-0.25.1 fat-fork used /app/src. Resolve at runtime so one patch works
+# on both, and FAIL if neither exists (a silent skip ships an unconfigured
+# image -- see the stage-4 fail-loud guard).
+import os
+
+_CANDIDATES = (
+    "/app/packages/api/src/api/inference/vllm/runner.py",
+    "/app/src/api/inference/vllm/runner.py",
+)
+FILE = next((c for c in _CANDIDATES if os.path.exists(c)), _CANDIDATES[0])
 MARKER = "self.additional_args = additional_args or []"
 INDENT = " " * 8
 

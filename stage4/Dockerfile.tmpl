@@ -39,12 +39,15 @@ ARG PROFILE_HASH
 # Apply runner-patch ----------------------------------------------------------
 COPY --link tools/runner-patches /tmp/runner-patches
 ARG RUNNER_PATCH=""
-RUN if [ -n "${RUNNER_PATCH}" ] && [ -f "/tmp/runner-patches/${RUNNER_PATCH}.py" ]; then \
+RUN if [ -n "${RUNNER_PATCH}" ]; then \
+        if [ ! -f "/tmp/runner-patches/${RUNNER_PATCH}.py" ]; then \
+            echo "ERROR: RUNNER_PATCH=${RUNNER_PATCH} set but /tmp/runner-patches/${RUNNER_PATCH}.py is missing" >&2; \
+            exit 1; \
+        fi; \
         echo "Applying runner-patch: ${RUNNER_PATCH}" && \
-        python3 "/tmp/runner-patches/${RUNNER_PATCH}.py" || \
-        echo "WARNING: runner-patch failed (may be no-op against this base); continuing"; \
+        python3 "/tmp/runner-patches/${RUNNER_PATCH}.py"; \
     else \
-        echo "No runner-patch to apply (RUNNER_PATCH=${RUNNER_PATCH:-unset})"; \
+        echo "No runner-patch requested (RUNNER_PATCH unset)"; \
     fi && \
     rm -rf /tmp/runner-patches
 
