@@ -45,6 +45,19 @@ FILE = next((c for c in _CANDIDATES if os.path.exists(c)), _CANDIDATES[0])
 MARKER = "self.additional_args = additional_args or []"
 INDENT = " " * 8
 
+ENV_MARKER = "env = os.environ.copy()"
+ENV_INJECT = """
+            # DSpark (DeepSeek-V4-Flash-0731) lives only on the V2 model
+            # runner, and vLLM reads the switch as
+            #   maybe_convert_bool(os.getenv("VLLM_USE_V2_MODEL_RUNNER", None))
+            # so ONLY an absent variable means "decide for me": an empty
+            # string reaches int("") and raises ValueError before the engine
+            # starts. The S2 base bakes =0, which would pin V1 and disable
+            # DSpark, so drop the key from the child's environment entirely.
+            # Replay validation on V2 is correct since vllm#92 + #18.
+            env.pop("VLLM_USE_V2_MODEL_RUNNER", None)
+"""
+
 MODULE_MARKER = '"-m", "vllm.entrypoints.openai.api_server",'
 MODULE_REPLACEMENT = (
     '"-m", os.getenv("MLNODE_VLLM_MODULE", "vllm.entrypoints.openai.api_server"),'
@@ -112,6 +125,17 @@ def main() -> int:
             "found and no MLNODE_VLLM_MODULE support present.\n"
         )
         return 1
+
+    # Edit 3: drop the V2-runner pin from the child environment.
+    if ENV_MARKER not in src:
+        sys.stderr.write(
+            "ERROR: env-copy marker not found; cannot unpin the V2 model "
+            "runner. Upstream runner.py may have been refactored.\n"
+        )
+        return 1
+    if 'env.pop("VLLM_USE_V2_MODEL_RUNNER"' not in src:
+        idx = src.index(ENV_MARKER) + len(ENV_MARKER)
+        src = src[:idx] + ENV_INJECT.rstrip("\n") + src[idx:]
 
     with open(FILE, "w") as f:
         f.write(src)

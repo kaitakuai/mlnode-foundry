@@ -38,7 +38,7 @@ h100_deepseek_v4_flash_0731: #OverlayProfile & bases.H100 & bases.DEEPSEEK_V4_FL
 		digest:           "sha256:4dbcfed2f42ea92ac75a772958e23956310a84e879d4bf1dafe75c7f0e0f6312"
 		upstream_version: "0.2.14-vllm0.25.1"
 	}
-	hw_patches: ["deepseek-v4-unpin-v2-runner", "libnvrtc-symlink"]
+	hw_patches: ["libnvrtc-symlink"]
 	runner_patch: "h100-deepseek-v4-flash-0731-plugin"
 	env: {
 		// Launch the gonka-poc composed entrypoint.
