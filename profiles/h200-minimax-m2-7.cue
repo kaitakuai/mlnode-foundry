@@ -30,7 +30,7 @@ h200_minimax_m2_7: #OverlayProfile & bases.H200 & bases.MINIMAX_M2_7 & {
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
-			upstream: "3.0.14-post2-vllm0.25.1-rc1"
+			upstream: "3.0.14-post2-vllm0.25.1-rc3"
 			rev:      3
 		}
 	}
@@ -42,10 +42,10 @@ h200_minimax_m2_7: #OverlayProfile & bases.H200 & bases.MINIMAX_M2_7 & {
 		// from their mlnode source impossible; everything we still add lives
 		// in hw_patches + runner_patch below. See schema.cue on the switch.
 		image:            "ghcr.io/gonka-ai/mlnode"
-		digest:           "sha256:7ba43ce4ad98d0d34c7b8626b424fffc2857c8dd4a2de86831e1b522fa09042b"
-		upstream_version: "3.0.14-post2-vllm0.25.1-rc1"
+		digest:           "sha256:450983bbef31c8e19b8d24edb00c17520af7cc4fb0d186943f3ac3dec4dad387"
+		upstream_version: "3.0.14-post2-vllm0.25.1-rc3"
 	}
-	hw_patches: list.Concat([bases.H200.hw_patches, ["content-type-injector", "cold-start-tolerance"]])
+	hw_patches: list.Concat([bases.H200.hw_patches, bases.GONKA_MLNODE_PATCHES])
 	runner_patch: "h200-minimax-m2-7-plugin"
 	env: {
 		// Plugin entrypoint + worker-extension RPC channel (0.25.1 line).

@@ -22,7 +22,7 @@ b300_deepseek_v4_flash_0731: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FL
 		version: {
 			// Overlay identity: upstream is our 0.25.1 release-line mlnode-base.
 			// rev=1 — first production revision of the 0731 matrix.
-			upstream: "3.0.14-post2-vllm0.25.1-rc1"
+			upstream: "3.0.14-post2-vllm0.25.1-rc3"
 			rev:      1
 		}
 	}
@@ -35,14 +35,10 @@ b300_deepseek_v4_flash_0731: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FL
 		// by the branch) over S2 vllm-poc:0.25.1 (gonka-ai/vllm release
 		// @04a165c0 + gonka-vllm-plugins v0.1.1). Same base as the k10/k11
 		// candidates the release was validated on.
-		digest:           "sha256:7ba43ce4ad98d0d34c7b8626b424fffc2857c8dd4a2de86831e1b522fa09042b"
-		upstream_version: "3.0.14-post2-vllm0.25.1-rc1"
+		digest:           "sha256:450983bbef31c8e19b8d24edb00c17520af7cc4fb0d186943f3ac3dec4dad387"
+		upstream_version: "3.0.14-post2-vllm0.25.1-rc3"
 	}
-	// Ordered: mlnode source edits first (they are no-ops on an image built
-	// from our own Stage 3, which already carries the equivalent patches),
-	// then the link fix. This set is what makes mode "upstream-overlay"
-	// produce the same image as "kaitakuai-base" -- see schema.cue.
-	hw_patches: ["content-type-injector", "cold-start-tolerance", "libnvrtc-symlink"]
+	hw_patches: bases.GONKA_MLNODE_PATCHES
 	runner_patch: "b300-deepseek-v4-flash-0731-plugin"
 	env: {
 		// Launch the gonka-poc composed entrypoint.
