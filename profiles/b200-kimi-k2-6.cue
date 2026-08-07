@@ -1,7 +1,8 @@
-// Profile: B200 Blackwell (×4) + Kimi-K2.6 INT4 — vllm-poc PLUGIN base.
+// Profile: B200 Blackwell (×4) + Kimi-K2.6 INT4 — release-matrix leaf.
 //
-// Composition: #BaseProfile & B200 & KIMI_INT4 with TP=4, on the vllm-poc PLUGIN
-// base (residual vLLM 0.23 + gonka-poc package; ADR-0013). Migrated in place from
+// Composition: #OverlayProfile & B200 & KIMI_INT4 with TP=4, overlaid on cortima's
+// published release mlnode (vLLM 0.25.1 residual + gonka-poc plugin; ADR-0013).
+// Migrated in place from
 // the fat-fork 0.20 rev=2 tune (which this validated config came from). Config is
 // the B200 Kimi experiment kimi_k26_int4_4xb200_q-int4-k2: TP=4, CUDA graphs
 // (compilation mode=3 / FULL_AND_PIECEWISE), gmu 0.93, batch=32 (mnbt 32768),
@@ -22,9 +23,13 @@
 //   - --enforce-eager removed (conflicts with the forced --compilation-config).
 package profiles
 
-import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
+import (
+	"list"
 
-b200_kimi_k2_6: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
+	"github.com/kaitakuai/mlnode-foundry/profiles/bases"
+)
+
+b200_kimi_k2_6: #OverlayProfile & bases.B200 & bases.KIMI_INT4 & bases.KIMI_INT4_FLASHINFER_MOE & {
 	identity: {
 		axes: {
 			gpu:            "b200"
@@ -34,24 +39,21 @@ b200_kimi_k2_6: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
 			// W4A16). Mirrors b300-kimi-k2-6.cue.
 		}
 		version: {
-			mlnode: "0.2.13"
-			vllm:   "0.23.0"
-			rev:    1
+			// Overlay identity: upstream is cortima's published mlnode image.
+			upstream: "3.0.14-post2-vllm0.25.1-rc3"
+			rev:      1
 		}
 	}
-	mode: "kaitakuai-base"
-	// B200 GPU-env hw-patches + cold-start-tolerance (753B-class INT4 + MLA warmup
-	// is a slow first init; B200 base omits cold-start, added here — same as the
-	// b200-glm leaf / the Kimi-INT4 note in bases/b200.cue). The fat-fork's
-	// poc-householder-compile is NOT referenced — it edited the monolith's
-	// vllm/poc/ tree, absent on the plugin base.
-	hw_patches: [
-		"triton-ptxas-from-system-cuda",
-		"flashinfer-jit-uninstall",
-		"libcuda-compat-580-driver",
-		"nvidia-headers-symlinks",
-		"cold-start-tolerance",
-	]
+	mode: "upstream-overlay"
+	base: {
+		// Cortima's PUBLISHED release image — see b300-kimi-k2-6.cue on the switch.
+		image:            "ghcr.io/gonka-ai/mlnode"
+		digest:           "sha256:450983bbef31c8e19b8d24edb00c17520af7cc4fb0d186943f3ac3dec4dad387"
+		upstream_version: "3.0.14-post2-vllm0.25.1-rc3"
+	}
+	// The fat-fork's poc-householder-compile is NOT referenced — it edited the
+	// monolith's vllm/poc/ tree, absent on the plugin base.
+	hw_patches: list.Concat([bases.B200.hw_patches, bases.GONKA_MLNODE_PATCHES])
 	runner_patch: "b200-kimi-k2-6-plugin"
 	env: {
 		// Server-side plugin flip: launch the gonka-poc composed entrypoint
@@ -91,7 +93,7 @@ b200_kimi_k2_6: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
 	}
 	description: "B200 Blackwell SXM (×4) + Kimi-K2.6 INT4 (TP=4, CUDA graphs, EP, batch=32) — vllm-poc PLUGIN base (gonka-poc entrypoint + worker extension)"
 	notes: """
-		B200 Kimi-K2.6 INT4 on the 0.23 plugin base. Config from the validated B200
+		B200 Kimi-K2.6 INT4 on the 0.25.1 release base. Config from the validated B200
 		Kimi experiment (kimi_k26_int4_4xb200_q-int4-k2): TP=4, CUDA graphs
 		(compilation mode=3 / FULL_AND_PIECEWISE), gpu-memory-utilization 0.93,
 		batch=32 (max-num-batched-tokens 32768 = 32×1024), max-num-seqs 32,
@@ -116,7 +118,7 @@ b200_kimi_k2_6: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
 		experiment showed CUDA graphs do not change PoC throughput (separate forward
 		path) — so mode=3 keeps faster inference at no PoC cost.
 
-		NOT yet re-validated on the vllm-poc 0.23 PLUGIN base — re-benchmark on 4×B200
+		NOT yet re-validated on the 0.25.1 release base — re-benchmark on 4×B200
 		(start clean, no MLA assert, PoC ~2240/min @ batch=32, INT4 nonces L2-valid
 		under the Kimi gate) before treating as production.
 		"""
@@ -124,7 +126,7 @@ b200_kimi_k2_6: #BaseProfile & bases.B200 & bases.KIMI_INT4 & {
 		{
 			knob:     "validation-report"
 			source:   "https://github.com/kaitakuai/experiments/blob/main/2026-05/kimi_k26_int4_4xb200_q-int4-k2/README.md"
-			reason:   "Hardware validation on 4×B200 (Vast.ai): ~2240 nonces/min @ batch=32, no MLA assert (after kaitakuai/vllm#9 seq_lens_cpu_upper_bound restore), INT4 nonces L2-PASS vs B300 (0.1888, 1.5%) and B200-k5 (0.1874, 2.5%). Config is fat-fork-proven; NOT yet re-benchmarked on the vllm-poc 0.23 PLUGIN base — re-confirm on 4×B200 before production."
+			reason:   "Hardware validation on 4×B200 (Vast.ai): ~2240 nonces/min @ batch=32, no MLA assert (after kaitakuai/vllm#9 seq_lens_cpu_upper_bound restore), INT4 nonces L2-PASS vs B300 (0.1888, 1.5%) and B200-k5 (0.1874, 2.5%). Config is fat-fork-proven; NOT yet re-benchmarked on the 0.25.1 release base — re-confirm on 4×B200 before production."
 			severity: "warning"
 			added_at: "2026-06-26"
 		},
