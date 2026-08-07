@@ -20,10 +20,10 @@ h200_deepseek_v4_flash_0731: #OverlayProfile & bases.H200 & bases.DEEPSEEK_V4_FL
 			model_revision: "v4-flash-0731"
 		}
 		version: {
-			// Overlay identity: upstream is our 0.25.1 release-line mlnode-base.
-			// rev=1 — first production revision of the 0731 matrix.
+			// Overlay identity: upstream is cortima's published mlnode image.
+			// rev=3 — DSpark speculation forced on (Pasha, 2026-08-07).
 			upstream: "3.0.14-post2-vllm0.25.1-rc3"
-			rev:      2
+			rev:      3
 		}
 	}
 	description: "H200 Hopper (x2) + DeepSeek-V4-Flash-0731 FP8 (TP=2, FlashMLA fp8 KV, 400k ctx) — vllm-poc 0.25.1 PLUGIN, release-matrix PRODUCTION image"

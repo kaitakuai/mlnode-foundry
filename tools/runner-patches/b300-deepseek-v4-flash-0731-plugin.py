@@ -24,10 +24,10 @@ NOT forced — deliberately, for consensus safety:
     - NO --attention-backend: default is deterministic FlashMLA-DSV4; pinning
       FLASHINFER_MLA_SPARSE_DSV4 engages placeholder FP8 scales and blows
       cross-hardware L2.
-    - NO --speculative-config: DSpark is an operator opt-in (costs nothing in
-      PoC, up to 2.98x on long single-stream decode — see the 2026-08
-      experiments); replay validation under speculation works since vllm#92+#18
-      but is slower, so the default stays off.
+DSpark speculation is ON by default as of 2026-08-07, at Pasha's request after
+the release-matrix pass: up to 2.98x on long single-stream decode, nothing in
+PoC. It needs the V2 model runner, which the env edit below leaves vLLM free to
+select, and replay validation under speculation is correct since vllm#92+#18.
 """
 
 import os
@@ -82,6 +82,9 @@ INJECTION_LINES = [
     "    ('--tokenizer-mode', 'deepseek_v4'),",
     "    ('--tool-call-parser', 'deepseek_v4'),",
     "    ('--reasoning-parser', 'deepseek_v4'),",
+    "    ('--speculative-config', "
+    "'{\"method\":\"dspark\",\"num_speculative_tokens\":7,"
+    "\"draft_sample_method\":\"greedy\"}'),",
     "]",
     "_dsv4_0731_flags = [",
     "    '--trust-remote-code',",
@@ -95,8 +98,7 @@ INJECTION_LINES = [
     "for _flag in _dsv4_0731_flags:",
     "    if _flag not in self.additional_args:",
     "        self.additional_args.append(_flag)",
-    "# NOTE: attention-backend / speculative-config intentionally NOT forced --",
-    "# see the module docstring.",
+    "# NOTE: attention-backend intentionally NOT forced -- see the module docstring.",
     "# --- end Kaitaku B300-DeepSeek-V4-Flash-0731 plugin hardcodes ---",
 ]
 

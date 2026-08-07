@@ -20,21 +20,17 @@ b200_deepseek_v4_flash_0731: #OverlayProfile & bases.B200 & bases.DEEPSEEK_V4_FL
 			model_revision: "v4-flash-0731"
 		}
 		version: {
-			// Overlay identity: upstream is our 0.25.1 release-line mlnode-base.
-			// rev=1 — first production revision of the 0731 matrix.
+			// Overlay identity: upstream is cortima's published mlnode image.
+			// rev=2 — DSpark speculation forced on (Pasha, 2026-08-07).
 			upstream: "3.0.14-post2-vllm0.25.1-rc3"
-			rev:      1
+			rev:      2
 		}
 	}
 	description: "B200 Blackwell (x2) + DeepSeek-V4-Flash-0731 FP8 (TP=2, FlashMLA fp8 KV, 400k ctx) — vllm-poc 0.25.1 PLUGIN, release-matrix PRODUCTION image"
 	mode: "upstream-overlay"
 	base: {
 		image:            "ghcr.io/gonka-ai/mlnode"
-		// mlnode-base:0.2.14-vllm0.25.1-k5 — built from gonka-ai/gonka
-		// vllm-0.25.1-upgrade @1b07e5c6 (exporter + hardened heartbeat carried
-		// by the branch) over S2 vllm-poc:0.25.1 (gonka-ai/vllm release
-		// @04a165c0 + gonka-vllm-plugins v0.1.1). Same base as the k10/k11
-		// candidates the release was validated on.
+		// Cortima's PUBLISHED release image — see b300-kimi-k2-6.cue on the switch.
 		digest:           "sha256:450983bbef31c8e19b8d24edb00c17520af7cc4fb0d186943f3ac3dec4dad387"
 		upstream_version: "3.0.14-post2-vllm0.25.1-rc3"
 	}
