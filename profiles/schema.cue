@@ -4,9 +4,28 @@
 // image to build for a (gpu, model[, quant]) target. Observed state (build
 // results, validation, metrics) lives in `state/<x>.json`, not here.
 //
-// Profile is a discriminated union by `mode`:
-//   - kaitakuai-base   → built FROM kaitakuai/mlnode-base (our Stage 3)
-//   - upstream-overlay → built FROM product-science/mlnode binary directly
+// Profile is a discriminated union by `mode` — it selects WHERE the Stage 4
+// build gets its base, i.e. how much of the stack we build ourselves:
+//
+//   - kaitakuai-base   → FROM kaitakuai/mlnode-base, our own Stage 3, pinned
+//                        in tools/stage3.lock.cue. Use while iterating on the
+//                        mlnode source or on local patches/: we control every
+//                        layer and can rebuild in minutes.
+//   - upstream-overlay → FROM a published binary image pinned by digest in
+//                        `base`. Two flavours in practice, distinguished only
+//                        by what the digest points at:
+//                          * gonka-ai/mlnode (the release image cortima ships,
+//                            their Stage-3 equivalent) — preferred once a
+//                            release exists, because it removes a whole build
+//                            stage and makes drifting from their mlnode
+//                            impossible;
+//                          * an older product-science/mlnode binary — the
+//                            original reason this mode exists.
+//
+// Rule of thumb: test-and-iterate with kaitakuai-base, ship on top of the
+// published image with upstream-overlay. Whichever is chosen, Stage 4 still
+// applies our hw-patches, runner patch and ENV, so the two modes differ in
+// base provenance only — not in what we add.
 //
 // Cue's sum type catches mismatched fields at validation time.
 //
@@ -161,8 +180,10 @@ package profiles
 	}
 }
 
-// Profile mode B: Stage 4 builds on top of an upstream binary image
-// (product-science/mlnode). Requires explicit base.image + base.digest.
+// Profile mode B: Stage 4 builds on top of a PUBLISHED binary image, pinned
+// by digest — either cortima's release mlnode (gonka-ai/mlnode) or a legacy
+// product-science/mlnode. Requires explicit base.image + base.digest so a
+// rebuild is reproducible even if the publisher re-pushes the tag.
 #OverlayProfile: #CommonProfile & {
 	mode: "upstream-overlay"
 	identity: version: {
@@ -171,7 +192,9 @@ package profiles
 		rev:      int & >=1
 	}
 	base: {
-		// Full upstream binary image package path (no tag).
+		// Full published image package path (no tag). Typically
+		// ghcr.io/gonka-ai/mlnode (release) or ghcr.io/kaitakuai/mlnode-base
+		// when pinning one of our own Stage-3 builds explicitly.
 		image: =~"^ghcr\\.io/"
 		// Immutable upstream digest. Pinning here, not the tag, ensures
 		// our overlay rebuild is reproducible even if upstream re-pushes.

@@ -38,7 +38,11 @@ h100_deepseek_v4_flash_0731: #OverlayProfile & bases.H100 & bases.DEEPSEEK_V4_FL
 		digest:           "sha256:4dbcfed2f42ea92ac75a772958e23956310a84e879d4bf1dafe75c7f0e0f6312"
 		upstream_version: "0.2.14-vllm0.25.1"
 	}
-	hw_patches: ["libnvrtc-symlink"]
+	// Ordered: mlnode source edits first (they are no-ops on an image built
+	// from our own Stage 3, which already carries the equivalent patches),
+	// then the link fix. This set is what makes mode "upstream-overlay"
+	// produce the same image as "kaitakuai-base" -- see schema.cue.
+	hw_patches: ["content-type-injector", "cold-start-tolerance", "libnvrtc-symlink"]
 	runner_patch: "h100-deepseek-v4-flash-0731-plugin"
 	env: {
 		// Launch the gonka-poc composed entrypoint.

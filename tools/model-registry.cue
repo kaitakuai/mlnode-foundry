@@ -148,11 +148,14 @@ models: [
 		revision:     "v4-flash-0731"
 		display_name: "DeepSeek V4 Flash 0731"
 		hf_repo:      "deepseek-ai/DeepSeek-V4-Flash-0731"
-		// Pinned to the checkpoint's main HEAD at campaign time (2026-07-31);
-		// matches the revision used by every 0731 experiments campaign and by
-		// the gonka-ai release-candidate node configs (gonka#1536). Reconcile
-		// with the governance hf_revision when one is declared on-chain.
-		hf_revision:  "9e165c30e2704aec5d9d593cce3eebd58bbef1cb"
+		// Pinned to the revision the gonka-ai release configs use
+		// (deploy/join/node-config-deepseekv4flash0731-*.json, gonka#1536).
+		// NOTE: DeepSeek re-pushed the checkpoint on 2026-08-01 03:07, ~15h
+		// after release. 9e165c30 (2026-07-31 12:02) was HEAD when our first
+		// campaign was pinned and is now stale -- artifacts produced against
+		// it will not match the fleet. Consensus makes this a hard pin, not a
+		// preference.
+		hf_revision:  "7872f01b1d1fe23eabc4c98b48bffcef5a386062"
 		params_b:     291.0
 		context_max:  1048576
 		license:      "MIT"
