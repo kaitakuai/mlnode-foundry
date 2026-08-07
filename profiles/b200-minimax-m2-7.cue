@@ -19,7 +19,7 @@ import (
 	"github.com/kaitakuai/mlnode-foundry/profiles/bases"
 )
 
-b200_minimax_m2_7: #BaseProfile & bases.B200 & bases.MINIMAX_M2_7 & {
+b200_minimax_m2_7: #OverlayProfile & bases.B200 & bases.MINIMAX_M2_7 & {
 	identity: {
 		axes: {
 			gpu:            "b200"
@@ -27,13 +27,23 @@ b200_minimax_m2_7: #BaseProfile & bases.B200 & bases.MINIMAX_M2_7 & {
 			model_revision: "m2-7"
 		}
 		version: {
-			mlnode: "0.2.13"
-			vllm:   "0.25.1"
-			rev:    2
+			// Overlay identity: upstream is cortima's published mlnode image.
+			upstream: "3.0.14-post2-vllm0.25.1-rc1"
+			rev:      3
 		}
 	}
-	mode:         "kaitakuai-base"
-	hw_patches:  list.Concat([bases.B200.hw_patches, []])
+	mode: "upstream-overlay"
+	base: {
+		// Cortima's PUBLISHED release image — their Stage-3 equivalent
+		// (mlnode/packages/api/Dockerfile over ghcr.io/gonka-ai/vllm:v0.25.1-poc-v2).
+		// Taking it as our base drops a whole build stage and makes drifting
+		// from their mlnode source impossible; everything we still add lives
+		// in hw_patches + runner_patch below. See schema.cue on the switch.
+		image:            "ghcr.io/gonka-ai/mlnode"
+		digest:           "sha256:7ba43ce4ad98d0d34c7b8626b424fffc2857c8dd4a2de86831e1b522fa09042b"
+		upstream_version: "3.0.14-post2-vllm0.25.1-rc1"
+	}
+	hw_patches: list.Concat([bases.B200.hw_patches, ["content-type-injector", "cold-start-tolerance"]])
 	runner_patch: "b200-minimax-m2-7-plugin"
 	env: {
 		// Plugin entrypoint + worker-extension RPC channel (0.25.1 line).

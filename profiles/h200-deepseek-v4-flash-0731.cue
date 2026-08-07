@@ -22,7 +22,7 @@ h200_deepseek_v4_flash_0731: #OverlayProfile & bases.H200 & bases.DEEPSEEK_V4_FL
 		version: {
 			// Overlay identity: upstream is our 0.25.1 release-line mlnode-base.
 			// rev=1 — first production revision of the 0731 matrix.
-			upstream: "0.2.14-vllm0.25.1"
+			upstream: "3.0.14-post2-vllm0.25.1-rc1"
 			rev:      2
 		}
 	}
