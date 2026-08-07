@@ -21,9 +21,9 @@ h200_deepseek_v4_flash_0731: #OverlayProfile & bases.H200 & bases.DEEPSEEK_V4_FL
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
-			// rev=3 — DSpark speculation forced on (Pasha, 2026-08-07).
+			// rev=4 — scheduler KeyError guard (kaitakuai/vllm#19).
 			upstream: "3.0.14-post2-vllm0.25.1-rc3"
-			rev:      3
+			rev:      4
 		}
 	}
 	description: "H200 Hopper (x2) + DeepSeek-V4-Flash-0731 FP8 (TP=2, FlashMLA fp8 KV, 400k ctx) — vllm-poc 0.25.1 PLUGIN, release-matrix PRODUCTION image"
@@ -39,7 +39,7 @@ h200_deepseek_v4_flash_0731: #OverlayProfile & bases.H200 & bases.DEEPSEEK_V4_FL
 		digest:           "sha256:450983bbef31c8e19b8d24edb00c17520af7cc4fb0d186943f3ac3dec4dad387"
 		upstream_version: "3.0.14-post2-vllm0.25.1-rc3"
 	}
-	hw_patches: bases.GONKA_MLNODE_PATCHES
+	hw_patches: bases.GONKA_BASE_PATCHES
 	runner_patch: "h200-deepseek-v4-flash-0731-plugin"
 	env: {
 		// Launch the gonka-poc composed entrypoint.

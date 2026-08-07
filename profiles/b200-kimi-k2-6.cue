@@ -40,8 +40,9 @@ b200_kimi_k2_6: #OverlayProfile & bases.B200 & bases.KIMI_INT4 & bases.KIMI_INT4
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
+			// rev=2 — scheduler KeyError guard (kaitakuai/vllm#19).
 			upstream: "3.0.14-post2-vllm0.25.1-rc3"
-			rev:      1
+			rev:      2
 		}
 	}
 	mode: "upstream-overlay"
@@ -53,7 +54,7 @@ b200_kimi_k2_6: #OverlayProfile & bases.B200 & bases.KIMI_INT4 & bases.KIMI_INT4
 	}
 	// The fat-fork's poc-householder-compile is NOT referenced — it edited the
 	// monolith's vllm/poc/ tree, absent on the plugin base.
-	hw_patches: list.Concat([bases.B200.hw_patches, bases.GONKA_MLNODE_PATCHES])
+	hw_patches: list.Concat([bases.B200.hw_patches, bases.GONKA_BASE_PATCHES])
 	runner_patch: "b200-kimi-k2-6-plugin"
 	env: {
 		// Server-side plugin flip: launch the gonka-poc composed entrypoint

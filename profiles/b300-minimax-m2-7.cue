@@ -53,8 +53,9 @@ b300_minimax_m2_7: #OverlayProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
+			// rev=4 — scheduler KeyError guard (kaitakuai/vllm#19).
 			upstream: "3.0.14-post2-vllm0.25.1-rc3"
-			rev:      3
+			rev:      4
 		}
 	}
 	mode: "upstream-overlay"
@@ -73,7 +74,7 @@ b300_minimax_m2_7: #OverlayProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 	// a Stage-4-patchable tree on the plugin base (PoC math lives in gonka-poc).
 	// We DE-REFERENCE only — the shared fragment file stays for the 5
 	// non-migrated profiles.
-	hw_patches: list.Concat([bases.B300.hw_patches, bases.GONKA_MLNODE_PATCHES])
+	hw_patches: list.Concat([bases.B300.hw_patches, bases.GONKA_BASE_PATCHES])
 	runner_patch: "b300-minimax-plugin"
 	env: {
 		// Tell the mlnode runner to launch the gonka-poc COMPOSED entrypoint

@@ -31,8 +31,9 @@ h200_kimi_k2_6: #OverlayProfile & bases.H200 & bases.KIMI_INT4 & {
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
+			// rev=2 — scheduler KeyError guard (kaitakuai/vllm#19).
 			upstream: "3.0.14-post2-vllm0.25.1-rc3"
-			rev:      1
+			rev:      2
 		}
 	}
 	mode: "upstream-overlay"
@@ -42,7 +43,7 @@ h200_kimi_k2_6: #OverlayProfile & bases.H200 & bases.KIMI_INT4 & {
 		digest:           "sha256:450983bbef31c8e19b8d24edb00c17520af7cc4fb0d186943f3ac3dec4dad387"
 		upstream_version: "3.0.14-post2-vllm0.25.1-rc3"
 	}
-	hw_patches: list.Concat([bases.H200.hw_patches, bases.GONKA_MLNODE_PATCHES])
+	hw_patches: list.Concat([bases.H200.hw_patches, bases.GONKA_BASE_PATCHES])
 	runner_patch: "h200-kimi-k2-6-plugin"
 	env: {
 		// Server-side plugin flip: launch the gonka-poc composed entrypoint
