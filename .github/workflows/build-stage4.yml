@@ -371,7 +371,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           REMOTE="https://x-access-token:${STATE_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
-          git pull --rebase --autostash "$REMOTE" main || true
+          # State belongs on the branch that was built. Pushing it to main from a
+          # feature branch would rebase (and try to publish) the whole branch.
+          BRANCH="${{ github.ref_name }}"
+          git pull --rebase --autostash "$REMOTE" "$BRANCH" || true
           git add "$state_file" "$registry_file"
           if git diff --cached --quiet; then
             echo "No state changes to commit"
@@ -379,7 +382,7 @@ jobs:
             git commit -m "state: ${{ matrix.profile }} → ${{ steps.meta.outputs.tag }} (hash ${{ steps.meta.outputs.profile_hash }}, digest ${{ steps.build.outputs.digest }}, run ${{ github.run_id }})"
             pushed=false
             for i in 1 2 3; do
-              if git pull --rebase --autostash "$REMOTE" main && git push "$REMOTE" HEAD:main; then
+              if git pull --rebase --autostash "$REMOTE" "$BRANCH" && git push "$REMOTE" "HEAD:$BRANCH"; then
                 pushed=true
                 break
               fi
