@@ -11,7 +11,6 @@ B300: {
 		"cold-start-tolerance",
 	] | [...string]
 	env: {
-		VLLM_USE_V1:                  "1"
 		VLLM_RUNNER_TIMEOUT:          "3600"
 		WATCHER_GRACE_FIRST_HEALTHY:  "1"
 	}

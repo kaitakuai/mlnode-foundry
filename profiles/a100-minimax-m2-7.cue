@@ -30,9 +30,9 @@ a100_minimax_m2_7: #OverlayProfile & bases.A100 & bases.MINIMAX_M2_7 & {
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
-			// rev=4 — scheduler KeyError guard (kaitakuai/vllm#19).
+			// rev=5 — drop the dead VLLM_USE_V1 (removed from vLLM).
 			upstream: "3.0.14-post2-vllm0.25.1-rc3"
-			rev:      4
+			rev:      5
 		}
 	}
 	mode: "upstream-overlay"

@@ -71,7 +71,7 @@ b300_deepseek_v4_flash: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH &
 		// Required for the worker extension's collective_rpc msgpack channel.
 		VLLM_ALLOW_INSECURE_SERIALIZATION: "1"
 		// VLLM_RUNNER_TIMEOUT / WATCHER_GRACE_FIRST_HEALTHY come from the
-		// DEEPSEEK_V4_FLASH + B300 bases; VLLM_USE_V1 from B300.
+		// DEEPSEEK_V4_FLASH + B300 bases.
 	}
 	runtime_defaults: {
 		// Forced via the runner-patch; reproduced here for the dashboard.

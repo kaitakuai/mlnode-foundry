@@ -11,7 +11,4 @@ RTX6000: {
 		"flashinfer-jit-uninstall",
 		"nvidia-headers-symlinks",
 	] | [...string]
-	env: {
-		VLLM_USE_V1: "1"
-	}
 }

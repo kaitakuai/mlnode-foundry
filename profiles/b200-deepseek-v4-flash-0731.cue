@@ -21,9 +21,9 @@ b200_deepseek_v4_flash_0731: #OverlayProfile & bases.B200 & bases.DEEPSEEK_V4_FL
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
-			// rev=3 — scheduler KeyError guard (kaitakuai/vllm#19).
+			// rev=4 — drop the dead VLLM_USE_V1 (removed from vLLM).
 			upstream: "3.0.14-post2-vllm0.25.1-rc3"
-			rev:      3
+			rev:      4
 		}
 	}
 	description: "B200 Blackwell (x2) + DeepSeek-V4-Flash-0731 FP8 (TP=2, FlashMLA fp8 KV, 400k ctx) — vllm-poc 0.25.1 PLUGIN, release-matrix PRODUCTION image"

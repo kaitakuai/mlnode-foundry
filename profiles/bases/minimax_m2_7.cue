@@ -31,7 +31,6 @@ package bases
 
 MINIMAX_M2_7: {
 	env: {
-		VLLM_USE_V1: "1"
 		// MiniMax-M2.7 cold-start with FP8 KV + 180000 max-model-len is slow
 		// on production TPs. Grace window suppresses the 3-strike kill-threshold
 		// UNTIL the manager first reports healthy=True in an active session;

@@ -40,9 +40,9 @@ b200_kimi_k2_6: #OverlayProfile & bases.B200 & bases.KIMI_INT4 & bases.KIMI_INT4
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
-			// rev=2 — scheduler KeyError guard (kaitakuai/vllm#19).
+			// rev=3 — drop the dead VLLM_USE_V1 (removed from vLLM).
 			upstream: "3.0.14-post2-vllm0.25.1-rc3"
-			rev:      2
+			rev:      3
 		}
 	}
 	mode: "upstream-overlay"
