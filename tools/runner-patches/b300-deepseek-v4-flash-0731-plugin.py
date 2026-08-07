@@ -2,7 +2,7 @@
 
 Production profile for the vLLM 0.25.1 release line. Two edits to VLLMRunner
 (same shape as every *-plugin.py patch): a forced-args block after
-`self.additional_args = additional_args or []`, and the launch-module swap.
+the constructor anchor, and the launch-module swap.
 
 Forced config — 149 GiB FP8 weights fit on ONE B300/275 GiB; an 8-GPU box runs 8 independent TP=1
   engines:
@@ -42,7 +42,7 @@ _CANDIDATES = (
     "/app/src/api/inference/vllm/runner.py",
 )
 FILE = next((c for c in _CANDIDATES if os.path.exists(c)), _CANDIDATES[0])
-MARKER = "self.additional_args = additional_args or []"
+MARKER = "self.processes: List[subprocess.Popen] = []"
 INDENT = " " * 8
 
 ENV_MARKER = "env = os.environ.copy()"

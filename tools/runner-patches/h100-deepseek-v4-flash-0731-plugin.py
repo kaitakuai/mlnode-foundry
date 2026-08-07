@@ -2,7 +2,7 @@
 
 Production profile for the vLLM 0.25.1 release line. Two edits to VLLMRunner
 (same shape as every *-plugin.py patch): a forced-args block after
-`self.additional_args = additional_args or []`, and the launch-module swap.
+the constructor anchor, and the launch-module swap.
 
 Forced config — 4x H100/80 GiB: memory-tightest topology; gmu 0.85 + maxnbt 16384 is the only cell
   holding 400k inference AND PoC (experiments 2026-08/deepseek-v4-flash-0731-dspark-4xh100):
@@ -42,7 +42,7 @@ _CANDIDATES = (
     "/app/src/api/inference/vllm/runner.py",
 )
 FILE = next((c for c in _CANDIDATES if os.path.exists(c)), _CANDIDATES[0])
-MARKER = "self.additional_args = additional_args or []"
+MARKER = "self.processes: List[subprocess.Popen] = []"
 INDENT = " " * 8
 
 ENV_MARKER = "env = os.environ.copy()"

@@ -3,7 +3,7 @@
 Two edits to VLLMRunner in runner.py (same shape as b300-kimi-k2-6-plugin.py;
 B200 differs in the memory envelope + uses CUDA graphs):
 
-1. Insert a forced-args block after `self.additional_args = additional_args or []`
+1. Insert a forced-args block after the constructor anchor
    in __init__. Forces the validated B200 Kimi tune (experiment
    kimi_k26_int4_4xb200_q-int4-k2) PLUS the plugin worker wiring:
 
@@ -53,7 +53,7 @@ from __future__ import annotations
 import sys
 
 FILE = "/app/packages/api/src/api/inference/vllm/runner.py"
-MARKER = "self.additional_args = additional_args or []"
+MARKER = "self.processes: List[subprocess.Popen] = []"
 INDENT = " " * 8
 
 # Edit 2: launch-module swap (runner.py already imports `os`).

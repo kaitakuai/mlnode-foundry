@@ -3,7 +3,7 @@
 Two edits to VLLMRunner in runner.py (same shape as b300-glm-5-2-plugin.py;
 this is the FIRST DeepSeek-V4 leaf — a test image on the vLLM 0.25.1 line):
 
-1. Insert a forced-args block after `self.additional_args = additional_args or []`
+1. Insert a forced-args block after the constructor anchor
    in __init__. Forces the B300 DeepSeek-V4-Flash config:
 
      --tensor-parallel-size 1        (149 GiB FP8 weights fit on ONE B300 / 275 GiB
@@ -55,7 +55,7 @@ from __future__ import annotations
 import sys
 
 FILE = "/app/packages/api/src/api/inference/vllm/runner.py"
-MARKER = "self.additional_args = additional_args or []"
+MARKER = "self.processes: List[subprocess.Popen] = []"
 INDENT = " " * 8
 
 # Edit 2: launch-module swap (runner.py already imports `os`).

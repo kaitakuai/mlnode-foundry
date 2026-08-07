@@ -3,7 +3,7 @@
 Two edits to VLLMRunner in runner.py (same shape as b200-glm-5-2-plugin.py;
 B300 differs only in the per-engine tune):
 
-1. Insert a forced-args block after `self.additional_args = additional_args or []`
+1. Insert a forced-args block after the constructor anchor
    in __init__. Forces the B300 GLM-5.2 config (from experiments/2026-06/
    glm-5.2-deepgemm-4xb300) PLUS the plugin worker wiring:
 
@@ -57,7 +57,7 @@ from __future__ import annotations
 import sys
 
 FILE = "/app/packages/api/src/api/inference/vllm/runner.py"
-MARKER = "self.additional_args = additional_args or []"
+MARKER = "self.processes: List[subprocess.Popen] = []"
 INDENT = " " * 8
 
 # Edit 2: launch-module swap (runner.py already imports `os`).
