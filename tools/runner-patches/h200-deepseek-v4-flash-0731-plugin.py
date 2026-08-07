@@ -47,6 +47,11 @@ INDENT = " " * 8
 
 ENV_MARKER = "env = os.environ.copy()"
 ENV_INJECT = """
+            # NOTE (2026-08-07): cortima dropped the pin from their
+            # Dockerfile.gonka-poc, so on the current base this is a no-op.
+            # Kept because the base is a moving target and the failure it
+            # prevents is silent: DSpark simply never engages.
+            #
             # DSpark (DeepSeek-V4-Flash-0731) lives only on the V2 model
             # runner, and vLLM reads the switch as
             #   maybe_convert_bool(os.getenv("VLLM_USE_V2_MODEL_RUNNER", None))
