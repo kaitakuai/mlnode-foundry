@@ -68,7 +68,7 @@ def test_render_registry_view_b200_kimi_int4() -> None:
         cosign_identity="https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main",
         size="42 GB",
     )
-    assert view["line"] == "mlnode"
+    assert view["line"] == "mlnode-overlay"
     assert view["gpu"] == "b200"
     assert view["model_family"] == "kimi"
     assert view["model_revision"] == "k2-6"
