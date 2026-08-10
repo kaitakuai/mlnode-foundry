@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import os
 import re
 import subprocess
 import sys
@@ -75,3 +76,21 @@ def test_patched_runner_passes_lint(name: str, tmp_path: Path) -> None:
         text=True,
     )
     assert result.returncode == 0, result.stdout
+
+
+def test_dsv4_nvfp4_patch_matches_pr(tmp_path: Path) -> None:
+    """The S4 layer must reproduce kaitakuai/vllm#20 byte-for-byte."""
+    pkg = tmp_path / "vllm" / "models" / "deepseek_v4"
+    pkg.mkdir(parents=True)
+    (tmp_path / "vllm" / "__init__.py").touch()
+    target = pkg / "quant_config.py"
+    fixtures = Path(__file__).parent / "fixtures"
+    target.write_text((fixtures / "upstream_quant_config.py.txt").read_text())
+
+    env = {**os.environ, "PYTHONPATH": str(tmp_path)}
+    script = str(PATCH_DIR / "dsv4-nvfp4-draft-moe.py")
+    assert subprocess.run([sys.executable, script], env=env).returncode == 0
+    assert target.read_text() == (fixtures / "patched_quant_config.py.txt").read_text()
+    # Re-run on an already-patched tree must be a no-op.
+    assert subprocess.run([sys.executable, script], env=env).returncode == 0
+    assert target.read_text() == (fixtures / "patched_quant_config.py.txt").read_text()

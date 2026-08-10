@@ -10,7 +10,11 @@
 // 2026-08/deepseek-v4-flash-0731-1xb300.
 package profiles
 
-import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
+import (
+	"list"
+
+	"github.com/kaitakuai/mlnode-foundry/profiles/bases"
+)
 
 b300_deepseek_v4_flash_0731: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH & {
 	identity: {
@@ -21,9 +25,9 @@ b300_deepseek_v4_flash_0731: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FL
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
-			// rev=4 — drop the dead VLLM_USE_V1 (removed from vLLM).
+			// rev=5 — DSpark draft experts off the NVFP4 path (kaitakuai/vllm#20).
 			upstream: "3.0.14-post2-vllm0.25.1-rc3"
-			rev:      4
+			rev:      5
 		}
 	}
 	description: "B300 Blackwell Ultra SXM6 (x1, 8 engines/box) + DeepSeek-V4-Flash-0731 FP8 (TP=1, FlashMLA fp8 KV, 400k ctx) — vllm-poc 0.25.1 PLUGIN, release-matrix PRODUCTION image"
@@ -34,7 +38,9 @@ b300_deepseek_v4_flash_0731: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FL
 		digest:           "sha256:450983bbef31c8e19b8d24edb00c17520af7cc4fb0d186943f3ac3dec4dad387"
 		upstream_version: "3.0.14-post2-vllm0.25.1-rc3"
 	}
-	hw_patches: bases.GONKA_BASE_PATCHES
+	// Plus the NVFP4 draft-MoE fix — B300-only by design: NVFP4 is the
+	// technically-primary model variant on B300 alone (chat decision 2026-08-10).
+	hw_patches: list.Concat([bases.GONKA_BASE_PATCHES, ["dsv4-nvfp4-draft-moe"]])
 	runner_patch: "b300-deepseek-v4-flash-0731-plugin"
 	env: {
 		// Launch the gonka-poc composed entrypoint.
