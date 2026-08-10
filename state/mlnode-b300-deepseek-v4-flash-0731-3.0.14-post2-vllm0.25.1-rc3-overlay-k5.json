@@ -1,0 +1,18 @@
+{
+  "profile": "profiles/b300-deepseek-v4-flash-0731.cue",
+  "profile_hash": "5008f7dff265ce0a38aa001265a76627bb0eadcf066fb90f81b4e170443bc3c4",
+  "status": "draft",
+  "image": {
+    "package": "ghcr.io/kaitakuai/mlnode-b300-deepseek-v4-flash-0731",
+    "tag": "3.0.14-post2-vllm0.25.1-rc3-overlay-k5",
+    "digest": "sha256:643887d62bf946da410764ec19248752790898ca8e8e9bb70b887c450fe2c2b8",
+    "built_at": "2026-08-10T22:58:00Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/feat/prod-matrix-cortima-base"
+  },
+  "validation": {
+    "build_smoke": {
+      "result": "pass",
+      "at": "2026-08-10T22:58:00Z"
+    }
+  }
+}
