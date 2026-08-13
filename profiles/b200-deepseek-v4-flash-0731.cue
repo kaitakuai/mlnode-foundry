@@ -31,7 +31,7 @@ b200_deepseek_v4_flash_0731: #OverlayProfile & bases.B200 & bases.DEEPSEEK_V4_FL
 	base: {
 		image:            "ghcr.io/gonka-ai/mlnode"
 		// Cortima's PUBLISHED release image — see b300-kimi-k2-6.cue on the switch.
-		digest:           "sha256:1b9b7ce55feecab837f1d7ce974fc5f377ae0a04a4fb403eeeb50130e7728ee1"
+		digest:           "sha256:79550026c5c567f2bdc3ae181a3cce1586e00957271fdd1554da124ff6f50b19"
 		upstream_version: "3.0.16"
 	}
 	hw_patches: bases.GONKA_BASE_PATCHES
