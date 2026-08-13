@@ -56,8 +56,8 @@
     "MLNODE_VLLM_MODULE=gonka_poc.entrypoint.api_router": "Server-side plugin flip \u2014 launches the composed gonka-poc entrypoint (PoC router + gating) instead of stock api_server. Required on the plugin base. No throughput trade-off; info.",
     "validation-report": "B300 Kimi throughput/quality INHERITED from the fat-fork tune (b300-kimi.py: 5120 nonces/min @ batch=64 on 8\u00d7B300; INT4 nonces L2-valid under the Kimi chain gate). NOT yet re-validated on the 0.25.1 release base \u2014 re-benchmark on B300, and verify the MoE WorkspaceManager-lock risk (see notes) before production."
   },
-  "digest": "sha256:6de33ded157c8f346c0f5a7ed4b240c53ea41d30a3a8aab85ae3988c195ce769",
-  "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/feat/prod-matrix-cortima-base",
+  "digest": "sha256:52c7071bceb8ed4beb7d897cf1edcafbc250c42df8e2be712c88da6c39147de8",
+  "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main",
   "slsa_attestation_url": null,
   "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-05/kimi_k26_int4_4xb200_q-int4-k2/README.md",
   "uploaded_by": "Mykola Baichak",
