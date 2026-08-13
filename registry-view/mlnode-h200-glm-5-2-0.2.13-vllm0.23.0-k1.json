@@ -18,7 +18,7 @@
   "model_context_max": 1048576,
   "model_license": "MIT",
   "cuda": "13.0",
-  "size": "13 GB",
+  "size": "12 GB",
   "runtime": "docker run -d --gpus all -p 8080:8080 ghcr.io/kaitakuai/mlnode-h200-glm-5-2:0.2.13-vllm0.23.0-k1",
   "flags": [
     "MLNODE_VLLM_MODULE=gonka_poc.entrypoint.api_router",
@@ -27,7 +27,6 @@
     "VLLM_RUNNER_TIMEOUT=3600",
     "VLLM_USE_DEEP_GEMM=0",
     "VLLM_USE_FLASHINFER_MOE_FP8=0",
-    "VLLM_USE_V1=1",
     "WATCHER_GRACE_FIRST_HEALTHY=1",
     "compilation_mode=3",
     "cudagraph_mode=PIECEWISE",
@@ -58,7 +57,7 @@
     "max_model_len=400000 (operator-forced)": "400000 on all GLM GPUs. H200 SAFE: experiment measured ~553,668-token bf16 KV cache at gmu0.90; 400000 is below the proven 450000 ceiling, and the compressed fp8_ds_mla KV (now baked) gives even more headroom.",
     "validation-report": "PoC 576 nonces/min eager (\u221243% vs B200). H200\u2194B200 FP8 L2-PASS (0.7% mismatch) but collected on a FULL-EAGER engine \u2014 RE-CONFIRM L2 on the compiled engine (skip_compiled PoC) the shipped image uses, + re-benchmark on the foundry-built leaf before production."
   },
-  "digest": "sha256:a6743d1ba0c33ec4f7f487952ae4b71eed6ddc68040a32b960f4d12be33b6a6f",
+  "digest": "sha256:883d4d5148e1a3fc41d84971fb54dd23bde0d68d9754dd4a7f8c71054bad2b86",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main",
   "slsa_attestation_url": null,
   "report_url": "https://github.com/kaitakuai/experiments/tree/main/2026-06/glm-5.2-fp8-8xh200",
