@@ -1,18 +1,18 @@
 {
   "profile": "profiles/b200-kimi-k2-6.cue",
-  "profile_hash": "bb5eea904b8ae1fb9147f6e0c89d5d8e113ee8246d1cdf469afbf58a81ed5e29",
+  "profile_hash": "71ae8516921a51bab31cefcb13ac94be934aedb967804356cb42946799a55032",
   "status": "draft",
   "image": {
     "package": "ghcr.io/kaitakuai/mlnode-b200-kimi-k2-6",
     "tag": "3.0.16-overlay-k3",
-    "digest": "sha256:72d888ad2197a19b6a9f06eea067f5f6b842c5bfd0c70330ed98ff3b4300be43",
-    "built_at": "2026-08-13T12:59:07Z",
-    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/feat/prod-matrix-cortima-base"
+    "digest": "sha256:33c54f9285e415102022ad2ab7c950626cd8d06d96b367fc2857a855d167646c",
+    "built_at": "2026-08-13T16:34:55Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main"
   },
   "validation": {
     "build_smoke": {
       "result": "pass",
-      "at": "2026-08-13T12:59:07Z"
+      "at": "2026-08-13T16:34:55Z"
     }
   }
 }
