@@ -34,8 +34,8 @@
   "digest": "sha256:9af553e48a143150885b71c6593219fa4540aea6b3f122999310ad373480f9db",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/feat/prod-matrix-cortima-base",
   "slsa_attestation_url": null,
-  "report_url": null,
+  "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-08/deepseek-v4-flash-0731-2xb200/README.md",
   "uploaded_by": "Mykola Baichak",
-  "nonces": null,
-  "weight": null
+  "nonces": 9216,
+  "weight": 5010
 }
