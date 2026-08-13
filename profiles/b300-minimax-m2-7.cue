@@ -54,7 +54,7 @@ b300_minimax_m2_7: #OverlayProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
 			// rev=5 — drop the dead VLLM_USE_V1 (removed from vLLM).
-			upstream: "3.0.14-post2-vllm0.25.1-rc3"
+			upstream: "3.0.16"
 			rev:      5
 		}
 	}
@@ -66,8 +66,8 @@ b300_minimax_m2_7: #OverlayProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 		// from their mlnode source impossible; everything we still add lives
 		// in hw_patches + runner_patch below. See schema.cue on the switch.
 		image:            "ghcr.io/gonka-ai/mlnode"
-		digest:           "sha256:450983bbef31c8e19b8d24edb00c17520af7cc4fb0d186943f3ac3dec4dad387"
-		upstream_version: "3.0.14-post2-vllm0.25.1-rc3"
+		digest:           "sha256:1b9b7ce55feecab837f1d7ce974fc5f377ae0a04a4fb403eeeb50130e7728ee1"
+		upstream_version: "3.0.16"
 	}
 	// The fat-fork's `poc-householder-compile` fragment is INTENTIONALLY absent:
 	// it edited vllm/poc/gpu_random.py in the monolith, which does not exist as

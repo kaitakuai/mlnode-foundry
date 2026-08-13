@@ -26,7 +26,7 @@ b300_deepseek_v4_flash_0731: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FL
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
 			// rev=5 — DSpark draft experts off the NVFP4 path (kaitakuai/vllm#20).
-			upstream: "3.0.14-post2-vllm0.25.1-rc3"
+			upstream: "3.0.16"
 			rev:      5
 		}
 	}
@@ -35,8 +35,8 @@ b300_deepseek_v4_flash_0731: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FL
 	base: {
 		image:            "ghcr.io/gonka-ai/mlnode"
 		// Cortima's PUBLISHED release image — see b300-kimi-k2-6.cue on the switch.
-		digest:           "sha256:450983bbef31c8e19b8d24edb00c17520af7cc4fb0d186943f3ac3dec4dad387"
-		upstream_version: "3.0.14-post2-vllm0.25.1-rc3"
+		digest:           "sha256:1b9b7ce55feecab837f1d7ce974fc5f377ae0a04a4fb403eeeb50130e7728ee1"
+		upstream_version: "3.0.16"
 	}
 	// Plus the NVFP4 draft-MoE fix — B300-only by design: NVFP4 is the
 	// technically-primary model variant on B300 alone (chat decision 2026-08-10).
