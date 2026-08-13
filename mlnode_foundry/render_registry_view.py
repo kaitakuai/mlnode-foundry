@@ -97,6 +97,12 @@ def render_registry_view(
     version = profile["identity"]["version"]
     tuning_notes = profile.get("tuning_notes", [])
 
+    # A leaf may advertise a different checkpoint than the one its axes name:
+    # b300-deepseek serves the NVFP4 conversion by network decision, while the
+    # axes (and governance) name the official release. Stated in the profile so
+    # a rebuild re-renders it instead of clobbering a hand-edited JSON.
+    advertised = profile.get("advertised_model", {})
+
     registry = load_model_registry()
     entry = next(
         (
@@ -142,8 +148,8 @@ def render_registry_view(
         "vllm_base_version": version.get("vllm") if not is_overlay else None,
         "mlnode_version": version.get("mlnode") if not is_overlay else None,
         "upstream_overlay_version": version.get("upstream") if is_overlay else None,
-        "model": entry["hf_repo"],
-        "model_short": entry["display_name"],
+        "model": advertised.get("model", entry["hf_repo"]),
+        "model_short": advertised.get("model_short", entry["display_name"]),
         "model_params_b": entry.get("params_b"),
         "model_context_max": entry.get("context_max"),
         "model_license": entry.get("license"),

@@ -30,10 +30,13 @@ def test_b200_kimi_tag(naming: dict) -> None:
     profile = load_profile("b200-kimi-k2-6")
     pkg, tag = render_package_and_tag(profile, naming)
     assert pkg == "ghcr.io/kaitakuai/mlnode-b200-kimi-k2-6"
-    # Migrated to the vllm-poc 0.23 plugin base: vllm 0.23.0, rev=1 → -k1 suffix.
+    # Overlay tag = "{upstream}-overlay{tag_axes}-k{rev}". Composed from the
+    # profile rather than spelled out, so bumping the base image does not
+    # rewrite this test — what is pinned here is the shape, not the version.
+    version = profile["identity"]["version"]
+    assert tag == f"{version['upstream']}-overlay-k{version['rev']}"
     # quant axis intentionally omitted from this profile, so the tag has no
     # `-q.int4` segment (Kimi-K2.6 ships only as INT4 today — see profile).
-    assert tag == "0.2.13-vllm0.23.0-k1"
     assert "q." not in tag
 
 
@@ -42,7 +45,8 @@ def test_h100_minimax_tag_omits_default_axes(naming: dict) -> None:
     profile = load_profile("h100-minimax-m2-7")
     pkg, tag = render_package_and_tag(profile, naming)
     assert pkg == "ghcr.io/kaitakuai/mlnode-h100-minimax-m2-7"
-    assert tag == "0.2.13-vllm0.20.0-k1"
+    version = profile["identity"]["version"]
+    assert tag == f"{version['upstream']}-overlay-k{version['rev']}"
     assert "q." not in tag
     assert "f." not in tag
 

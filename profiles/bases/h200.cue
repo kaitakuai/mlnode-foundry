@@ -5,7 +5,4 @@ package bases
 
 H200: {
 	hw_patches: *[] | [...string]
-	env: {
-		VLLM_USE_V1: "1"
-	}
 }

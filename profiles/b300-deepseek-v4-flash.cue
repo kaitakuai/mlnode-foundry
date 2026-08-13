@@ -33,25 +33,33 @@ b300_deepseek_v4_flash: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH &
 			// (MXFP4 experts + FP8-block linears) checkpoint today.
 		}
 		version: {
-			// Overlay identity: the "upstream" here is OUR one-off 0.25.1
-			// mlnode-base, not a product-science release. rev=4 = k3 stack
-			// (gonka-poc#14 V4 PoC + gonka-poc#18 borrowed-lease validation)
-			// + patches/0003 mlnode heartbeat liveness / damped proxy probe
-			// (upstream PR gonka-ai/gonka#1421, hang-fix stack).
-			// Tag renders as ...:0.2.13-vllm0.25.1-overlay-k4.
-			upstream: "0.2.13-vllm0.25.1"
-			rev:      4
+			// Overlay identity: the "upstream" here is OUR 0.25.1 mlnode-base, not a
+			// product-science release. rev=7 = the first stack built entirely from
+			// upstream sources: gonka-ai/vllm release/v0.25.1 (port merged as #78) +
+			// gonka-ai/gonka-vllm-plugins v0.1.1 (abort-by-internal-id fix, 0.23
+			// dropped) + mlnode 0.2.14 with the node-side metrics exporter.
+			// Tag renders as ...:0.2.14-vllm0.25.1-overlay-k10 — the release
+			// CANDIDATE: vllm release @04a165c0 (#78+#79+#80+#82) + plugin
+			// v0.1.1 + mlnode from the gonka-ai RELEASE BRANCH
+			// vllm-0.25.1-upgrade @1b07e5c6 (exporter + hardened heartbeat),
+			// i.e. bit-for-bit what Monday's release finalises.
+			upstream: "0.2.14-vllm0.25.1"
+			rev:      10
 		}
 	}
 	mode: "upstream-overlay"
 	base: {
 		image: "ghcr.io/kaitakuai/mlnode-base"
-		// One-off mlnode-base:0.2.13-vllm0.25.1-k4, built via build-stage3
-		// workflow_dispatch override (run 29791913102) from S2 vllm-poc:0.25.1
-		// @sha256:72423e85... (gonka-poc e24861a = PR#14 + PR#18) + mlnode
-		// patches/0003 heartbeat liveness; tools/stage3.lock.cue NOT changed.
-		digest:           "sha256:d4f72e623f6b6da03ef78a1ee4ad8f66e76ae8feff7767dab260f174d901f93e"
-		upstream_version: "0.2.13-vllm0.25.1"
+		// mlnode-base:0.2.14-vllm0.25.1-k5 (release-branch base, patches 0001+0002 only):
+		// (run 30476136950) from S2 vllm-poc:0.25.1 @sha256:5453a9b0... -- the first
+		// S2 whose both inputs are the upstream sources: gonka-ai/vllm
+		// release/v0.25.1 (#78 merged) + gonka-ai/gonka-vllm-plugins v0.1.1
+		// (469aaf2ae) -- + mlnode 0.2.14 with the node-side metrics exporter
+		// (#1501, kaitakuai/gonka@26f7db5) + patches/0001+0002+0003. Monitoring-enabled
+		// base for hardware testing; tools/stage3.lock.cue on main NOT changed (the
+		// fleet flip to 0.25.1 is a separate migration).
+		digest:           "sha256:4dbcfed2f42ea92ac75a772958e23956310a84e879d4bf1dafe75c7f0e0f6312"
+		upstream_version: "0.2.14-vllm0.25.1"
 	}
 	// hw_patches inherited from bases.B300 (triton-ptxas, flashinfer-jit-uninstall,
 	// libcuda-compat-580-driver, nvidia-headers-symlinks, cold-start-tolerance) —
@@ -63,7 +71,7 @@ b300_deepseek_v4_flash: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FLASH &
 		// Required for the worker extension's collective_rpc msgpack channel.
 		VLLM_ALLOW_INSECURE_SERIALIZATION: "1"
 		// VLLM_RUNNER_TIMEOUT / WATCHER_GRACE_FIRST_HEALTHY come from the
-		// DEEPSEEK_V4_FLASH + B300 bases; VLLM_USE_V1 from B300.
+		// DEEPSEEK_V4_FLASH + B300 bases.
 	}
 	runtime_defaults: {
 		// Forced via the runner-patch; reproduced here for the dashboard.

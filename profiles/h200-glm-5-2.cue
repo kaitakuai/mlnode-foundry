@@ -72,7 +72,7 @@ h200_glm_5_2: #BaseProfile & bases.H200 & bases.GLM_5_2 & {
 		VLLM_MOE_USE_DEEP_GEMM:      "0"
 		VLLM_USE_FLASHINFER_MOE_FP8: "0"
 		// VLLM_RUNNER_TIMEOUT / WATCHER_GRACE_FIRST_HEALTHY come from the GLM_5_2
-		// base; VLLM_USE_V1 from the H200 base.
+		// base.
 	}
 	// Compiled inference (vLLM default cudagraph) + eager PoC via gonka-poc
 	// skip_compiled — NOT forced (operator passes --enforce-eager for the exceptional

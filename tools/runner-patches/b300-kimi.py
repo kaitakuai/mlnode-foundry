@@ -1,6 +1,6 @@
 """B300 Kimi-K2.6 INT4 hardcodes for MLNode runner.py.
 
-Inserts a small block right after `self.additional_args = additional_args or []`
+Inserts a small block right after the constructor anchor
 in `VLLMRunner.__init__`. Additive — no upstream code is removed; fails loud if
 the marker line is missing (= upstream refactored, re-verify the patch).
 
@@ -52,7 +52,7 @@ from __future__ import annotations
 import sys
 
 FILE = "/app/packages/api/src/api/inference/vllm/runner.py"
-MARKER = "self.additional_args = additional_args or []"
+MARKER = "self.processes: List[subprocess.Popen] = []"
 INDENT = " " * 8
 
 INJECTION_LINES = [

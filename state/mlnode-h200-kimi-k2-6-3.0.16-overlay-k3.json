@@ -1,0 +1,18 @@
+{
+  "profile": "profiles/h200-kimi-k2-6.cue",
+  "profile_hash": "830d896b0a275de0051bfa9f2af9414d24d4836515578a5901e8f032edbcc78b",
+  "status": "draft",
+  "image": {
+    "package": "ghcr.io/kaitakuai/mlnode-h200-kimi-k2-6",
+    "tag": "3.0.16-overlay-k3",
+    "digest": "sha256:d870572e89de1d028fb4a14234088ef1dc5c61d2acd56e8be59d832a094d2b42",
+    "built_at": "2026-08-13T13:26:13Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/feat/prod-matrix-cortima-base"
+  },
+  "validation": {
+    "build_smoke": {
+      "result": "pass",
+      "at": "2026-08-13T13:26:13Z"
+    }
+  }
+}

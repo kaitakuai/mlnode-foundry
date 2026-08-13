@@ -14,12 +14,14 @@
 package tools
 
 upstream: {
-	repo: "gonka-ai/gonka"
-	// f3b38936 = parent of 827d5ffe. The 827d5ffe commit IS the Content-Type middleware
-	// fix; pinning here to its parent so patches/0001-content-type-middleware.patch
-	// applies cleanly (vs trying to apply a patch on top of an already-patched commit).
-	commit:         "f3b3893687d8a13a078955fad07879ea2b0ce2d0"
-	mlnode_version: "0.2.13"
+	// Pinned to gonka-ai/gonka branch `vllm-0.25.1-upgrade` (PR #1534) —
+	// the release branch for the 0.25.1 update. First stage-3 pin pointing at
+	// the UPSTREAM repo rather than our fork: the metrics exporter and the
+	// heartbeat liveness (vbgd0's hardened revision) are both carried by the
+	// branch itself, which is why patches/0003 is gone.
+	repo:           "gonka-ai/gonka"
+	commit:         "1b07e5c6ce7a549d513d66af7fab03e365c1c4b9"
+	mlnode_version: "0.2.14"
 }
 
 stage2: {
@@ -29,21 +31,22 @@ stage2: {
 	// monolith remains a valid Stage 2 lineage for the 5 non-migrated profiles
 	// (a100/b200/h100/h200-minimax + b200-kimi) — the schema accepts both.
 	image: "ghcr.io/kaitakuai/vllm-poc"
-	// 0.23.0 is the vllm-poc tag (vLLM 0.23 residual base + gonka-poc); the build
-	// chain pins by the digest below. The mutable `0.23.0` and immutable
-	// `0.23.0-df73e1cf6` (gonka-poc @ df73e1cf6) tags both resolve to this index
-	// digest. Built + pushed + cosign-signed by kaitakuai/vllm build-vllm-poc.yml
-	// on 2026-06-25 (residual S1 sha256:4225271109… on CUDA-13 base + gonka-poc
-	// df73e1cf6 — UNCHANGED). The new S1 adds the enforced_tokens request-ingestion
-	// layer (REBASE.md row 7: vllm/validation.py + ChatCompletionRequest
-	// enforced_tokens/enforced_str/logprobs_mode + the serving bridge), fixing
-	// inference validation (a validator's enforced_tokens payload was silently
-	// dropped). Prior S2 sha256:5a6bd7d2… (S1 581955f0…) carried only the
-	// sampler-side enforcement + the DeepGEMM workspace + Starlette fixes.
-	tag:    "0.23.0"
-	digest: "sha256:835aa90ca80667770be7d2c55fffe4cfe3ade580a06c48da8fb3eaa6c439d2b9"
-	// CUDA 13.0: the residual S1 now bases on vLLM's recommended default image
-	// (vllm/vllm-openai:v0.23.0 → CUDA 13.0.2), not the pinned cu129 (12.9).
+	// 0.25.1 is the vllm-poc tag (vLLM 0.25.1 residual S1 + gonka-poc plugin).
+	// Build chain pins by the digest below — the verified working S2 (residual +
+	// out-of-tree plugin, DeepSeek-V4 capable). Was 0.23.0 @835aa90… before the
+	// 0.23 -> 0.25.1 base migration.
+	//
+	// This digest is the first S2 built from the upstream sources on both
+	// sides: the residual comes from gonka-ai/vllm release/v0.25.1 (the port
+	// merged as gonka-ai/vllm#78 plus vbgd0's completions logprobs_mode
+	// forwarding), and the plugin from gonka-ai/gonka-vllm-plugins v0.1.1
+	// (469aaf2ae — abort-by-internal-id fix, 0.23 support dropped). The
+	// previous digest (@1e345a72…) carried the same sampler logic from our
+	// pre-merge branch with plugin v0.1.0a0.
+	tag:    "0.25.1"
+	digest: "sha256:5453a9b03c386983cd39dfb746016dee4e5568d107e9c4c5e2caeeef92d9e361"
+	// CUDA 13.0: the residual S1 bases on vLLM's recommended default image
+	// (vllm/vllm-openai:v0.25.1 → CUDA 13.0.2), not the pinned cu129 (12.9).
 	// This matches the 5 fat-fork 0.20 profiles (also CUDA 13.0), so the single
 	// SHARED cuda field is accurate for every profile — no per-profile cuda
 	// split needed.
@@ -52,11 +55,10 @@ stage2: {
 
 stage3: {
 	package: "ghcr.io/kaitakuai/mlnode-base"
-	tag:     "0.2.13-vllm0.23.0-k1"
+	tag:     "0.2.14-vllm0.25.1-k5"
 }
 
 patches: [
 	"patches/0001-content-type-middleware.patch",
 	"patches/0002-api-watcher-grace.patch",
-	"patches/0003-mlnode-heartbeat-liveness.patch",
-]
+	]

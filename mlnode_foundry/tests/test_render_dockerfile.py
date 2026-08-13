@@ -116,16 +116,16 @@ def test_hw_patches_block_unknown_patch_raises() -> None:
 
 
 def test_render_dockerfile_inlines_hw_patches(tmp_path: Path) -> None:
-    """End-to-end: h100-minimax profile has poc-householder-compile applied inline."""
+    """End-to-end: a profile's hw-patch fragments end up inline in the Dockerfile."""
     out = tmp_path / "Dockerfile.rendered"
     profile = load_profile("h100-minimax-m2-7")
-    assert "poc-householder-compile" in profile["hw_patches"]
+    assert "libnvrtc-symlink" in profile["hw_patches"]
     text = render_dockerfile(profile, out).read_text()
     # No leftover placeholder
     assert "{{HW_PATCHES_BLOCK}}" not in text
-    # Patch fragment is in the rendered file
-    assert "hw-patch: poc-householder-compile" in text
-    assert "@torch.compile" in text
+    # Patch fragment is in the rendered file, not merely referenced by name
+    assert "hw-patch: libnvrtc-symlink" in text
+    assert "-lnvrtc" in text
     # /tmp/hw-patches COPY is gone — fragments are inlined, no need for the dir
     assert "/tmp/hw-patches" not in text
 

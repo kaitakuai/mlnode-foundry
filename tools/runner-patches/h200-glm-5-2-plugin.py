@@ -3,7 +3,7 @@
 Two edits to VLLMRunner in runner.py (same shape as b200-glm-5-2-plugin.py;
 H200 = Hopper sm_90, so the backend/KV story differs materially):
 
-1. Insert a forced-args block after `self.additional_args = additional_args or []`
+1. Insert a forced-args block after the constructor anchor
    in __init__. Forces the H200 GLM-5.2 config (from experiments/2026-06/
    glm-5.2-fp8-8xh200) PLUS the plugin worker wiring:
 
@@ -64,7 +64,7 @@ from __future__ import annotations
 import sys
 
 FILE = "/app/packages/api/src/api/inference/vllm/runner.py"
-MARKER = "self.additional_args = additional_args or []"
+MARKER = "self.processes: List[subprocess.Popen] = []"
 INDENT = " " * 8
 
 # Edit 2: launch-module swap (runner.py already imports `os`).
@@ -127,7 +127,9 @@ def main() -> int:
         )
         return 1
 
-    already_swapped = MODULE_REPLACEMENT in src
+    # mlnode 0.25.1 reads MLNODE_VLLM_MODULE natively, in a different textual
+    # form -- any support for the variable counts as swapped.
+    already_swapped = "MLNODE_VLLM_MODULE" in src
     if MODULE_MARKER not in src and not already_swapped:
         sys.stderr.write(
             f"ERROR: H200-GLM-5.2 plugin patch: launch-module line {MODULE_MARKER!r} "

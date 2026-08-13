@@ -1,0 +1,18 @@
+{
+  "profile": "profiles/a100-minimax-m2-7.cue",
+  "profile_hash": "d2199ae691409ac3caab75f3047151551a70e2cb37d272db71d255ec7d75079e",
+  "status": "draft",
+  "image": {
+    "package": "ghcr.io/kaitakuai/mlnode-a100-minimax-m2-7",
+    "tag": "3.0.14-post2-vllm0.25.1-rc3-overlay-k5",
+    "digest": "sha256:df4fb15635b141e7815c7051614f28f2b866b3162b8e921ad0f7333a8aba9f8d",
+    "built_at": "2026-08-07T19:44:01Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/feat/prod-matrix-cortima-base"
+  },
+  "validation": {
+    "build_smoke": {
+      "result": "pass",
+      "at": "2026-08-07T19:44:01Z"
+    }
+  }
+}

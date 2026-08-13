@@ -1,14 +1,13 @@
-// Profile: B300 Blackwell Ultra (×4) + Kimi-K2.6 INT4 — vllm-poc PLUGIN base.
+// Profile: B300 Blackwell Ultra (×4) + Kimi-K2.6 INT4 — release-matrix leaf.
 //
-// Composition: #BaseProfile & B300 & KIMI_INT4 with TP=4, built on the vllm-poc
-// PLUGIN base (residual vLLM 0.23 + gonka-poc package; ADR-0013), NOT the
-// fat-fork monolith. New profile — there was no b300-kimi .cue before (only the
-// fat-fork runner-patch tools/runner-patches/b300-kimi.py, measured 5120
-// nonces/min @ batch=64 on 8×B300). Config is taken from that B300 tune (NOT the
-// B200 rev=2 tune): eager (compilation mode=0 / cudagraph NONE) with batch=128,
-// because cudagraph hangs at batch=128 on Kimi MLA and eager also saves ~5% vs
-// cudagraph FULL on this model; B300's 275 GiB/GPU has room for the larger batch
-// envelope (B200's 178 GiB forced rev=2 down to batch=32 + a 120000 context cap).
+// Composition: #OverlayProfile & B300 & KIMI_INT4 with TP=4, overlaid on
+// cortima's published release mlnode (vLLM 0.25.1 residual + gonka-poc plugin;
+// ADR-0013), NOT the fat-fork monolith. Serving flags come from the fat-fork
+// B300 tune (tools/runner-patches/b300-kimi.py, measured 5120 nonces/min @
+// batch=64 on 8×B300), not the B200 tune: eager (compilation mode=0 / cudagraph
+// NONE) at batch=128, because cudagraph hangs at batch=128 on Kimi MLA and eager
+// also saves ~5% over cudagraph FULL on this model. B300's 275 GiB/GPU has room
+// for that envelope; B200's 178 GiB forced batch=32 and a 120000 context cap.
 //
 // Plugin differences vs the fat-fork b300-kimi.py:
 //   - env adds MLNODE_VLLM_MODULE → the runner launches the composed gonka-poc
@@ -18,12 +17,16 @@
 //     inside gonka-poc (poc_model_runner skip_compiled=True).
 //
 // Throughput/quality numbers are INHERITED from the fat-fork B300 Kimi tune and
-// are NOT yet re-validated on the 0.23 plugin base — see the tuning_notes.
+// are NOT yet re-validated on the 0.25.1 plugin base — see the tuning_notes.
 package profiles
 
-import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
+import (
+	"list"
 
-b300_kimi_k2_6: #BaseProfile & bases.B300 & bases.KIMI_INT4 & {
+	"github.com/kaitakuai/mlnode-foundry/profiles/bases"
+)
+
+b300_kimi_k2_6: #OverlayProfile & bases.B300 & bases.KIMI_INT4 & bases.KIMI_INT4_FLASHINFER_MOE & {
 	identity: {
 		axes: {
 			gpu:            "b300"
@@ -35,22 +38,25 @@ b300_kimi_k2_6: #BaseProfile & bases.B300 & bases.KIMI_INT4 & {
 			// Mirrors b200-kimi-k2-6.cue.
 		}
 		version: {
-			mlnode: "0.2.13"
-			vllm:   "0.23.0"
-			rev:    1
+			// Overlay identity: upstream is cortima's published mlnode image.
+			// rev=3 — drop the dead VLLM_USE_V1 (removed from vLLM).
+			upstream: "3.0.16"
+			rev:      3
 		}
 	}
-	mode: "kaitakuai-base"
-	// B300 GPU-env hw-patches (driver/headers/JIT/cold-start). The fat-fork's
-	// poc-householder-compile is NOT referenced — that edited the monolith's
-	// vllm/poc/ tree, which does not exist on the plugin base.
-	hw_patches: [
-		"triton-ptxas-from-system-cuda",
-		"flashinfer-jit-uninstall",
-		"libcuda-compat-580-driver",
-		"nvidia-headers-symlinks",
-		"cold-start-tolerance",
-	]
+	mode: "upstream-overlay"
+	base: {
+		// Cortima's PUBLISHED release image — their Stage-3 equivalent. Taking it
+		// as our base drops a whole build stage and makes drifting from their
+		// mlnode source impossible; everything we still add lives in hw_patches +
+		// runner_patch below. See schema.cue on the switch.
+		image:            "ghcr.io/gonka-ai/mlnode"
+		digest:           "sha256:1b9b7ce55feecab837f1d7ce974fc5f377ae0a04a4fb403eeeb50130e7728ee1"
+		upstream_version: "3.0.16"
+	}
+	// The fat-fork's poc-householder-compile is NOT referenced — that edited the
+	// monolith's vllm/poc/ tree, which does not exist on the plugin base.
+	hw_patches: list.Concat([bases.B300.hw_patches, bases.GONKA_BASE_PATCHES])
 	runner_patch: "b300-kimi-k2-6-plugin"
 	env: {
 		// Server-side plugin flip: launch the gonka-poc composed entrypoint
@@ -91,7 +97,7 @@ b300_kimi_k2_6: #BaseProfile & bases.B300 & bases.KIMI_INT4 & {
 	}
 	description: "B300 Blackwell Ultra SXM6 (×4) + Kimi-K2.6 INT4 (TP=4, eager) — vllm-poc PLUGIN base (gonka-poc entrypoint + worker extension)"
 	notes: """
-		First B300 Kimi-K2.6 profile on the 0.23 plugin base. Config taken from the
+		First B300 Kimi-K2.6 profile on the 0.25.1 release base. Config taken from the
 		fat-fork B300 tune (tools/runner-patches/b300-kimi.py): TP=4, eager
 		(compilation mode=0 / cudagraph NONE), batch=128 (max-num-batched-tokens
 		131072), gpu-memory-utilization 0.85, CUTLASS_MLA, expert-parallel,
@@ -109,16 +115,15 @@ b300_kimi_k2_6: #BaseProfile & bases.B300 & bases.KIMI_INT4 & {
 		Throughput/quality INHERITED from the fat-fork B300 Kimi run (5120
 		nonces/min @ batch=64 on 8×B300 = TP=4 ×2 instances; INT4 nonces
 		L2-cross-validate under the Kimi chain gate). NOT yet re-validated on the
-		0.23 plugin base — re-benchmark on B300 before treating as production.
+		0.25.1 base — re-benchmark on B300 before treating as production.
 
 		RISK to verify on GPU: vLLM 0.23's lockable MoE WorkspaceManager broke
 		modular-kernel PoC forwards (DEEPGEMM/TRITON) — workspace sized on
 		inference shapes + locked before the PoC forward runs. If Kimi's INT4
 		FlashInfer MoE routes through the modular kernel, the first PoC generate
-		will hit `AssertionError: Workspace is locked`. Default flashinfer_trtllm
-		is unaffected; INT4 FlashInfer MoE is *likely* a non-modular path but is
-		UNVERIFIED here. If it trips, the gonka-poc workspace unlock/lock fix
-		(separate report) is needed before Kimi PoC works on 0.23.
+		hits `AssertionError: Workspace is locked`. Whether the 0.25.1 line still
+		does this is UNVERIFIED — no Kimi PoC run on it yet. The DeepSeek and
+		MiniMax leaves on the same base do not exercise this path.
 		"""
 	tuning_notes: [
 		{
@@ -160,7 +165,7 @@ b300_kimi_k2_6: #BaseProfile & bases.B300 & bases.KIMI_INT4 & {
 		{
 			knob:     "validation-report"
 			source:   "https://github.com/kaitakuai/experiments/blob/main/2026-05/kimi_k26_int4_4xb200_q-int4-k2/README.md"
-			reason:   "B300 Kimi throughput/quality INHERITED from the fat-fork tune (b300-kimi.py: 5120 nonces/min @ batch=64 on 8×B300; INT4 nonces L2-valid under the Kimi chain gate). NOT yet re-validated on the vllm-poc 0.23 PLUGIN base — re-benchmark on B300, and verify the MoE WorkspaceManager-lock risk (see notes) before production."
+			reason:   "B300 Kimi throughput/quality INHERITED from the fat-fork tune (b300-kimi.py: 5120 nonces/min @ batch=64 on 8×B300; INT4 nonces L2-valid under the Kimi chain gate). NOT yet re-validated on the 0.25.1 release base — re-benchmark on B300, and verify the MoE WorkspaceManager-lock risk (see notes) before production."
 			severity: "warning"
 			added_at: "2026-06-22"
 		},

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import pytest
 
 from mlnode_foundry.render_registry_view import (
@@ -68,7 +69,7 @@ def test_render_registry_view_b200_kimi_int4() -> None:
         cosign_identity="https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main",
         size="42 GB",
     )
-    assert view["line"] == "mlnode"
+    assert view["line"] == "mlnode-overlay"
     assert view["gpu"] == "b200"
     assert view["model_family"] == "kimi"
     assert view["model_revision"] == "k2-6"
@@ -102,3 +103,50 @@ def test_render_registry_view_b200_kimi_int4() -> None:
 def test_render_registry_view_unknown_profile_raises() -> None:
     with pytest.raises(FileNotFoundError):
         render_registry_view("nonexistent-profile")
+
+
+def test_advertised_model_overrides_the_registry_entry() -> None:
+    """b300-deepseek serves NVFP4 while its axes name the official release."""
+    view = render_registry_view("b300-deepseek-v4-flash-0731", digest="sha256:" + "a" * 64)
+
+    assert view["model"] == "MJPansa/DeepSeek-V4-Flash-0731-NVFP4"
+    assert view["model_short"] == "DeepSeek V4 Flash 0731 NVFP4"
+    # The axes still name the chain-pinned checkpoint — only the card differs.
+    assert view["model_revision"] == "v4-flash-0731"
+
+
+def test_registry_entry_used_when_no_override() -> None:
+    view = render_registry_view("h200-deepseek-v4-flash-0731", digest="sha256:" + "b" * 64)
+
+    assert view["model"] == "deepseek-ai/DeepSeek-V4-Flash-0731"
+
+
+def test_report_url_survives_a_rebuild(tmp_path) -> None:
+    """An operator-recorded report link must not be erased by the next build.
+
+    Same rule as nonces/weight: the renderer emits null when the profile has no
+    tuning_note pointing at one, and null means "no information".
+    """
+    from mlnode_foundry.cli import _preserve_hand_edited_metrics
+
+    existing = tmp_path / "view.json"
+    existing.write_text(
+        json.dumps({"nonces": 22528, "weight": 12247, "report_url": "https://example/r.md"})
+    )
+    fresh = {"nonces": None, "weight": None, "report_url": None}
+
+    kept = _preserve_hand_edited_metrics(fresh, existing)
+
+    assert kept == {"nonces": 22528, "weight": 12247, "report_url": "https://example/r.md"}
+
+
+def test_generated_report_url_beats_the_recorded_one(tmp_path) -> None:
+    """Once the profile names a report, the profile is the source of truth."""
+    from mlnode_foundry.cli import _preserve_hand_edited_metrics
+
+    existing = tmp_path / "view.json"
+    existing.write_text(json.dumps({"report_url": "https://example/old.md"}))
+
+    kept = _preserve_hand_edited_metrics({"report_url": "https://example/new.md"}, existing)
+
+    assert kept["report_url"] == "https://example/new.md"

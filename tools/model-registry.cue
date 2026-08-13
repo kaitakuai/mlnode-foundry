@@ -143,4 +143,23 @@ models: [
 		status:       "active"
 		notes:        "DeepseekV4ForCausalLM, model_type deepseek_v4 — ~291B total / 149 GiB FP8 weights, 43 layers, 256 experts × top-6, MXFP4 experts (group-32 ue8m0) + FP8-block linears with NATIVE ue8m0 scales (unlike GLM, no float32-requant DeepGEMM crash), 3 hash-MoE layers (route via tid2eid[input_ids] — PoC needs deterministic pseudo input_ids, gonka-poc#14), sparse MLA index_topk=512, SWA compressor block=8. Requires --kv-cache-dtype fp8 (FlashMLA fp8_ds_mla layout; assert otherwise). Attention backend deterministic FlashMLA-DSV4 (do NOT pin — FlashInfer-DSV4 has placeholder FP8 scales, consensus-unsafe). vLLM auto-forces CompilationMode.NONE + breakable-cudagraph. sm_80 (A100) and sm_120 (RTX PRO 6000) statically excluded — both sparse backends need sm major in [9,10]. FIRST-CLASS support in vLLM 0.25.1 (0.23 works via gonka-poc#14). See .work/deepseek-v4-flash/ + project_deepseek_v4_flash_plan."
 	},
+	{
+		family:       "deepseek"
+		revision:     "v4-flash-0731"
+		display_name: "DeepSeek V4 Flash 0731"
+		hf_repo:      "deepseek-ai/DeepSeek-V4-Flash-0731"
+		// Pinned to the revision the gonka-ai release configs use
+		// (deploy/join/node-config-deepseekv4flash0731-*.json, gonka#1536).
+		// NOTE: DeepSeek re-pushed the checkpoint on 2026-08-01 03:07, ~15h
+		// after release. 9e165c30 (2026-07-31 12:02) was HEAD when our first
+		// campaign was pinned and is now stale -- artifacts produced against
+		// it will not match the fleet. Consensus makes this a hard pin, not a
+		// preference.
+		hf_revision:  "7872f01b1d1fe23eabc4c98b48bffcef5a386062"
+		params_b:     291.0
+		context_max:  1048576
+		license:      "MIT"
+		status:       "active"
+		notes:        "Weight refresh of v4-flash: same DeepseekV4ForCausalLM architecture, 43 layers, MXFP4+FP8 mix; adds dspark_* speculator config (V2-runner-only, optional). PoC throughput identical to v4-flash on every tested topology (1xB300, 2xB200, 2xH200, 4xH100 — experiments 2026-08). Same operational constraints as v4-flash: --kv-cache-dtype fp8 mandatory, backend NOT pinned, sm in [9,10]. Release config adds --tokenizer-mode deepseek_v4, tool-call and reasoning parsers (gonka#1536)."
+	},
 ]

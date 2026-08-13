@@ -74,7 +74,7 @@ from __future__ import annotations
 import sys
 
 FILE = "/app/packages/api/src/api/inference/vllm/runner.py"
-MARKER = "self.additional_args = additional_args or []"
+MARKER = "self.processes: List[subprocess.Popen] = []"
 INDENT = " " * 8  # VLLMRunner.__init__ method body indent
 
 # Edit 2: launch-module swap. runner.py already imports `os` (used for
@@ -121,7 +121,10 @@ def main() -> int:
         )
         return 1
 
-    already_swapped = MODULE_REPLACEMENT in src
+    # The release-line runner.py (gonka-ai vllm-0.25.1-upgrade) ships its own
+    # MLNODE_VLLM_MODULE swap in a different textual form -- any support for
+    # the variable counts as already swapped.
+    already_swapped = "MLNODE_VLLM_MODULE" in src
     if MODULE_MARKER not in src and not already_swapped:
         sys.stderr.write(
             f"ERROR: Kaitaku B300-MiniMax plugin patch: launch-module line {MODULE_MARKER!r} "

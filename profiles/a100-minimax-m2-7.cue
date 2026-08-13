@@ -4,6 +4,15 @@
 // emulated W4A8/FP8 path; the only one that works on sm_80 for this model).
 // Slowest GPU in the supported set (~3× B200, ~2× H200) but still valid for
 // Gonka chain participation; useful for spot/lease economics on cheap A100.
+// 0.25.1 MIGRATION NOTE (2026-08-06): base flipped to the release-line
+// mlnode-base 0.2.14-vllm0.25.1-k5 via tools/stage3.lock.cue; serving flags
+// are INHERITED from the vLLM 0.20 fat-fork validation campaigns
+// (experiments 2026-05/minimax-m27-*) and are NOT yet revalidated on the
+// 0.25.1 plugin stack. Backend selection is the sensitive part (TRTLLM
+// auto-select on Blackwell, forced triton on Hopper, marlin on A100 —
+// consensus-relevant, see the Marlin/DeepGEMM cross-hw precedent). Treat
+// these images as CANDIDATES until a hardware pass equivalent to the
+// deepseek 2026-08 campaigns is run.
 package profiles
 
 import (
@@ -12,7 +21,7 @@ import (
 	"github.com/kaitakuai/mlnode-foundry/profiles/bases"
 )
 
-a100_minimax_m2_7: #BaseProfile & bases.A100 & bases.MINIMAX_M2_7 & {
+a100_minimax_m2_7: #OverlayProfile & bases.A100 & bases.MINIMAX_M2_7 & {
 	identity: {
 		axes: {
 			gpu:            "a100"
@@ -20,14 +29,30 @@ a100_minimax_m2_7: #BaseProfile & bases.A100 & bases.MINIMAX_M2_7 & {
 			model_revision: "m2-7"
 		}
 		version: {
-			mlnode: "0.2.13"
-			vllm:   "0.20.0"
-			rev:    1
+			// Overlay identity: upstream is cortima's published mlnode image.
+			// rev=5 — drop the dead VLLM_USE_V1 (removed from vLLM).
+			upstream: "3.0.16"
+			rev:      5
 		}
 	}
-	mode:         "kaitakuai-base"
-	hw_patches:   list.Concat([bases.A100.hw_patches, ["poc-householder-compile"]])
-	runner_patch: ""
+	mode: "upstream-overlay"
+	base: {
+		// Cortima's PUBLISHED release image — their Stage-3 equivalent
+		// (mlnode/packages/api/Dockerfile over ghcr.io/gonka-ai/vllm:v0.25.1-poc-v2).
+		// Taking it as our base drops a whole build stage and makes drifting
+		// from their mlnode source impossible; everything we still add lives
+		// in hw_patches + runner_patch below. See schema.cue on the switch.
+		image:            "ghcr.io/gonka-ai/mlnode"
+		digest:           "sha256:1b9b7ce55feecab837f1d7ce974fc5f377ae0a04a4fb403eeeb50130e7728ee1"
+		upstream_version: "3.0.16"
+	}
+	hw_patches: list.Concat([bases.A100.hw_patches, bases.GONKA_BASE_PATCHES])
+	runner_patch: "a100-minimax-m2-7-plugin"
+	env: {
+		// Plugin entrypoint + worker-extension RPC channel (0.25.1 line).
+		MLNODE_VLLM_MODULE:                "gonka_poc.entrypoint.api_router"
+		VLLM_ALLOW_INSECURE_SERIALIZATION: "1"
+	}
 	env: {
 		// Belt-and-suspenders with moe_backend=marlin: even though we force
 		// MARLIN, some vLLM paths probe VLLM_USE_FLASHINFER_MOE_FP8 separately
