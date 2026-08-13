@@ -146,6 +146,15 @@ package profiles
 	// Aggregated with `env` into flags[] in registry-view.
 	runtime_defaults: {...}
 
+	// Checkpoint the registry card advertises, when it differs from the one
+	// `identity.axes` names. Only case today: b300-deepseek serves the NVFP4
+	// conversion by network decision while the axes (and the chain) name the
+	// official release. Absent = the model registry entry is used.
+	advertised_model?: {
+		model:       =~"^[^/]+/[^/]+$"
+		model_short: string
+	}
+
 	// Operator-facing one-line summary. Shown in dashboard image card.
 	description: string
 

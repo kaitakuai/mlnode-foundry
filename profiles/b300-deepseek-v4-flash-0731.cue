@@ -31,6 +31,14 @@ b300_deepseek_v4_flash_0731: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FL
 		}
 	}
 	description: "B300 Blackwell Ultra SXM6 (x1, 8 engines/box) + DeepSeek-V4-Flash-0731 FP8 (TP=1, FlashMLA fp8 KV, 400k ctx) — vllm-poc 0.25.1 PLUGIN, release-matrix PRODUCTION image"
+	// The chain pins deepseek-ai/…-0731, but B300 hosts run the NVFP4
+	// conversion (gonka chat, 2026-08-10: "NVFP4 приняли технически как
+	// основной вариант… из-за тотальной доминации"), and the card's throughput
+	// figure is that variant's. Both checkpoints run on this image.
+	advertised_model: {
+		model:       "MJPansa/DeepSeek-V4-Flash-0731-NVFP4"
+		model_short: "DeepSeek V4 Flash 0731 NVFP4"
+	}
 	mode: "upstream-overlay"
 	base: {
 		image:            "ghcr.io/gonka-ai/mlnode"

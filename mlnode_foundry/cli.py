@@ -103,14 +103,21 @@ def _preserve_hand_edited_metrics(view: dict, output_path: Path) -> dict:
         existing = json.loads(output_path.read_text())
     except (json.JSONDecodeError, OSError):
         return view
-    for field in ("nonces", "weight"):
+    # report_url joins nonces/weight: the renderer emits null when the profile
+    # has no tuning_note pointing at a report, and null means "no information",
+    # never "erase what the operator recorded".
+    for field in ("nonces", "weight", "report_url"):
         existing_val = existing.get(field)
         if existing_val is None:
             continue
-        if not isinstance(existing_val, int | float) or isinstance(existing_val, bool):
-            continue
-        if existing_val < 0:
-            continue
+        if field == "report_url":
+            if not isinstance(existing_val, str) or not existing_val.startswith("http"):
+                continue
+        else:
+            if not isinstance(existing_val, int | float) or isinstance(existing_val, bool):
+                continue
+            if existing_val < 0:
+                continue
         if view.get(field) is not None:
             continue  # explicit caller value beats preservation
         view[field] = existing_val
