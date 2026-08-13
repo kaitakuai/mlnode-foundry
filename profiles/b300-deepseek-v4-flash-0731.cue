@@ -35,7 +35,7 @@ b300_deepseek_v4_flash_0731: #OverlayProfile & bases.B300 & bases.DEEPSEEK_V4_FL
 	base: {
 		image:            "ghcr.io/gonka-ai/mlnode"
 		// Cortima's PUBLISHED release image — see b300-kimi-k2-6.cue on the switch.
-		digest:           "sha256:79550026c5c567f2bdc3ae181a3cce1586e00957271fdd1554da124ff6f50b19"
+		digest:           "sha256:1b9b7ce55feecab837f1d7ce974fc5f377ae0a04a4fb403eeeb50130e7728ee1"
 		upstream_version: "3.0.16"
 	}
 	// Plus the NVFP4 draft-MoE fix — B300-only by design: NVFP4 is the

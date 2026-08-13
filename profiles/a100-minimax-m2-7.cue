@@ -43,7 +43,7 @@ a100_minimax_m2_7: #OverlayProfile & bases.A100 & bases.MINIMAX_M2_7 & {
 		// from their mlnode source impossible; everything we still add lives
 		// in hw_patches + runner_patch below. See schema.cue on the switch.
 		image:            "ghcr.io/gonka-ai/mlnode"
-		digest:           "sha256:79550026c5c567f2bdc3ae181a3cce1586e00957271fdd1554da124ff6f50b19"
+		digest:           "sha256:1b9b7ce55feecab837f1d7ce974fc5f377ae0a04a4fb403eeeb50130e7728ee1"
 		upstream_version: "3.0.16"
 	}
 	hw_patches: list.Concat([bases.A100.hw_patches, bases.GONKA_BASE_PATCHES])
