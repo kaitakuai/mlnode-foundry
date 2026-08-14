@@ -28,9 +28,11 @@ b200_minimax_m2_7: #OverlayProfile & bases.B200 & bases.MINIMAX_M2_7 & {
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
-			// rev=5 — drop the dead VLLM_USE_V1 (removed from vLLM).
+			// rev=6 — restore the flags lost in the plugin migration
+			// (Pasha, 2026-08-14): triton MoE + FLASHINFER pins, max-num-seqs,
+			// and governance defaults added when DAPI has not broadcast them.
 			upstream: "3.0.16"
-			rev:      5
+			rev:      6
 		}
 	}
 	mode: "upstream-overlay"
