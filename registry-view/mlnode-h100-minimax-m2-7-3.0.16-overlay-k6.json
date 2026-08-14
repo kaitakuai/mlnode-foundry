@@ -50,8 +50,8 @@
     "tensor_parallel_size=4": "4\u00d7H100 = 320 GB HBM exactly matches chain VRam=320 GB requirement. Phase 3 batch sweep: 2\u2192888, 8\u21922048, 16\u21922240, 32\u21922368 (best), 64\u2192hang. shadecloud orion, 2026-05.",
     "max_num_seqs=128 (batch_size=64 hard ceiling)": "Phase 3 sweep observed batch_size=64 hangs the PoC engine (OOM-stuck, not crash \u2014 engine never recovers). max_num_seqs=128 from MINIMAX_M2_7 base is safe because vLLM runtime caps actual batch by KV cache; the hazard is operator-supplied PoC batch override. Same failure mode as b200-minimax-m2-7 and the flashinfer_moe_int4_blackwell.md memory entry."
   },
-  "digest": "sha256:f9254eec2b0332d2437add51af45935c3d9641168ac435ea894fae9e6563444e",
-  "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/fix/b200-minimax-lost-flags",
+  "digest": "sha256:74c182a98a80f80c5c30702a3fce87a828a0ed91524f822793cd6ae1c3b825a4",
+  "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main",
   "slsa_attestation_url": null,
   "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-05/minimax-m27-fp8-4xh100/README.md",
   "uploaded_by": "Mykola Baichak",
