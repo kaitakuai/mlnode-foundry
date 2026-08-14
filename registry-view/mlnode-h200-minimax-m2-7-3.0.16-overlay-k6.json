@@ -51,8 +51,8 @@
     "tensor_parallel_size=2": "2\u00d7H200 = 282 GB HBM, fits chain VRam=320 GB requirement at TP=2 with FP8 KV cache headroom. Phase 3 batch sweep: 2\u21921072, 8\u21921568, 16\u21921696, 32\u21921728 (best), 64\u2192hang.",
     "max_num_seqs=128 (batch_size=64 hard ceiling)": "Phase 3 sweep observed batch_size=64 hangs the PoC engine (OOM-stuck, not crash \u2014 engine never recovers). max_num_seqs=128 from MINIMAX_M2_7 base is safe because vLLM runtime caps actual batch by KV cache; the hazard is operator-supplied PoC batch override. Same failure mode as the other MiniMax profiles."
   },
-  "digest": "sha256:7d03e49f45ab258ef47727d6f44d13a26008776edf83ed0cbe795bd948108921",
-  "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/fix/b200-minimax-lost-flags",
+  "digest": "sha256:904d9f0ffe258e904554f825b2d543979c919b6ce6a48a183300596935acd112",
+  "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main",
   "slsa_attestation_url": null,
   "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-05/minimax-m27-fp8-2xh200/README.md",
   "uploaded_by": "Mykola Baichak",
