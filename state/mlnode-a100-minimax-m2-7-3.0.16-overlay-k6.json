@@ -5,14 +5,14 @@
   "image": {
     "package": "ghcr.io/kaitakuai/mlnode-a100-minimax-m2-7",
     "tag": "3.0.16-overlay-k6",
-    "digest": "sha256:bb8b7cde83a3cd5f9d0d5ee33cb79ae7fa02df18a4dc4cfcb50833bbf4b0b10c",
-    "built_at": "2026-08-14T22:03:02Z",
-    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/fix/b200-minimax-lost-flags"
+    "digest": "sha256:0251adb470a618d2f61780f7e1a616984c9815c5591f86768d81d630d3524fb3",
+    "built_at": "2026-08-14T22:23:54Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main"
   },
   "validation": {
     "build_smoke": {
       "result": "pass",
-      "at": "2026-08-14T22:03:02Z"
+      "at": "2026-08-14T22:23:54Z"
     }
   }
 }
