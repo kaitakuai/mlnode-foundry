@@ -51,16 +51,12 @@ Forces (overwrite if present — operator / chain broadcast cannot drop them):
         B300 profile across vLLM releases (Blackwell auto-selects FLASHINFER
         today, but we don't trust the heuristic across versions).
 
-NOT forced here (intentionally) — chain governance / DAPI broadcast owns these:
-    --max-model-len 180000, --kv-cache-dtype fp8, --tool-call-parser minimax_m2,
-    --reasoning-parser minimax_m2_append_think, --enable-auto-tool-choice.
-    The network-node DAPI broadcasts the v0.2.13 minimaxGovernanceModel args
-    into mlnode runner.py's `additional_args` at runtime; the mlnode runner
-    assembles `self.additional_args` identically regardless of which entrypoint
-    module it launches, so those args reach the composed gonka-poc engine
-    unchanged after the plugin flip. Re-injecting them here would (a) duplicate
-    flags and (b) risk pinning a stale governance value if the chain bumps it.
-    Verified: governance args flow to the engine after the flip (Q1 = YES).
+Governance-owned args (tool/reasoning parsers, --enable-auto-tool-choice,
+--kv-cache-dtype) are added ONLY IF ABSENT: when the node runs in the network,
+DAPI broadcasts the governance values into `additional_args` and those win;
+a standalone launch (additional_args=[]) still gets working defaults instead
+of a 400 on tool calls and reasoning leaking into content. Same policy change
+as the b200 patch (found by Pasha on the 3.0.16 images, 2026-08-14).
 
 Idempotent: re-running on an already-patched file is a no-op.
 
@@ -98,6 +94,20 @@ INJECTION_LINES = [
     "        self.additional_args[self.additional_args.index(_flag) + 1] = _value",
     "    else:",
     "        self.additional_args.extend([_flag, _value])",
+    "# Governance-owned args: DAPI broadcasts them when the node runs in the",
+    "# network, and a broadcast value must win. Added only when ABSENT, so a",
+    "# standalone launch still gets a working default instead of a 400 on",
+    "# tool calls and silent reasoning-in-content.",
+    "_b300_minimax_plugin_defaults = {",
+    "    '--tool-call-parser': 'minimax_m2',",
+    "    '--reasoning-parser': 'minimax_m2_append_think',",
+    "    '--kv-cache-dtype': 'fp8',",
+    "}",
+    "for _flag, _value in _b300_minimax_plugin_defaults.items():",
+    "    if _flag not in self.additional_args:",
+    "        self.additional_args.extend([_flag, _value])",
+    "if '--enable-auto-tool-choice' not in self.additional_args:",
+    "    self.additional_args.append('--enable-auto-tool-choice')",
     "# NOTE: --enforce-eager is intentionally NOT forced — the PoC forward is",
     "# already eager via gonka_poc.poc.poc_model_runner (skip_compiled=True);",
     "# forcing global eager would needlessly drop CUDA graphs for inference.",
