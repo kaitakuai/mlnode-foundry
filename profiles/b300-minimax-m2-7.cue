@@ -53,10 +53,16 @@ b300_minimax_m2_7: #OverlayProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
+			// rev=7 — DECODE-PoC CANDIDATE: the gonka-poc package is swapped to
+			// the decode branch (feat/decode-poc-v2 @ c0a19daf, hw-validated
+			// campaign 2026-08-15/16). The decode branch DROPS the prefill
+			// scheme: this image CANNOT serve the current network's prefill PoC
+			// and must not be promoted before the coordinated consensus switch.
+			// k6 (prefill line) stays on GHCR as the production/rollback tag.
 			// rev=6 — governance defaults added when DAPI has not broadcast
 			// them; same policy change as b200 rev=6 (Pasha, 2026-08-14).
 			upstream: "3.0.16"
-			rev:      6
+			rev:      7
 		}
 	}
 	mode: "upstream-overlay"
@@ -75,8 +81,10 @@ b300_minimax_m2_7: #OverlayProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 	// a Stage-4-patchable tree on the plugin base (PoC math lives in gonka-poc).
 	// We DE-REFERENCE only — the shared fragment file stays for the 5
 	// non-migrated profiles.
-	hw_patches: list.Concat([bases.B300.hw_patches, bases.GONKA_BASE_PATCHES])
-	runner_patch: "b300-minimax-plugin"
+	// decode-poc-plugin LAST: the fragments before it patch the base image;
+	// the plugin swap replaces gonka-poc wholesale and must not be overwritten.
+	hw_patches: list.Concat([bases.B300.hw_patches, bases.GONKA_BASE_PATCHES, ["decode-poc-plugin"]])
+	runner_patch: "b300-minimax-decode-plugin"
 	env: {
 		// Tell the mlnode runner to launch the gonka-poc COMPOSED entrypoint
 		// (stock build_app + PoC router + gating middleware) instead of vLLM's
@@ -94,6 +102,13 @@ b300_minimax_m2_7: #OverlayProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 		// MINIMAX_M2_7 bases, reproduced here for clarity.
 		VLLM_RUNNER_TIMEOUT:         "3600"
 		WATCHER_GRACE_FIRST_HEALTHY: "1"
+		// Decode-PoC runtime: capture mode is the release execution mode, and
+		// the chunk clamp holds the decode batch at the measured KV wall for
+		// gmu 0.95 (536 nonces × 512 tokens ≤ 278896-token KV pool). The lease
+		// is taken for the CLIENT's batch_size, so an uncapped client batch
+		// above the wall pays a measured 6-7 s lease timeout per chunk.
+		POC_DECODE_CAPTURE:   "1"
+		POC_DECODE_MAX_BATCH: "536"
 	}
 	runtime_defaults: {
 		// 1 × B300 SXM6 = 275 GiB HBM. MiniMax-M2.7 FP8 (230 GB) fits with
@@ -107,7 +122,7 @@ b300_minimax_m2_7: #OverlayProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 		// this profile across vLLM releases.
 		attention_backend: "FLASHINFER"
 	}
-	description: "B300 Blackwell Ultra SXM6 (1×) + MiniMax-M2.7 FP8 (TP=1) — vllm-poc PLUGIN base (gonka-poc entrypoint + worker extension)"
+	description: "B300 Blackwell Ultra SXM6 (1×) + MiniMax-M2.7 FP8 (TP=1) — DECODE-PoC CANDIDATE (plugin feat/decode-poc-v2 @ c0a19daf; not for the prefill network)"
 	notes: """
 		In-place plugin migration of the b300-minimax-m2-7 profile (was fat-fork
 		vLLM 0.20). Built on the vllm-poc 0.23 base (residual vLLM + gonka-poc
@@ -146,6 +161,13 @@ b300_minimax_m2_7: #OverlayProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 		stage3.lock cuda field.
 		"""
 	tuning_notes: [
+		{
+			knob:     "decode-poc-campaign-2026-08"
+			source:   "migration-025-kit (Google Drive, gonka-poc-migration-025-2026-08-16): PROFILES.md + RESULTS_FINAL.json"
+			reason:   "DECODE launch profile hardware-validated on 1×B300 SXM6 (2026-08-15/16): PoC 30.36 nonces/s @ batch 536 (=1822/min), chat 30.00 req/s @ c536, R=1.012; gmu 0.95 + mns 704 + capture 608 + FLASHINFER + flashinfer_trtllm. Self-validation 0 at TP=1; 0.20-golden match under the consensus rule. Thresholds NOT final (tau/p_mismatch pending the binomial-test context) — validation defaults in code produce false fraud cross-hardware."
+			severity: "warning"
+			added_at: "2026-08-17"
+		},
 		{
 			knob:     "validation-report"
 			source:   "https://github.com/kaitakuai/experiments/blob/main/2026-05/minimax_m27_1xb300_sxm6/README.md"
