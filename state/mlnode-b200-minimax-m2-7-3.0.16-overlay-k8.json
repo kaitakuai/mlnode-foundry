@@ -1,0 +1,18 @@
+{
+  "profile": "profiles/b200-minimax-m2-7.cue",
+  "profile_hash": "56b313ad0c83af3f8289f10cc3f0bd336d03abe94acfde4c41e0b6cfffc4f485",
+  "status": "draft",
+  "image": {
+    "package": "ghcr.io/kaitakuai/mlnode-b200-minimax-m2-7",
+    "tag": "3.0.16-overlay-k8",
+    "digest": "sha256:4a4c753918bf9df9443e3e5d4655e9a990504adf5d4ae8ab098266bc7e57151b",
+    "built_at": "2026-08-17T16:38:43Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main"
+  },
+  "validation": {
+    "build_smoke": {
+      "result": "pass",
+      "at": "2026-08-17T16:38:43Z"
+    }
+  }
+}
