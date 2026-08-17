@@ -48,11 +48,11 @@
     "post-sweep memory accumulation": "After Phase 3 batch sweep the PyTorch caching allocator accumulates ~170 GB of unreleased buffers; subsequent 1000-nonce collection requires a vLLM restart to clear cache. Not a fatal issue under normal chain workload (no multi-batch sweep), but operators running benchmark + production back-to-back should restart between.",
     "attention_backend=FLASHINFER (explicit)": "The 2624 nonces/min measurement was made with FLASHINFER attention. vLLM's auto-selector picks the same on Blackwell sm_100 today, but pinning explicitly defends against the heuristic changing across vLLM versions and silently regressing throughput on this profile."
   },
-  "digest": "sha256:9274f8b6d17e78de4618080f7e0106dff1e90775d839983862adf62d336efb33",
-  "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main",
+  "digest": "sha256:6a5d81cfc869c79b3b1cdd5c754d805e07a4fce628ed0865d76c5ae8ca5f712b",
+  "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/feat/b300-minimax-decode-poc",
   "slsa_attestation_url": null,
   "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-05/minimax_m27_2xb200_ohio_pr36/README.md",
-  "uploaded_by": "Mykola Baichak",
+  "uploaded_by": "baychak",
   "nonces": null,
   "weight": null
 }
