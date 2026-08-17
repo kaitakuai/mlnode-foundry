@@ -1,0 +1,18 @@
+{
+  "profile": "profiles/a100-minimax-m2-7.cue",
+  "profile_hash": "1b30707a8c9a40a97a724e3b472a37acbba1e9c3a50e5eadb129a63cfdcd2a79",
+  "status": "draft",
+  "image": {
+    "package": "ghcr.io/kaitakuai/mlnode-a100-minimax-m2-7",
+    "tag": "3.0.16-overlay-poc.decode-k2",
+    "digest": "sha256:e5a0002b5bb2340c18d0b78ab1e755b155b616d2f379e9c8f157a9db8af5bc13",
+    "built_at": "2026-08-17T19:42:43Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/feat/b300-minimax-decode-poc"
+  },
+  "validation": {
+    "build_smoke": {
+      "result": "pass",
+      "at": "2026-08-17T19:42:43Z"
+    }
+  }
+}
