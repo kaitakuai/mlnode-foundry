@@ -1,6 +1,6 @@
 """Decode-PoC pass-through for MLNode's pow_v2 routes (in-image form).
 
-Stage-4 mirror of kaitakuai/gonka@feat/decode-poc-mlnode commit 86ff63d
+Stage-4 mirror of kaitakuai/gonka@feat/decode-poc-mlnode commits 86ff63d + c258ab3
 ("feat(mlnode): decode-PoC pass-through in pow_v2 routes"). The base image
 carries the release mlnode whose API layer silently filters everything
 decode: PoCParamsModel rejects max_tokens/route_window (extra=forbid -> 422)
@@ -36,6 +36,7 @@ EDITS = [
     nonce: int
     vector_b64: str''',
      '''class ArtifactModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     nonce: int
     vector_b64: str = ""
     # Decode artifact payload: the k-id chain, also the teacher-forcing
@@ -49,6 +50,7 @@ EDITS = [
     p_mismatch: float = 0.001
     fraud_threshold: float = 0.01''',
      '''class StatTestModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     # Prefill knob; ignored by the decode backend (wire compat).
     dist_threshold: float = 0.02
     # Decode verdict: backend pools all steps of the validation batch and
@@ -79,6 +81,30 @@ EDITS = [
     params: PoCParamsModel
     batch_size: Optional[int] = None
     wait: bool = False'''),
+    # 4b) teacher-forcing + loud 422 on unknown fields (fork commit c258ab3;
+    #     the silent enforced_k_steps drop was hardware-confirmed 2026-08-17)
+    ('''    wait: bool = False
+    url: Optional[str] = None
+    validation: Optional[ValidationModel] = None
+    stat_test: Optional[StatTestModel] = None
+    poc_stronger_rng: bool = False''',
+     '''    wait: bool = False
+    url: Optional[str] = None
+    validation: Optional[ValidationModel] = None
+    stat_test: Optional[StatTestModel] = None
+    # Teacher-forcing mode: {nonce: k-trajectory}; the backend flips into
+    # validation when present. Silently dropped before this field existed
+    # here (hardware-confirmed 2026-08-17).
+    enforced_k_steps: Optional[Dict[int, List[int]]] = None
+    poc_stronger_rng: bool = False'''),
+    ('class PoCGenerateRequest(BaseModel):\n    """Request for /generate endpoint."""',
+     'class PoCGenerateRequest(BaseModel):\n    """Request for /generate endpoint."""\n    model_config = ConfigDict(extra="forbid")'),
+    ('class PoCInitGenerateRequest(BaseModel):\n    """MLNode /init/generate request - group_id/n_groups omitted (injected by MLNode)."""',
+     'class PoCInitGenerateRequest(BaseModel):\n    """MLNode /init/generate request - group_id/n_groups omitted (injected by MLNode)."""\n    model_config = ConfigDict(extra="forbid")'),
+    ('class ValidationModel(BaseModel):\n    artifacts: List[ArtifactModel]',
+     'class ValidationModel(BaseModel):\n    model_config = ConfigDict(extra="forbid")\n    artifacts: List[ArtifactModel]'),
+    ('from typing import List, Optional',
+     'from typing import Dict, List, Optional'),
     # 5) forward without None fields
     ('''        payload = body.model_dump()
         payload["group_id"] = group_id''',
