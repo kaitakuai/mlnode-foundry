@@ -66,7 +66,7 @@ b300_minimax_m2_7: #OverlayProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 			// rev=6 — governance defaults added when DAPI has not broadcast
 			// them; same policy change as b200 rev=6 (Pasha, 2026-08-14).
 			upstream: "3.0.16"
-			rev:      1
+			rev:      2
 		}
 	}
 	mode: "upstream-overlay"
@@ -87,7 +87,7 @@ b300_minimax_m2_7: #OverlayProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 	// non-migrated profiles.
 	// decode-poc-plugin LAST: the fragments before it patch the base image;
 	// the plugin swap replaces gonka-poc wholesale and must not be overwritten.
-	hw_patches: list.Concat([bases.B300.hw_patches, bases.GONKA_BASE_PATCHES, ["decode-poc-plugin"]])
+	hw_patches: list.Concat([bases.B300.hw_patches, bases.GONKA_BASE_PATCHES, ["decode-poc-plugin", "pow-v2-decode-fields"]])
 	runner_patch: "b300-minimax-decode-plugin"
 	env: {
 		// Tell the mlnode runner to launch the gonka-poc COMPOSED entrypoint
@@ -113,6 +113,11 @@ b300_minimax_m2_7: #OverlayProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 		// above the wall pays a measured 6-7 s lease timeout per chunk.
 		POC_DECODE_CAPTURE:   "1"
 		POC_DECODE_MAX_BATCH: "536"
+		// Mining round batch: mlnode omits batch_size (decode pass-through
+		// patch), so this backend default decides the round. 536 = the
+		// measured KV wall for MiniMax on B300 at gmu 0.95; a smaller round
+		// wastes the wall (32 would run ~7 n/s instead of 30).
+		POC_BATCH_SIZE_DEFAULT: "536"
 	}
 	runtime_defaults: {
 		// 1 × B300 SXM6 = 275 GiB HBM. MiniMax-M2.7 FP8 (230 GB) fits with
