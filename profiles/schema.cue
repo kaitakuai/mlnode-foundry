@@ -64,6 +64,12 @@ package profiles
 		// produce a distinct image automatically.
 		framework?: "vllm" | "sglang" | "trtllm"
 
+		// PoC scheme carried by the image. Default "prefill" (the current
+		// network scheme) is omitted from the tag; "decode" marks a
+		// consensus-switch CANDIDATE image (a separate tag line,
+		// …-overlay-poc.decode-kN) that CANNOT serve the prefill network.
+		poc?: "prefill" | "decode"
+
 		// Stage 5 post-build transform (reserved for ADR-0010 minimization work).
 		// "full" = untouched image; "slim" = minimized via Stage 5 transform.
 		// Today only "full" is implemented.

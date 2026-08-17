@@ -59,6 +59,13 @@ axes: build_mode: {
 	allowed_values: ["inference", "inference-train"]
 	default: "inference"
 }
+axes: poc: {
+	type:        "identity"
+	prefix:      "poc"
+	description: "PoC scheme carried by the image (default: prefill — the current network scheme, omitted from tag). 'decode' marks consensus-switch CANDIDATE images that CANNOT serve the prefill network."
+	allowed_values: ["prefill", "decode"]
+	default: "prefill"
+}
 axes: transform: {
 	type:        "identity"
 	prefix:      "t"
@@ -78,7 +85,7 @@ tag: {
 	// Identity-axes that appear in tag, in this order.
 	// If a profile sets an axis to its default, the axis is omitted from tag
 	// to keep tags short (e.g., framework=vllm doesn't get -f.vllm suffix).
-	axes_order: ["quant", "framework", "build_mode", "transform"]
+	axes_order: ["quant", "framework", "build_mode", "poc", "transform"]
 	modes: {
 		"kaitakuai-base":   "{mlnode}-vllm{vllm}{tag_axes}-k{rev}"
 		"upstream-overlay": "{upstream}-overlay{tag_axes}-k{rev}"

@@ -50,19 +50,23 @@ b300_minimax_m2_7: #OverlayProfile & bases.B300 & bases.MINIMAX_M2_7 & {
 			gpu:            "b300"
 			model:          "minimax"
 			model_revision: "m2-7"
+			// Test-line marker: renders the tag as 3.0.16-overlay-poc.decode-k1
+			// — a separate tag line from the production prefill k-series, so a
+			// decode candidate can never be mistaken for the next prod rev.
+			poc: "decode"
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
-			// rev=7 — DECODE-PoC CANDIDATE: the gonka-poc package is swapped to
+			// poc=decode line, rev=1 — DECODE-PoC CANDIDATE: the gonka-poc package is swapped to
 			// the decode branch (feat/decode-poc-v2 @ c0a19daf, hw-validated
 			// campaign 2026-08-15/16). The decode branch DROPS the prefill
 			// scheme: this image CANNOT serve the current network's prefill PoC
 			// and must not be promoted before the coordinated consensus switch.
-			// k6 (prefill line) stays on GHCR as the production/rollback tag.
+			// The prefill k-line (…-overlay-k6) stays untouched as production.
 			// rev=6 — governance defaults added when DAPI has not broadcast
 			// them; same policy change as b200 rev=6 (Pasha, 2026-08-14).
 			upstream: "3.0.16"
-			rev:      7
+			rev:      1
 		}
 	}
 	mode: "upstream-overlay"
