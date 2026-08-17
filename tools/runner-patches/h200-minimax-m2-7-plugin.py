@@ -54,7 +54,7 @@ Forces (overwrite if present — operator / chain broadcast cannot drop them):
         today, but we don't trust the heuristic across versions).
 
 Governance-owned args (tool/reasoning parsers, --enable-auto-tool-choice,
---kv-cache-dtype, and --max-model-len) are added ONLY IF ABSENT: when the node runs in the network,
+--kv-cache-dtype) are added ONLY IF ABSENT: when the node runs in the network,
 DAPI broadcasts the governance values into `additional_args` and those win;
 a standalone launch (additional_args=[]) still gets working defaults instead
 of a 400 on tool calls and reasoning leaking into content. Same policy change
@@ -87,6 +87,7 @@ INJECTION_LINES = [
     "",
     "# --- Kaitaku H200-MiniMax plugin hardcodes (tools/runner-patches/h200-minimax-m2-7-plugin.py) ---",
     "_h200_minimax_plugin_forced = {",
+    "    '--max-model-len': '180000',",
     "    '--tensor-parallel-size': '2',",
     "    '--gpu-memory-utilization': '0.92',",
     "    '--max-num-seqs': '128',",
@@ -105,7 +106,6 @@ INJECTION_LINES = [
     "# standalone launch still gets a working default instead of a 400 on",
     "# tool calls and silent reasoning-in-content.",
     "_h200_minimax_plugin_defaults = {",
-    "    '--max-model-len': '131072',",
     "    '--tool-call-parser': 'minimax_m2',",
     "    '--reasoning-parser': 'minimax_m2_append_think',",
     "    '--kv-cache-dtype': 'fp8',",
