@@ -1,0 +1,140 @@
+"""H200 MiniMax-M2.7 DECODE-PoC plugin hardcodes for MLNode runner.py.
+
+Per-card decode variant (campaign 2026-08-15/16, migration-025-kit/PROFILES.md).
+Same two structural edits as h200-minimax-decode-plugin.py. Forces the decode
+launch profile for 2xH200: TP=2, moe=triton, mns 704,
+compilation-config {"max_cudagraph_capture_size":608,"pass_config":{"fuse_allreduce_rms":false}}
+(capture 608 (wall>512 rule) + fuse_allreduce_rms=false: the 0.25 fused-AR pass costs ~15k KV tokens on 2xH200 (wall 584->552, PoC 31.50->30.49); backend choice itself measured irrelevant).
+gpu-memory-utilization 0.95: 0.92->0.95 lifts the KV wall 432->584 and releases the chat KV squeeze.
+Env pairing at the profile level: POC_DECODE_CAPTURE=1,
+POC_DECODE_MAX_BATCH=584, POC_BATCH_SIZE_DEFAULT=584.
+Additive/surgical; fails loud if an anchor is missing.
+"""
+
+from __future__ import annotations
+
+import sys
+
+FILE = "/app/packages/api/src/api/inference/vllm/runner.py"
+MARKER = "self.processes: List[subprocess.Popen] = []"
+INDENT = " " * 8  # VLLMRunner.__init__ method body indent
+
+# Edit 2: launch-module swap. runner.py already imports `os` (used for
+# VLLM_PYTHON_PATH), so os.getenv is safe. The literal below is matched exactly
+# and replaced in place (indentation preserved — only the substring changes).
+MODULE_MARKER = '"-m", "vllm.entrypoints.openai.api_server",'
+MODULE_REPLACEMENT = (
+    '"-m", os.getenv("MLNODE_VLLM_MODULE", "vllm.entrypoints.openai.api_server"),'
+)
+
+INJECTION_LINES = [
+    "",
+    "# --- Kaitaku H200-MiniMax DECODE plugin hardcodes (tools/runner-patches/h200-minimax-decode-plugin.py) ---",
+    "_h200_minimax_decode_forced = {",
+    "    '--worker-extension-cls': 'gonka_poc.worker.PoCWorkerExtension',",
+    "    '--logprobs-mode': 'processed_logprobs',",
+    "    '--attention-backend': 'FLASHINFER',",
+    "    '--tensor-parallel-size': '2',",
+    "    '--max-model-len': '180000',",
+    "    '--moe-backend': 'triton',",
+    "    '--max-num-seqs': '704',",
+    '''    '--compilation-config': '{"max_cudagraph_capture_size":608,"pass_config":{"fuse_allreduce_rms":false}}',''',
+    "}",
+    "for _flag, _value in _h200_minimax_decode_forced.items():",
+    "    if _flag in self.additional_args:",
+    "        self.additional_args[self.additional_args.index(_flag) + 1] = _value",
+    "    else:",
+    "        self.additional_args.extend([_flag, _value])",
+    "# Governance-owned args: DAPI broadcasts them when the node runs in the",
+    "# network, and a broadcast value must win. Added only when ABSENT, so a",
+    "# standalone launch still gets a working default instead of a 400 on",
+    "# tool calls and silent reasoning-in-content.",
+    "_h200_minimax_decode_defaults = {",
+    "    '--tool-call-parser': 'minimax_m2',",
+    "    '--reasoning-parser': 'minimax_m2_append_think',",
+    "    '--kv-cache-dtype': 'fp8',",
+    "    '--gpu-memory-utilization': '0.95',",
+    "}",
+    "for _flag, _value in _h200_minimax_decode_defaults.items():",
+    "    if _flag not in self.additional_args:",
+    "        self.additional_args.extend([_flag, _value])",
+    "if '--enable-auto-tool-choice' not in self.additional_args:",
+    "    self.additional_args.append('--enable-auto-tool-choice')",
+    "# NOTE: --enforce-eager is intentionally NOT forced — the PoC forward is",
+    "# already eager via gonka_poc.poc.poc_model_runner (skip_compiled=True);",
+    "# forcing global eager would needlessly drop CUDA graphs for inference.",
+    "# --- end Kaitaku H200-MiniMax DECODE plugin hardcodes ---",
+]
+
+
+def main() -> int:
+    injection = "".join(
+        (INDENT + line + "\n") if line else "\n" for line in INJECTION_LINES
+    )
+
+    with open(FILE) as f:
+        src = f.read()
+
+    # --- Preconditions (fail loud if upstream refactored either anchor) ---
+    if MARKER not in src:
+        sys.stderr.write(
+            f"ERROR: Kaitaku H200-MiniMax DECODE plugin patch: marker {MARKER!r} not found in {FILE}. "
+            "Upstream runner.py may have been refactored — re-verify the patch.\n"
+        )
+        return 1
+
+    # The release-line runner.py (gonka-ai vllm-0.25.1-upgrade) ships its own
+    # MLNODE_VLLM_MODULE swap in a different textual form -- any support for
+    # the variable counts as already swapped.
+    already_swapped = "MLNODE_VLLM_MODULE" in src
+    if MODULE_MARKER not in src and not already_swapped:
+        sys.stderr.write(
+            f"ERROR: Kaitaku H200-MiniMax DECODE plugin patch: launch-module line {MODULE_MARKER!r} "
+            f"not found in {FILE}. Upstream runner.py may have been refactored — re-verify "
+            "the MLNODE_VLLM_MODULE swap.\n"
+        )
+        return 1
+
+    already_injected = "Kaitaku B300-MiniMax plugin hardcodes" in src
+    if already_injected and already_swapped:
+        print("runner.py already patched — skipping")
+        return 0
+
+    out = src
+
+    # --- Edit 1: inject the forced-args block after the additional_args marker ---
+    if not already_injected:
+        lines = out.splitlines(keepends=True)
+        new_lines: list[str] = []
+        inserted = False
+        for line in lines:
+            new_lines.append(line)
+            if not inserted and MARKER in line:
+                new_lines.append(injection)
+                inserted = True
+        if not inserted:
+            sys.stderr.write(
+                "ERROR: Kaitaku H200-MiniMax DECODE plugin patch: marker present but insertion did not fire\n"
+            )
+            return 1
+        out = "".join(new_lines)
+
+    # --- Edit 2: swap the launched module to honour MLNODE_VLLM_MODULE ---
+    if not already_swapped:
+        if MODULE_MARKER not in out:
+            sys.stderr.write(
+                "ERROR: Kaitaku H200-MiniMax DECODE plugin patch: launch-module marker vanished before swap\n"
+            )
+            return 1
+        out = out.replace(MODULE_MARKER, MODULE_REPLACEMENT, 1)
+
+    with open(FILE, "w") as f:
+        f.write(out)
+    print(
+        "runner.py patched for H200-MiniMax DECODE plugin hardcodes + MLNODE_VLLM_MODULE launch swap"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
