@@ -25,14 +25,21 @@ b200_minimax_m2_7: #OverlayProfile & bases.B200 & bases.MINIMAX_M2_7 & {
 			gpu:            "b200"
 			model:          "minimax"
 			model_revision: "m2-7"
+			// Decode-PoC candidate line: the tag gains a "poc.decode" segment
+			// — a separate tag line from the production prefill k-series, so a
+			// decode candidate can never be mistaken for the next prod rev.
+			poc: "decode"
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
-			// rev=6 — restore the flags lost in the plugin migration
-			// (Pasha, 2026-08-14): triton MoE + FLASHINFER pins, max-num-seqs,
-			// and governance defaults added when DAPI has not broadcast them.
+			// poc=decode line, rev=7 — DECODE-PoC TEST image: gonka-poc swapped
+			// to the decode branch, launch flags mirror the B300 campaign
+			// profile. NO decode campaign point exists for B200 — the KV-wall
+			// batch below is a placeholder, the batch sweep on hardware is the
+			// first task for this image. (main is at prefill rev=8; this line
+			// tags poc.decode-k7 and cannot collide with it.)
 			upstream: "3.0.16"
-			rev:      6
+			rev:      7
 		}
 	}
 	mode: "upstream-overlay"
@@ -46,14 +53,23 @@ b200_minimax_m2_7: #OverlayProfile & bases.B200 & bases.MINIMAX_M2_7 & {
 		digest:           "sha256:1b9b7ce55feecab837f1d7ce974fc5f377ae0a04a4fb403eeeb50130e7728ee1"
 		upstream_version: "3.0.16"
 	}
-	hw_patches: list.Concat([bases.B200.hw_patches, bases.GONKA_BASE_PATCHES])
-	runner_patch: "b200-minimax-m2-7-plugin"
+	// decode-poc-plugin LAST: the fragments before it patch the base image;
+	// the plugin swap replaces gonka-poc wholesale and must not be overwritten.
+	hw_patches: list.Concat([bases.B200.hw_patches, bases.GONKA_BASE_PATCHES, ["decode-poc-plugin", "pow-v2-decode-fields"]])
+	runner_patch: "b200-minimax-decode-plugin"
 	env: {
 		// Plugin entrypoint + worker-extension RPC channel (0.25.1 line).
 		MLNODE_VLLM_MODULE:                "gonka_poc.entrypoint.api_router"
 		VLLM_ALLOW_INSECURE_SERIALIZATION: "1"
+		// UNTUNED PLACEHOLDERS — B300 campaign values carried over. B200 has
+		// no measured decode KV wall; per-card KV headroom at TP=2 is larger
+		// than B300's (2x180 GB, ~115 GB weights per card), so 536 is expected
+		// to be safe but NOT optimal. The hardware batch sweep on this test
+		// image replaces both values.
+		POC_DECODE_CAPTURE:     "1"
+		POC_DECODE_MAX_BATCH:   "536"
+		POC_BATCH_SIZE_DEFAULT: "536"
 	}
-	env: {}
 	runtime_defaults: {
 		// 2 × B200 is the minimum that fits the 320 GB chain VRam requirement
 		// (2 × 180 GB HBM = 360 GB total).
