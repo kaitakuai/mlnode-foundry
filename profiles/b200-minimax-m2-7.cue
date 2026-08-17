@@ -58,11 +58,11 @@ b200_minimax_m2_7: #OverlayProfile & bases.B200 & bases.MINIMAX_M2_7 & {
 		// 2 × B200 is the minimum that fits the 320 GB chain VRam requirement
 		// (2 × 180 GB HBM = 360 GB total).
 		tensor_parallel_size: 2
-		// FLASHINFER_TRTLLM is auto-selected on Blackwell sm_100 — no force needed
-		// for MoE backend. Attention backend is set explicitly to FLASHINFER so we
-		// don't depend on vLLM's auto-selection heuristic changing across releases
-		// (the 2026-05 2×B200 measurement at 2624 nonces/min was made with this
-		// backend).
+		// Both backends are pinned by the runner patch since rev=6: on 0.25.1 the
+		// auto-selector picked DeepGEMM for MoE, and the campaign that set this
+		// envelope required forced triton (Pasha, 2026-08-14). The 2026-05 2×B200
+		// measurement at 2624 nonces/min was made with FLASHINFER attention.
+		moe_backend:       "triton"
 		attention_backend: "FLASHINFER"
 	}
 	description: "B200 Blackwell SXM (2×) + MiniMax-M2.7 FP8"

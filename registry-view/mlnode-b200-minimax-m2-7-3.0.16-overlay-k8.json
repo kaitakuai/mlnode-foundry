@@ -31,6 +31,7 @@
     "logprobs_mode=processed_logprobs",
     "max_model_len=180000",
     "max_num_seqs=128",
+    "moe_backend=triton",
     "reasoning_parser=minimax_m2_append_think",
     "tensor_parallel_size=2",
     "tool_call_parser=minimax_m2",
