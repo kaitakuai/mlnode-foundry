@@ -30,10 +30,11 @@ a100_minimax_m2_7: #OverlayProfile & bases.A100 & bases.MINIMAX_M2_7 & {
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
-			// rev=7 — max-model-len demoted to a standalone default so the
-			// node-config 180000 (deploy f8e469fc) is no longer overridden.
+			// rev=8 — max-model-len HARD-FORCED to the governance 180000 so an
+			// operator typo cannot ship a non-compliant context (Kolya, 2026-08-17);
+			// supersedes the k7 add-if-missing experiment, never released.
 			upstream: "3.0.16"
-			rev:      7
+			rev:      8
 		}
 	}
 	mode: "upstream-overlay"
