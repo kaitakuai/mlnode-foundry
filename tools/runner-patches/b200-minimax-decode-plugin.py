@@ -18,6 +18,8 @@ B300-derived placeholder, NOT a measured wall. First hardware task on this
 image is the batch sweep (see HANDOVER-PASHA.md, B200 section). The
 "wall above 512" pair (--max-num-seqs 704 + max_cudagraph_capture_size 608)
 is carried so the sweep can probe above 512 at all.
+fuse_allreduce_rms is disabled preemptively (H200 precedent — see the inline
+comment in the forced block); unmeasured on B200, optional A/B after the sweep.
 
 Additive/surgical — no upstream code is removed; fails loud if either anchor
 is missing (= upstream refactored, re-verify the patch).
@@ -49,7 +51,15 @@ INJECTION_LINES = [
     "    '--moe-backend': 'flashinfer_trtllm',",
     "    '--tensor-parallel-size': '2',",
     "    '--max-num-seqs': '704',",
-    '''    '--compilation-config': '{"max_cudagraph_capture_size":608}',''',
+    "    # fuse_allreduce_rms=false: preemptive H200 mirror, UNMEASURED on",
+    "    # B200. The 0.25 fused-AR pass runs on any TP>1 and its workspace",
+    "    # costs ~15k KV tokens (H200: wall 584->552, PoC 31.50->30.49);",
+    "    # the mnnvl/FlashInfer-allreduce band regression (vLLM PR #47219,",
+    "    # bug #44079) hit the NVLink+FLASHINFER combo — exactly what B200",
+    "    # is. On H200 disabling was strictly better on both axes; H100/A100",
+    "    # keep fusion ON only because they showed no symptom. Optional A/B",
+    "    # after the batch sweep may revisit this.",
+    '''    '--compilation-config': '{"max_cudagraph_capture_size":608,"pass_config":{"fuse_allreduce_rms":false}}',''',
     "}",
     "for _flag, _value in _b200_minimax_decode_forced.items():",
     "    if _flag in self.additional_args:",
