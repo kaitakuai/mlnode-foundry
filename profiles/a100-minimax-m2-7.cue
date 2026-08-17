@@ -30,10 +30,10 @@ a100_minimax_m2_7: #OverlayProfile & bases.A100 & bases.MINIMAX_M2_7 & {
 		}
 		version: {
 			// Overlay identity: upstream is cortima's published mlnode image.
-			// rev=6 — governance defaults added when DAPI has not broadcast
-			// them; same policy change as b200 rev=6 (Pasha, 2026-08-14).
+			// rev=7 — max-model-len demoted to a standalone default so the
+			// node-config 180000 (deploy f8e469fc) is no longer overridden.
 			upstream: "3.0.16"
-			rev:      6
+			rev:      7
 		}
 	}
 	mode: "upstream-overlay"
