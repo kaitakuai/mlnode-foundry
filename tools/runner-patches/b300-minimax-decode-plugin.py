@@ -88,9 +88,13 @@ INJECTION_LINES = [
     "# req/s @536); every campaign number was taken with it OFF.",
     "if '--no-enable-prefix-caching' not in self.additional_args:",
     "    self.additional_args.append('--no-enable-prefix-caching')",
-    "# NOTE: --enforce-eager is intentionally NOT forced — the PoC forward is",
-    "# already eager via gonka_poc.poc.poc_model_runner (skip_compiled=True);",
-    "# forcing global eager would needlessly drop CUDA graphs for inference.",
+    "# NOTE: --enforce-eager must NOT be set. Unlike the prefill scheme (whose",
+    "# golden reference is the 0.20 eager PoC forward), the decode branch has a",
+    "# SINGLE execution path: compiled, with a private CUDA-graph capture of the",
+    "# step. Eager is not an execution mode here (only a debug fallback behind",
+    "# POC_DECODE_SKIP_COMPILED, off by default and outside the consensus",
+    "# contract), so global eager would both break the graph capture and drop",
+    "# CUDA graphs for inference.",
     "# --- end Kaitaku B300-MiniMax DECODE plugin hardcodes ---",
 ]
 
