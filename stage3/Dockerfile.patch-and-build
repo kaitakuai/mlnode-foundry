@@ -61,6 +61,11 @@ RUN sed -i '/"mistralai==1.1.0",/d' \
 ################################################################################
 FROM ${BASE_IMAGE} AS base
 
+# --ignore-installed on the pip upgrade: newer vLLM base images install their
+# Python packages with uv, which leaves no RECORD file for pip to uninstall
+# against, so a plain --upgrade dies with `uninstall-no-record-file`. Skipping
+# the uninstall shadows the existing distribution instead of removing it, which
+# is what --upgrade was after anyway, and is a no-op on pip-installed bases.
 RUN --mount=type=cache,target=/var/lib/apt/lists \
     --mount=type=cache,target=/root/.cache/pip \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -70,7 +75,7 @@ RUN --mount=type=cache,target=/var/lib/apt/lists \
         checkinstall \
         zlib1g-dev \
     && rm -rf /var/lib/apt/lists/* \
-    && pip install --upgrade "setuptools<81" wheel pip \
+    && pip install --upgrade --ignore-installed "setuptools<81" wheel pip \
     && curl -fLO https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1u/openssl-1.1.1u.tar.gz \
     && tar -xzf openssl-1.1.1u.tar.gz \
     && cd openssl-1.1.1u \
