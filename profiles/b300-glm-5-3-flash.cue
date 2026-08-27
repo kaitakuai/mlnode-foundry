@@ -41,9 +41,10 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		// 0.2.14-vllm0.28-glm53-k2 (run 33000436174) from S2
 		// vllm-poc:glm53-poc-v4-ed8873884 @sha256:31b42acc — the residual carries
 		// the canonical 8-commit stack plus the two fixes we used to ship as S4
-		// layers: the scheduler guard (kaitakuai/vllm#19) and all of #21. #21 is
-		// not optional here: this checkpoint sets num_nextn_predict_layers=1, so
-		// MTP speculation is on and an unpatched replay diverges from the executor.
+		// layers: the scheduler guard (kaitakuai/vllm#19) and all of #21. #21 covers
+		// the V1 sampling path; this checkpoint actually runs on V2, where the
+		// replay hooks already live, so it is insurance here rather than a
+		// prerequisite — see PORTING.md on the residual branch.
 		digest:           "sha256:602b13befec31d38a842f6f6eb60e0ed74afb4a4b31bf823c09cca947cc33c20"
 		upstream_version: "0.2.14-vllm0.28-glm53"
 	}
