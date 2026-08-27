@@ -1,5 +1,5 @@
 // Profile: B300 Blackwell Ultra (×2) + GLM-5.3-Flash FP8 — vllm-poc PLUGIN, vLLM 0.28,
-// UPSTREAM-OVERLAY mode. TEST image for the model bring-up.
+// UPSTREAM-TEST mode. Bring-up image for the model.
 //
 // Built FROM an explicit mlnode-base digest rather than tools/stage3.lock.cue,
 // so the fleet's shared lock stays on 0.25.1 while this leaf rides the one-off
@@ -35,7 +35,7 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 			rev:      1
 		}
 	}
-	mode: "upstream-overlay"
+	mode: "upstream-test"
 	base: {
 		image: "ghcr.io/kaitakuai/mlnode-base"
 		// 0.2.14-vllm0.28-glm53-k2 (run 33000436174) from S2
@@ -47,12 +47,26 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		digest:           "sha256:602b13befec31d38a842f6f6eb60e0ed74afb4a4b31bf823c09cca947cc33c20"
 		upstream_version: "0.2.14-vllm0.28-glm53"
 	}
-	// hw_patches inherited from bases.B300 (triton-ptxas, flashinfer-jit-uninstall,
-	// libcuda-compat-580-driver, nvidia-headers-symlinks, cold-start-tolerance) —
-	// sm_103a needs the ptxas and FlashInfer JIT fixes, and a 328 GiB load needs
-	// the cold-start grace. The two Stage-4 layers this line used to carry
-	// (sched-req-index-guard, content-type-injector) are already inside: the first
-	// in the residual, the second via the Stage-3 patches/0001.
+	// The bases.B300 set, spelled out because ORDER matters here: the FlashInfer
+	// bump Crash_Bash_FL asked for has to land BEFORE flashinfer-jit-uninstall,
+	// not after. The bump installs all three distributions at one version — they
+	// are checked against each other at import — and the uninstall then drops the
+	// jit-cache again, which is the point on sm_103a: the prebuilt cache targets
+	// another SM, so JIT-compiling for the real GPU beats shipping dead kernels.
+	// Reversed, the uninstall would run first and the bump would put the cache
+	// straight back.
+	//
+	// The two Stage-4 layers this line used to carry (sched-req-index-guard,
+	// content-type-injector) are already inside: the first in the residual, the
+	// second via the Stage-3 patches/0001.
+	hw_patches: [
+		"triton-ptxas-from-system-cuda",
+		"libcuda-compat-580-driver",
+		"nvidia-headers-symlinks",
+		"cold-start-tolerance",
+		"flashinfer-0-6-18-nightly",
+		"flashinfer-jit-uninstall",
+	]
 	runner_patch: "b300-glm-5-3-flash-plugin"
 	env: {
 		// Server-side plugin flip: launch the gonka-poc composed entrypoint.
@@ -73,7 +87,7 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		tool_call_parser:     "glm47"
 		reasoning_parser:     "glm45"
 	}
-	description: "B300 Blackwell Ultra SXM6 (×2) + GLM-5.3-Flash FP8 (TP=2, fp8 KV) — vllm-poc 0.28 PLUGIN, overlay-mode TEST image"
+	description: "B300 Blackwell Ultra SXM6 (×2) + GLM-5.3-Flash FP8 (TP=2, fp8 KV) — vllm-poc 0.28 PLUGIN, test-mode image"
 	notes: """
 		TEST bring-up image, built at Crash_Bash_FL's request (2026-08-27) as the
 		Blackwell arm of a two-image pair; the Hopper arm is h100-glm-5-3-flash,

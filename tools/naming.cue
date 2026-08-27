@@ -82,5 +82,9 @@ tag: {
 	modes: {
 		"kaitakuai-base":   "{mlnode}-vllm{vllm}{tag_axes}-k{rev}"
 		"upstream-overlay": "{upstream}-overlay{tag_axes}-k{rev}"
+		// Same base mechanics as upstream-overlay; the word in the tag is the
+		// difference. "overlay" describes how the image was built, which is not
+		// what someone scanning a tag list needs to know about a bring-up image.
+		"upstream-test": "{upstream}-test{tag_axes}-k{rev}"
 	}
 }

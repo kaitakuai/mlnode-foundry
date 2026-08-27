@@ -1,5 +1,5 @@
 // Profile: H100 Hopper (×8) + GLM-5.3-Flash FP8 — vllm-poc PLUGIN, vLLM 0.28,
-// UPSTREAM-OVERLAY mode. TEST image for the model bring-up.
+// UPSTREAM-TEST mode. Bring-up image for the model.
 //
 // Built FROM an explicit mlnode-base digest rather than tools/stage3.lock.cue,
 // so the fleet's shared lock stays on 0.25.1 while this leaf rides the one-off
@@ -35,7 +35,7 @@ h100_glm_5_3_flash: #OverlayProfile & bases.H100 & {
 			rev:      1
 		}
 	}
-	mode: "upstream-overlay"
+	mode: "upstream-test"
 	base: {
 		image: "ghcr.io/kaitakuai/mlnode-base"
 		// 0.2.14-vllm0.28-glm53-k2 (run 33000436174) from S2
@@ -47,10 +47,11 @@ h100_glm_5_3_flash: #OverlayProfile & bases.H100 & {
 		digest:           "sha256:602b13befec31d38a842f6f6eb60e0ed74afb4a4b31bf823c09cca947cc33c20"
 		upstream_version: "0.2.14-vllm0.28-glm53"
 	}
-	// hw_patches: none. H100 needs no SM-specific fixes, and the two Stage-4
-	// layers this line used to carry (sched-req-index-guard, content-type-injector)
-	// are already inside: the first in the residual, the second via the Stage-3
-	// patches/0001.
+	// H100 needs no SM-specific fixes, and the two Stage-4 layers this line used
+	// to carry (sched-req-index-guard, content-type-injector) are already inside:
+	// the first in the residual, the second via the Stage-3 patches/0001. The one
+	// fragment here is the FlashInfer bump Crash_Bash_FL asked for.
+	hw_patches: ["flashinfer-0-6-18-nightly"]
 	runner_patch: "h100-glm-5-3-flash-plugin"
 	env: {
 		// Server-side plugin flip: launch the gonka-poc composed entrypoint.
@@ -71,7 +72,7 @@ h100_glm_5_3_flash: #OverlayProfile & bases.H100 & {
 		tool_call_parser:     "glm47"
 		reasoning_parser:     "glm45"
 	}
-	description: "H100 Hopper SXM5 (×8) + GLM-5.3-Flash FP8 (TP=8, autotune off) — vllm-poc 0.28 PLUGIN, overlay-mode TEST image"
+	description: "H100 Hopper SXM5 (×8) + GLM-5.3-Flash FP8 (TP=8, autotune off) — vllm-poc 0.28 PLUGIN, test-mode image"
 	notes: """
 		TEST bring-up image, built at Crash_Bash_FL's request (2026-08-27) as the
 		Hopper arm of a two-image pair; the Blackwell arm is b300-glm-5-3-flash,

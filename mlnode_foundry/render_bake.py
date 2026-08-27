@@ -2,7 +2,8 @@
 
 Resolves BASE_IMAGE per profile.mode:
 - `kaitakuai-base`: from tools/stage3.lock.cue (Stage 3 published image)
-- `upstream-overlay`: from profile.base (explicit image+digest)
+- `upstream-overlay` / `upstream-test`: from profile.base (explicit image+digest);
+  the two differ only in the word the tag carries, not in how the base resolves
 
 MLNODE_FOUNDRY_SPIKE_BASE=1 replaces the resolved base with SPIKE_BASE_IMAGE
 — an unconditional override for local dev before the first Stage 3 publish
@@ -53,7 +54,7 @@ def resolve_base_image(profile: dict) -> str:
         # Use tag reference; CI verifies digest separately.
         # Phase 4 will switch to digest pinning once stage 3 publishes consistently.
         return f"{s3['package']}:{s3['tag']}"
-    elif mode == "upstream-overlay":
+    elif mode in ("upstream-overlay", "upstream-test"):
         base = profile.get("base", {})
         digest = base.get("digest")
         if digest:

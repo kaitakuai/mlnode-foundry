@@ -12,8 +12,11 @@
 # per CUDA minor. The base is CUDA 13.0.1, hence +cu130.
 #
 # ORDER MATTERS: on profiles that also carry flashinfer-jit-uninstall, this
-# fragment must come AFTER it in hw_patches, or the uninstall removes the
-# jit-cache this one just installed.
+# fragment must come BEFORE it. All three distributions are version-checked
+# against each other at import, so they move together; the uninstall then drops
+# the jit-cache again, which is what a non-sm_120 GPU wants — JIT-compiling for
+# the real arch beats shipping kernels built for another one. Reversed, this
+# fragment would reinstall the cache the uninstall had just removed.
 ARG FLASHINFER_NIGHTLY=0.6.18.dev20260819
 ARG FLASHINFER_RELEASE=nightly-v0.6.18-20260819
 ARG FLASHINFER_BASE_URL=https://github.com/flashinfer-ai/flashinfer/releases/download

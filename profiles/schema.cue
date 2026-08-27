@@ -118,7 +118,7 @@ package profiles
 // allow #BaseProfile / #OverlayProfile to narrow them via &.
 #CommonProfile: {
 	// Discriminator for the Cue sum type. See #BaseProfile / #OverlayProfile.
-	mode: "kaitakuai-base" | "upstream-overlay"
+	mode: "kaitakuai-base" | "upstream-overlay" | "upstream-test"
 
 	// See #Identity.
 	identity: #Identity
@@ -194,7 +194,7 @@ package profiles
 // product-science/mlnode. Requires explicit base.image + base.digest so a
 // rebuild is reproducible even if the publisher re-pushes the tag.
 #OverlayProfile: #CommonProfile & {
-	mode: "upstream-overlay"
+	mode: "upstream-overlay" | "upstream-test"
 	identity: version: {
 		// Upstream product-science/mlnode version tag.
 		upstream: string
