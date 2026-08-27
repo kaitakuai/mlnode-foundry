@@ -114,6 +114,28 @@ models: [
 	},
 	{
 		family:       "glm"
+		revision:     "5-3-flash"
+		display_name: "GLM 5.3 Flash"
+		hf_repo:      "zai-org/GLM-5.3-Flash"
+		// PROVISIONAL pin = main HEAD (2026-08-27). No chain governance model for
+		// this checkpoint yet, so this SHA has to be reconciled with the future
+		// governance hf_revision before any production use — same rule as
+		// deepseek/v4-flash below. Pinned explicitly so a silent upstream re-push
+		// cannot change what our image resolves to.
+		hf_revision: "04c4e9e95c5da8862dced7e5056455116f83a7e0"
+		// Estimated from the checkpoint: 328 GiB of FP8 e4m3 weights is ~328B
+		// parameters at one byte each. Replace with the published figure when
+		// a governance registration states one.
+		params_b:    328.0
+		context_max: 1048576
+		license:     "MIT"
+		// The registry has no "experimental" state; this entry is active in the
+		// sense that profiles may reference it, not that it is production-ready.
+		status: "active"
+		notes:  "Glm5NextForConditionalGeneration, model_type glm5_next — 45 layers, 288 experts × top-8, index_topk=2048, FP8 e4m3 dynamic (62 shards, 328 GiB), multimodal (image-text-to-text). num_nextn_predict_layers=1, i.e. MTP speculation is on by default: a replay MUST carry kaitakuai/vllm#21 or validation diverges from the executor (measured 82/100 length mismatches on Hy3 without it). NOT in any upstream vLLM release — support lives in the open PR vllm-project/vllm#53906, which touches .cu and cmake, so the kernels come pre-built from vllm/vllm-openai:glm53-flash. Chain has no model record yet. See PORTING.md on kaitakuai/vllm@poc-residual-glm53."
+	},
+	{
+		family:       "glm"
 		revision:     "5-2"
 		display_name: "GLM 5.2"
 		hf_repo:      "zai-org/GLM-5.2-FP8"
