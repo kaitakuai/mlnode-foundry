@@ -32,7 +32,9 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		version: {
 			// "upstream" here is OUR 0.28 mlnode-base, not a product-science release.
 			upstream: "0.2.14-vllm0.28-glm53"
-			rev:      1
+			// k2: the indexer-init fix baked in as a layer. The uninitialized
+			// top-k receiver is a tree defect, not a Hopper one.
+			rev:      2
 		}
 	}
 	mode: "upstream-test"
@@ -66,6 +68,7 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		"nvidia-headers-symlinks",
 		"cold-start-tolerance",
 		"flashinfer-0-6-18-nightly",
+		"glm53-indexer-init",
 		"flashinfer-jit-uninstall",
 	]
 	runner_patch: "b300-glm-5-3-flash-plugin"

@@ -19,10 +19,17 @@ Added on top, as on every PoC leaf:
     --logprobs-mode processed_logprobs
     --worker-extension-cls gonka_poc.worker.PoCWorkerExtension
 
+Forced since k2, verified on 4xH200 (2026-08-31):
+    --kv-cache-dtype fp8      FlashInfer >= 0.6.18 opens FLASHINFER_MLA_SPARSE_SM90
+                              on Hopper for this NoPE model; halves KV memory and
+                              moves PoC onto the leased-block route (same as B300).
+                              101k+ nonces in one run, no ceiling, no leaks.
+    --block-size 2304         divisible by both kpool and MLA paging; without it
+                              validation IMAs (Crash_Bash_FL's finding).
+    --max-num-seqs 256        the hybrid architecture allocates one Mamba block per
+                              decode sequence; above 512 the engine refuses to start.
+
 NOT forced, deliberately:
-    - NO --kv-cache-dtype: the Hopper arm of the bring-up runs the default
-      dtype. The Blackwell leaf pins fp8; keeping the two apart is the point of
-      having two images.
     - NO --max-model-len: native context is 1,048,576 and no governance value
       exists for this checkpoint yet. Leave it to DAPI rather than invent a cap.
     - NO --attention-backend, NO compilation pins: nothing has been measured on
@@ -56,6 +63,9 @@ INJECTION_LINES = [
     "# --- Kaitaku H100-GLM-5.3-Flash plugin hardcodes (tools/runner-patches/h100-glm-5-3-flash-plugin.py) ---",  # noqa: E501
     "_h100_glm53_forced = [",
     "    ('--tensor-parallel-size', '8'),",
+    "    ('--kv-cache-dtype', 'fp8'),",
+    "    ('--block-size', '2304'),",
+    "    ('--max-num-seqs', '256'),",
     "    ('--tool-call-parser', 'glm47'),",
     "    ('--reasoning-parser', 'glm45'),",
     "    ('--logprobs-mode', 'processed_logprobs'),",

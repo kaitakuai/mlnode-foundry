@@ -32,7 +32,9 @@ h100_glm_5_3_flash: #OverlayProfile & bases.H100 & {
 		version: {
 			// "upstream" here is OUR 0.28 mlnode-base, not a product-science release.
 			upstream: "0.2.14-vllm0.28-glm53"
-			rev:      1
+			// k2: the fp8 route verified on 4xH200 (kv fp8, block-size 2304,
+			// max-num-seqs 256) plus the indexer-init fix baked in as a layer.
+			rev:      2
 		}
 	}
 	mode: "upstream-test"
@@ -52,7 +54,7 @@ h100_glm_5_3_flash: #OverlayProfile & bases.H100 & {
 	// to carry (sched-req-index-guard, content-type-injector) are already inside:
 	// the first in the residual, the second via the Stage-3 patches/0001. The one
 	// fragment here is the FlashInfer bump Crash_Bash_FL asked for.
-	hw_patches: ["flashinfer-0-6-18-nightly"]
+	hw_patches: ["flashinfer-0-6-18-nightly", "glm53-indexer-init"]
 	runner_patch: "h100-glm-5-3-flash-plugin"
 	env: {
 		// Server-side plugin flip: launch the gonka-poc composed entrypoint.
@@ -68,6 +70,9 @@ h100_glm_5_3_flash: #OverlayProfile & bases.H100 & {
 	runtime_defaults: {
 		// Forced via the runner-patch; reproduced here for the dashboard.
 		tensor_parallel_size: 8
+		kv_cache_dtype:       "fp8"
+		block_size:           2304
+		max_num_seqs:         256
 		logprobs_mode:        "processed_logprobs"
 		trust_remote_code:    true
 		tool_call_parser:     "glm47"
