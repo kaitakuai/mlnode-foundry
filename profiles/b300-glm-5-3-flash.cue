@@ -34,7 +34,7 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 			upstream: "0.2.14-vllm0.28-glm53"
 			// k2: the indexer-init fix baked in as a layer. The uninitialized
 			// top-k receiver is a tree defect, not a Hopper one.
-			rev:      2
+			rev:      3
 		}
 	}
 	mode: "upstream-test"
@@ -67,7 +67,7 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		"libcuda-compat-580-driver",
 		"nvidia-headers-symlinks",
 		"cold-start-tolerance",
-		"flashinfer-0-6-18-nightly",
+		"flashinfer-0-6-18-stable",
 		"glm53-indexer-init",
 		"flashinfer-jit-uninstall",
 	]
