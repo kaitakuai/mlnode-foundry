@@ -1,43 +1,26 @@
 """B300 GLM-5.3-Flash PLUGIN-base hardcodes for MLNode runner.py.
 
-Two edits to VLLMRunner (same shape as every *-plugin.py patch): a forced-args
-block after the constructor anchor, and the launch-module swap.
+Three flag classes, applied to self.additional_args at VLLMRunner.__init__:
+  forced    set or override (TP, fp8 KV, block size, seq cap, parsers, plugin plumbing)
+  defaults  set only when the operator did not pass the flag
+  flags     boolean switches, appended if missing
 
-Forced config — 2x B300/275 GiB. The serving flags come from Crash_Bash_FL's
-bring-up command (2026-08-27), which is the only configuration this checkpoint
-has been started with so far:
+Values are the ones the GLM-5.3-Flash measurements ran with
+(kaitakuai/experiments/2026-09). 2x275 GB, TP=2 (328 GiB of FP8 weights fit in 550 GiB); inference validation on B300 passed the same block-size / max-num-seqs / autotune flags explicitly.
 
-    --tensor-parallel-size 2   (328 GiB of FP8 weights fit in 550 GiB)
-    --kv-cache-dtype fp8
-    --tool-call-parser glm47
-    --reasoning-parser glm45
-    (flags) --trust-remote-code --enable-auto-tool-choice
-
-Added on top, as on every PoC leaf:
-
-    --logprobs-mode processed_logprobs
-    --worker-extension-cls gonka_poc.worker.PoCWorkerExtension
-
-NOT forced, deliberately:
-    - NO --no-enable-flashinfer-autotune: the Hopper arm disables autotune, this
-      one does not. Keeping the two arms apart is the point of having two images.
-    - NO --max-model-len: native context is 1,048,576 and no governance value
-      exists for this checkpoint yet. Leave it to DAPI rather than invent a cap.
-    - NO --attention-backend, NO compilation pins: nothing has been measured on
-      this model, and a wrong pin is a consensus hazard, not a slow path.
-    - NO batch sizing: defaults until a benchmark says otherwise.
-
-TEST image. GLM-5.3-Flash has no chain governance record, and its vLLM support
-is an open upstream PR — see tools/model-registry.cue.
+Model-side reasons for the common set:
+  --kv-cache-dtype fp8      FlashInfer 0.6.18 SM90 sparse-MLA path; bf16 KV
+                            yields 16-100 nonces then an illegal memory access
+  --block-size 2304         divisible by both kpool and MLA paging
+  --max-num-seqs 256        the hybrid architecture allocates one Mamba block
+                            per sequence, 512 is the hard cap
+  --no-enable-flashinfer-autotune  autotune hits an illegal memory access on Hopper (2/2)
+  glm47 / glm45             tool-call and reasoning parsers for this checkpoint
+No --max-model-len: native context is 1,048,576 and no governance value exists.
 """
-
 import os
 import sys
 
-# Release-line Dockerfile installs mlnode under /app/packages/api/src; the
-# pre-0.25.1 fat-fork used /app/src. Resolve at runtime so one patch works
-# on both, and FAIL if neither exists (a silent skip ships an unconfigured
-# image -- see the stage-4 fail-loud guard).
 _CANDIDATES = (
     "/app/packages/api/src/api/inference/vllm/runner.py",
     "/app/src/api/inference/vllm/runner.py",
@@ -45,43 +28,49 @@ _CANDIDATES = (
 FILE = next((c for c in _CANDIDATES if os.path.exists(c)), _CANDIDATES[0])
 MARKER = "self.processes: List[subprocess.Popen] = []"
 INDENT = " " * 8
-
 MODULE_MARKER = '"-m", "vllm.entrypoints.openai.api_server",'
 MODULE_REPLACEMENT = '"-m", os.getenv("MLNODE_VLLM_MODULE", "vllm.entrypoints.openai.api_server"),'
 
 INJECTION_LINES = [
     "",
-    "# --- Kaitaku H100-GLM-5.3-Flash plugin hardcodes (tools/runner-patches/b300-glm-5-3-flash-plugin.py) ---",  # noqa: E501
+    "# --- Kaitaku B300-GLM-5.3-Flash plugin hardcodes (tools/runner-patches/b300-glm-5-3-flash-plugin.py) ---",  # noqa: E501
     "_b300_glm53_forced = [",
     "    ('--tensor-parallel-size', '2'),",
     "    ('--kv-cache-dtype', 'fp8'),",
+    "    ('--block-size', '2304'),",
+    "    ('--max-num-seqs', '256'),",
     "    ('--tool-call-parser', 'glm47'),",
     "    ('--reasoning-parser', 'glm45'),",
     "    ('--logprobs-mode', 'processed_logprobs'),",
     "    ('--worker-extension-cls', 'gonka_poc.worker.PoCWorkerExtension'),",
     "]",
+    "_b300_glm53_defaults = [",
+    "",
+    "]",
     "_b300_glm53_flags = [",
     "    '--trust-remote-code',",
     "    '--enable-auto-tool-choice',",
+    "    '--no-enable-flashinfer-autotune',",
     "]",
     "for _flag, _value in _b300_glm53_forced:",
     "    if _flag in self.additional_args:",
     "        self.additional_args[self.additional_args.index(_flag) + 1] = _value",
     "    else:",
     "        self.additional_args.extend([_flag, _value])",
+    "for _flag, _value in _b300_glm53_defaults:",
+    "    if _flag not in self.additional_args:",
+    "        self.additional_args.extend([_flag, _value])",
     "for _flag in _b300_glm53_flags:",
     "    if _flag not in self.additional_args:",
     "        self.additional_args.append(_flag)",
-    "# --- end Kaitaku H100-GLM-5.3-Flash plugin hardcodes ---",
+    "# --- end Kaitaku B300-GLM-5.3-Flash plugin hardcodes ---",
 ]
 
 
 def main() -> int:
     injection = "".join((INDENT + line + "\n") if line else "\n" for line in INJECTION_LINES)
-
     with open(FILE) as f:
         src = f.read()
-
     if MARKER not in src:
         sys.stderr.write(
             "ERROR: b300-glm-5-3-flash patch: forced-args marker not found. "
@@ -91,10 +80,8 @@ def main() -> int:
     if "_b300_glm53_forced" in src:
         sys.stderr.write("patch already applied; skipping\n")
         return 0
-
     idx = src.index(MARKER) + len(MARKER)
     src = src[:idx] + "\n" + injection + src[idx:]
-
     if MODULE_MARKER in src:
         src = src.replace(MODULE_MARKER, MODULE_REPLACEMENT)
     elif "MLNODE_VLLM_MODULE" not in src:
@@ -103,7 +90,6 @@ def main() -> int:
             "MLNODE_VLLM_MODULE support present.\n"
         )
         return 1
-
     with open(FILE, "w") as f:
         f.write(src)
     return 0

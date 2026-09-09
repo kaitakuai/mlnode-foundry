@@ -1,27 +1,21 @@
-// Profile: H100 Hopper (×8) + GLM-5.3-Flash FP8 — vllm-poc PLUGIN, vLLM 0.28,
-// UPSTREAM-TEST mode. Bring-up image for the model.
-//
-// Built FROM an explicit mlnode-base digest rather than tools/stage3.lock.cue,
-// so the fleet's shared lock stays on 0.25.1 while this leaf rides the one-off
-// 0.28 chain: kaitakuai/vllm@poc-residual-glm53 -> vllm-poc:glm53-poc-v4 ->
-// mlnode-base:0.2.14-vllm0.28-glm53-k2.
-//
-// The model is not in any upstream vLLM release: support lives in the open PR
-// vllm-project/vllm#53906, and because that diff reaches into .cu and cmake the
-// kernels have to come pre-built from vllm/vllm-openai:glm53-flash. Provenance
-// and the byte-for-byte comparison that justifies overlaying our residual onto
-// that image are in PORTING.md on the residual branch.
-//
-// Serving config mirrors Crash_Bash_FL's bring-up command of 2026-08-27, the
-// only configuration this checkpoint has been started with. TP=8 because 328
-// GiB of FP8 weights need the whole 8×80 GiB box. Autotune disabled as in his
-// run. NOTHING here is benchmarked: no batch sizing, no context cap, no backend
-// or compilation pins — a wrong pin on an unmeasured model is a consensus
-// hazard, not a slow path.
 package profiles
 
 import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
 
+// GLM-5.3-Flash on Cortima's published mlnode 3.0.17, the first release image on
+// the vLLM 0.28 residual (gonka-ai/vllm release/v0.28.0-glm53 after #104-#106,
+// gonka-poc v0.1.4). Its S2 shares the first 32 layers with our validated
+// kaitakuai/vllm-poc:glm53-poc-v4-ed8873884 (same vllm/vllm-openai:glm53-flash
+// base, same overlay recipe) and already carries what the test-k3 images added
+// as Stage-4 layers: FlashInfer 0.6.18 and the kpool indexer init are inside the
+// residual, so neither flashinfer-0-6-18-stable nor glm53-indexer-init is listed.
+// The mlnode sources in 3.0.17 are byte-identical to gonka-ai/gonka main.
+//
+// Tags 3.0.17, 3.0.17-glm53-h200 and 3.0.17-vllm-0.28.0-h200 resolve to the
+// same digest; we pin the plain release tag.
+//
+// Measured arm (H100): 8xH100 TP=8: 1775 nonces/min at batch 16; needs --gpu-memory-utilization 0.95 to start on 80 GB cards, which also caps PoC batch at 16 (32 is OOM).
+// Reports: kaitakuai/experiments/2026-09. Tracking: gonka-ai/gonka#1691.
 h100_glm_5_3_flash: #OverlayProfile & bases.H100 & {
 	identity: {
 		axes: {
@@ -30,67 +24,48 @@ h100_glm_5_3_flash: #OverlayProfile & bases.H100 & {
 			model_revision: "5-3-flash"
 		}
 		version: {
-			// "upstream" here is OUR 0.28 mlnode-base, not a product-science release.
-			upstream: "0.2.14-vllm0.28-glm53"
-			// k2: the fp8 route verified on 4xH200 (kv fp8, block-size 2304,
-			// max-num-seqs 256) plus the indexer-init fix baked in as a layer.
-			rev:      3
+			upstream: "3.0.17"
+			rev:      1
 		}
 	}
-	mode: "upstream-test"
+	mode: "upstream-overlay"
 	base: {
-		image: "ghcr.io/kaitakuai/mlnode-base"
-		// 0.2.14-vllm0.28-glm53-k2 (run 33000436174) from S2
-		// vllm-poc:glm53-poc-v4-ed8873884 @sha256:31b42acc — the residual carries
-		// the canonical 8-commit stack plus the two fixes we used to ship as S4
-		// layers: the scheduler guard (kaitakuai/vllm#19) and all of #21. #21 covers
-		// the V1 sampling path; this checkpoint actually runs on V2, where the
-		// replay hooks already live, so it is insurance here rather than a
-		// prerequisite — see PORTING.md on the residual branch.
-		digest:           "sha256:602b13befec31d38a842f6f6eb60e0ed74afb4a4b31bf823c09cca947cc33c20"
-		upstream_version: "0.2.14-vllm0.28-glm53"
+		image:            "ghcr.io/gonka-ai/mlnode"
+		digest:           "sha256:b9ca935061bda3bd4f41f3906486bc419f4116df5f07134df76af14db21df7e1"
+		upstream_version: "3.0.17"
 	}
-	// H100 needs no SM-specific fixes, and the two Stage-4 layers this line used
-	// to carry (sched-req-index-guard, content-type-injector) are already inside:
-	// the first in the residual, the second via the Stage-3 patches/0001. The one
-	// fragment here is the FlashInfer bump Crash_Bash_FL asked for.
-	hw_patches: ["flashinfer-0-6-18-stable", "glm53-indexer-init"]
+	// content-type-injector: patches/0001 is not in 3.0.17 (gonka#1590 still open).
+	// cold-start-tolerance: patches/0002, watcher grace for the 328 GiB load.
+	// libnvrtc-symlink and sched-req-index-guard report no-op on this base
+	// (merged as gonka#1560 and gonka-ai/vllm#106 respectively).
+	hw_patches: bases.GONKA_BASE_PATCHES
 	runner_patch: "h100-glm-5-3-flash-plugin"
 	env: {
-		// Server-side plugin flip: launch the gonka-poc composed entrypoint.
-		MLNODE_VLLM_MODULE: "gonka_poc.entrypoint.api_router"
-		// Required for the worker extension's collective_rpc msgpack channel.
+		MLNODE_VLLM_MODULE:                "gonka_poc.entrypoint.api_router"
 		VLLM_ALLOW_INSECURE_SERIALIZATION: "1"
-		// 328 GiB across 8 ranks is a slow first load; his bring-up command sets
-		// the same 3600s, so an engine that is merely loading is not killed.
+		// 328 GiB of FP8 weights: a slow first load on every arm.
 		VLLM_ENGINE_READY_TIMEOUT_S: "3600"
 		VLLM_RUNNER_TIMEOUT:         "3600"
 		WATCHER_GRACE_FIRST_HEALTHY: "1"
 	}
 	runtime_defaults: {
-		// Forced via the runner-patch; reproduced here for the dashboard.
 		tensor_parallel_size: 8
 		kv_cache_dtype:       "fp8"
 		block_size:           2304
 		max_num_seqs:         256
+		gpu_memory_utilization:  0.95
+		max_num_batched_tokens: 65536
 		logprobs_mode:        "processed_logprobs"
 		trust_remote_code:    true
 		tool_call_parser:     "glm47"
 		reasoning_parser:     "glm45"
 	}
-	description: "H100 Hopper SXM5 (×8) + GLM-5.3-Flash FP8 (TP=8, autotune off) — vllm-poc 0.28 PLUGIN, test-mode image"
+	description: "H100 Hopper SXM5 (x8) + GLM-5.3-Flash FP8 (TP=8, fp8 KV, autotune off, gmu 0.95) - vllm-poc 0.28 PLUGIN, overlay on gonka-ai/mlnode 3.0.17"
 	notes: """
-		TEST bring-up image, built at Crash_Bash_FL's request (2026-08-27) as the
-		Hopper arm of a two-image pair; the Blackwell arm is b300-glm-5-3-flash,
-		which pins fp8 KV instead of disabling autotune.
-
-		Nothing about this model is measured yet. It has no chain governance
-		record, its vLLM support is an open upstream PR, and the base image it
-		rides was built from an untagged tree (see PORTING.md). Do not treat any
-		number produced by this image as a reference until a GPU pass covers
-		self-validation, nonce/min and a replay cross-check.
-
-		The 0.28 chain is a side branch: tools/stage3.lock.cue still points the
-		fleet at the 0.25.1 stack, and this leaf reaches its base by digest.
+		Release-candidate image for GLM-5.3-Flash on Cortima's 3.0.17 base. The
+		runner patch bakes the flags every measurement ran with; the chain
+		proposal (gonka.gg #101) deliberately leaves block size, sequence cap and
+		autotune out of the on-chain args so hosts can tune per hardware, which
+		is what this image does for H100.
 		"""
 }

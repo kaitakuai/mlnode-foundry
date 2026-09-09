@@ -1,4 +1,4 @@
-"""H100 GLM-5.3-Flash PLUGIN-base hardcodes for MLNode runner.py.
+"""B200 GLM-5.3-Flash PLUGIN-base hardcodes for MLNode runner.py.
 
 Three flag classes, applied to self.additional_args at VLLMRunner.__init__:
   forced    set or override (TP, fp8 KV, block size, seq cap, parsers, plugin plumbing)
@@ -6,7 +6,7 @@ Three flag classes, applied to self.additional_args at VLLMRunner.__init__:
   flags     boolean switches, appended if missing
 
 Values are the ones the GLM-5.3-Flash measurements ran with
-(kaitakuai/experiments/2026-09). 8x80 GB: the engine does not start at the default --gpu-memory-utilization (5.98 GiB of KV needed, 5.14 available); 65536 batched tokens and custom all-reduce off are what the 8xH100 measurement ran with.
+(kaitakuai/experiments/2026-09). 4x183 GB, TP=4; 65536 batched tokens and custom all-reduce off are what the 4xB200 measurement ran with.
 
 Model-side reasons for the common set:
   --kv-cache-dtype fp8      FlashInfer 0.6.18 SM90 sparse-MLA path; bf16 KV
@@ -33,9 +33,9 @@ MODULE_REPLACEMENT = '"-m", os.getenv("MLNODE_VLLM_MODULE", "vllm.entrypoints.op
 
 INJECTION_LINES = [
     "",
-    "# --- Kaitaku H100-GLM-5.3-Flash plugin hardcodes (tools/runner-patches/h100-glm-5-3-flash-plugin.py) ---",  # noqa: E501
-    "_h100_glm53_forced = [",
-    "    ('--tensor-parallel-size', '8'),",
+    "# --- Kaitaku B200-GLM-5.3-Flash plugin hardcodes (tools/runner-patches/b200-glm-5-3-flash-plugin.py) ---",  # noqa: E501
+    "_b200_glm53_forced = [",
+    "    ('--tensor-parallel-size', '4'),",
     "    ('--kv-cache-dtype', 'fp8'),",
     "    ('--block-size', '2304'),",
     "    ('--max-num-seqs', '256'),",
@@ -44,28 +44,27 @@ INJECTION_LINES = [
     "    ('--logprobs-mode', 'processed_logprobs'),",
     "    ('--worker-extension-cls', 'gonka_poc.worker.PoCWorkerExtension'),",
     "]",
-    "_h100_glm53_defaults = [",
-    "    ('--gpu-memory-utilization', '0.95'),",
+    "_b200_glm53_defaults = [",
     "    ('--max-num-batched-tokens', '65536'),",
     "]",
-    "_h100_glm53_flags = [",
+    "_b200_glm53_flags = [",
     "    '--trust-remote-code',",
     "    '--enable-auto-tool-choice',",
     "    '--no-enable-flashinfer-autotune',",
     "    '--disable-custom-all-reduce',",
     "]",
-    "for _flag, _value in _h100_glm53_forced:",
+    "for _flag, _value in _b200_glm53_forced:",
     "    if _flag in self.additional_args:",
     "        self.additional_args[self.additional_args.index(_flag) + 1] = _value",
     "    else:",
     "        self.additional_args.extend([_flag, _value])",
-    "for _flag, _value in _h100_glm53_defaults:",
+    "for _flag, _value in _b200_glm53_defaults:",
     "    if _flag not in self.additional_args:",
     "        self.additional_args.extend([_flag, _value])",
-    "for _flag in _h100_glm53_flags:",
+    "for _flag in _b200_glm53_flags:",
     "    if _flag not in self.additional_args:",
     "        self.additional_args.append(_flag)",
-    "# --- end Kaitaku H100-GLM-5.3-Flash plugin hardcodes ---",
+    "# --- end Kaitaku B200-GLM-5.3-Flash plugin hardcodes ---",
 ]
 
 
@@ -75,11 +74,11 @@ def main() -> int:
         src = f.read()
     if MARKER not in src:
         sys.stderr.write(
-            "ERROR: h100-glm-5-3-flash patch: forced-args marker not found. "
+            "ERROR: b200-glm-5-3-flash patch: forced-args marker not found. "
             "Upstream runner.py may have been refactored - re-verify the patch.\n"
         )
         return 1
-    if "_h100_glm53_forced" in src:
+    if "_b200_glm53_forced" in src:
         sys.stderr.write("patch already applied; skipping\n")
         return 0
     idx = src.index(MARKER) + len(MARKER)
@@ -88,7 +87,7 @@ def main() -> int:
         src = src.replace(MODULE_MARKER, MODULE_REPLACEMENT)
     elif "MLNODE_VLLM_MODULE" not in src:
         sys.stderr.write(
-            "ERROR: h100-glm-5-3-flash patch: launch-module marker not found and no "
+            "ERROR: b200-glm-5-3-flash patch: launch-module marker not found and no "
             "MLNODE_VLLM_MODULE support present.\n"
         )
         return 1

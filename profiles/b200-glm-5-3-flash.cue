@@ -14,12 +14,12 @@ import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
 // Tags 3.0.17, 3.0.17-glm53-h200 and 3.0.17-vllm-0.28.0-h200 resolve to the
 // same digest; we pin the plain release tag.
 //
-// Measured arm (B300): 2xB300 TP=2: PoC arm of the cross-hardware campaign and the generation side of the inference validation (4000 generations, 0 length mismatches).
+// Measured arm (B200): 4xB200 TP=4 (measured with the b300 test-k3 image): honest floor 0 of 1000 past the gate; batch 32 works once --max-num-batched-tokens allows it.
 // Reports: kaitakuai/experiments/2026-09. Tracking: gonka-ai/gonka#1691.
-b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
+b200_glm_5_3_flash: #OverlayProfile & bases.B200 & {
 	identity: {
 		axes: {
-			gpu:            "b300"
+			gpu:            "b200"
 			model:          "glm"
 			model_revision: "5-3-flash"
 		}
@@ -48,7 +48,7 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		"libnvrtc-symlink",
 		"sched-req-index-guard",
 	]
-	runner_patch: "b300-glm-5-3-flash-plugin"
+	runner_patch: "b200-glm-5-3-flash-plugin"
 	env: {
 		MLNODE_VLLM_MODULE:                "gonka_poc.entrypoint.api_router"
 		VLLM_ALLOW_INSECURE_SERIALIZATION: "1"
@@ -58,21 +58,22 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		WATCHER_GRACE_FIRST_HEALTHY: "1"
 	}
 	runtime_defaults: {
-		tensor_parallel_size: 2
+		tensor_parallel_size: 4
 		kv_cache_dtype:       "fp8"
 		block_size:           2304
 		max_num_seqs:         256
+		max_num_batched_tokens: 65536
 		logprobs_mode:        "processed_logprobs"
 		trust_remote_code:    true
 		tool_call_parser:     "glm47"
 		reasoning_parser:     "glm45"
 	}
-	description: "B300 Blackwell Ultra SXM6 (x2) + GLM-5.3-Flash FP8 (TP=2, fp8 KV, autotune off) - vllm-poc 0.28 PLUGIN, overlay on gonka-ai/mlnode 3.0.17"
+	description: "B200 Blackwell SXM (x4) + GLM-5.3-Flash FP8 (TP=4, fp8 KV, autotune off) - vllm-poc 0.28 PLUGIN, overlay on gonka-ai/mlnode 3.0.17"
 	notes: """
 		Release-candidate image for GLM-5.3-Flash on Cortima's 3.0.17 base. The
 		runner patch bakes the flags every measurement ran with; the chain
 		proposal (gonka.gg #101) deliberately leaves block size, sequence cap and
 		autotune out of the on-chain args so hosts can tune per hardware, which
-		is what this image does for B300.
+		is what this image does for B200.
 		"""
 }
