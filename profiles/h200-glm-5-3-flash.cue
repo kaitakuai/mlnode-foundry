@@ -25,7 +25,7 @@ h200_glm_5_3_flash: #OverlayProfile & bases.H200 & {
 		}
 		version: {
 			upstream: "3.0.17"
-			rev:      2
+			rev:      3
 		}
 	}
 	mode: "upstream-overlay"
@@ -47,6 +47,10 @@ h200_glm_5_3_flash: #OverlayProfile & bases.H200 & {
 		VLLM_ENGINE_READY_TIMEOUT_S: "3600"
 		VLLM_RUNNER_TIMEOUT:         "3600"
 		WATCHER_GRACE_FIRST_HEALTHY: "1"
+		// PoC batch default when the request carries none: 16 is the usable
+		// ceiling on Hopper (batch 32 fails in the FlashInfer sparse-MLA kernel on
+		// H200, OOM on 8xH100). Plugin default is 32. Crash_Bash_FL, 2026-09-10.
+		POC_BATCH_SIZE_DEFAULT: "16"
 	}
 	runtime_defaults: {
 		tensor_parallel_size: 4
