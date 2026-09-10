@@ -14,9 +14,13 @@ package bases
 //   sched-req-index-guard   kaitakuai/vllm#19 — EngineCore KeyError under async
 //                           scheduling; patches vLLM, not mlnode, because the
 //                           base image no longer comes from our residual tree
+//   drop-stock-ubuntu-user  Ubuntu 24.04 bases (3.0.17 on) ship `ubuntu` at UID
+//                           1000, which entrypoint.sh needs for appuser; no-op
+//                           on 22.04 bases
 GONKA_BASE_PATCHES: [
 	"content-type-injector",
 	"cold-start-tolerance",
 	"libnvrtc-symlink",
 	"sched-req-index-guard",
+	"drop-stock-ubuntu-user",
 ]

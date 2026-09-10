@@ -25,7 +25,7 @@ h200_glm_5_3_flash: #OverlayProfile & bases.H200 & {
 		}
 		version: {
 			upstream: "3.0.17"
-			rev:      1
+			rev:      2
 		}
 	}
 	mode: "upstream-overlay"

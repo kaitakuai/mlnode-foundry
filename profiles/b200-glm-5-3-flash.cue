@@ -25,7 +25,7 @@ b200_glm_5_3_flash: #OverlayProfile & bases.B200 & {
 		}
 		version: {
 			upstream: "3.0.17"
-			rev:      1
+			rev:      2
 		}
 	}
 	mode: "upstream-overlay"
@@ -47,6 +47,7 @@ b200_glm_5_3_flash: #OverlayProfile & bases.B200 & {
 		"content-type-injector",
 		"libnvrtc-symlink",
 		"sched-req-index-guard",
+		"drop-stock-ubuntu-user",
 	]
 	runner_patch: "b200-glm-5-3-flash-plugin"
 	env: {
