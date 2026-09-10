@@ -6,7 +6,7 @@ Three flag classes, applied to self.additional_args at VLLMRunner.__init__:
   flags     boolean switches, appended if missing
 
 Values are the ones the GLM-5.3-Flash measurements ran with
-(kaitakuai/experiments/2026-09). 2x275 GB, TP=2 (328 GiB of FP8 weights fit in 550 GiB); inference validation on B300 passed the same block-size / max-num-seqs / autotune flags explicitly.
+(kaitakuai/experiments/2026-09). 2x275 GB, TP=2 (328 GiB of FP8 weights fit in 550 GiB); inference validation on B300 passed the same block-size / max-num-seqs / autotune flags explicitly; 65536 batched tokens (batch x 1024 for batch 32 and above) per Crash_Bash_FL, 2026-09-10.
 
 Model-side reasons for the common set:
   --kv-cache-dtype fp8      FlashInfer 0.6.18 SM90 sparse-MLA path; bf16 KV
@@ -45,7 +45,7 @@ INJECTION_LINES = [
     "    ('--worker-extension-cls', 'gonka_poc.worker.PoCWorkerExtension'),",
     "]",
     "_b300_glm53_defaults = [",
-    "",
+    "    ('--max-num-batched-tokens', '65536'),",
     "]",
     "_b300_glm53_flags = [",
     "    '--trust-remote-code',",

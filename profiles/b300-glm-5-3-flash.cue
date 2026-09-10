@@ -25,7 +25,7 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		}
 		version: {
 			upstream: "3.0.17"
-			rev:      2
+			rev:      3
 		}
 	}
 	mode: "upstream-overlay"
@@ -63,6 +63,7 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		kv_cache_dtype:       "fp8"
 		block_size:           2304
 		max_num_seqs:         256
+		max_num_batched_tokens: 65536
 		logprobs_mode:        "processed_logprobs"
 		trust_remote_code:    true
 		tool_call_parser:     "glm47"
