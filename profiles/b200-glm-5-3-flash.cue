@@ -9,10 +9,17 @@ import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
 // base, same overlay recipe) and already carries what the test-k3 images added
 // as Stage-4 layers: FlashInfer 0.6.18 and the kpool indexer init are inside the
 // residual, so neither flashinfer-0-6-18-stable nor glm53-indexer-init is listed.
-// The mlnode sources in 3.0.17 are byte-identical to gonka-ai/gonka main.
 //
-// Tags 3.0.17, 3.0.17-glm53-h200 and 3.0.17-vllm-0.28.0-h200 resolve to the
-// same digest; we pin the plain release tag.
+// Rebuilt 2026-09-12 on the digest below, which carries two fixes the first
+// 3.0.17 lacked: the GLM processor resolves processor_config.json through the
+// hub (gonka-ai/vllm#108), so `--model <hf id>` works — the path MLNode takes,
+// since it downloads the checkpoint but passes the id — and the entrypoint no
+// longer creates appuser at runtime (gonka-ai/gonka#1751), which retires the
+// drop-stock-ubuntu-user layer. Its mlnode sources are the release branch
+// feat/glm-5-3-flash-release, i.e. main plus that entrypoint fix.
+//
+// Tags 3.0.17, 3.0.17-vllm-0.28.0, 3.0.17-vllm-0.28.0-h200 and
+// 3.0.17-glm53-h200 all resolve to this digest; we pin by digest.
 //
 // Measured arm (B200): 4xB200 TP=4 (measured with the b300 test-k3 image): honest floor 0 of 1000 past the gate; batch 32 works once --max-num-batched-tokens allows it.
 // Reports: kaitakuai/experiments/2026-09. Tracking: gonka-ai/gonka#1691.
@@ -25,13 +32,13 @@ b200_glm_5_3_flash: #OverlayProfile & bases.B200 & {
 		}
 		version: {
 			upstream: "3.0.17"
-			rev:      2
+			rev:      4
 		}
 	}
 	mode: "upstream-overlay"
 	base: {
 		image:            "ghcr.io/gonka-ai/mlnode"
-		digest:           "sha256:b9ca935061bda3bd4f41f3906486bc419f4116df5f07134df76af14db21df7e1"
+		digest:           "sha256:6772abdf736bbe8cad27d8c305e1fa32b54c82f783286d405fc5171d06419081"
 		upstream_version: "3.0.17"
 	}
 	// content-type-injector: patches/0001 is not in 3.0.17 (gonka#1590 still open).
@@ -47,7 +54,6 @@ b200_glm_5_3_flash: #OverlayProfile & bases.B200 & {
 		"content-type-injector",
 		"libnvrtc-symlink",
 		"sched-req-index-guard",
-		"drop-stock-ubuntu-user",
 	]
 	runner_patch: "b200-glm-5-3-flash-plugin"
 	env: {
