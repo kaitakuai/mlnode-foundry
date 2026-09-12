@@ -2,13 +2,13 @@
   "$schema": "./schema.json",
   "schema_version": 1,
   "line": "mlnode-overlay",
-  "gpu": "h200",
+  "gpu": "h100",
   "model_family": "glm",
   "model_revision": "5-3-flash",
   "quant": null,
-  "name": "ghcr.io/kaitakuai/mlnode-h200-glm-5-3-flash",
-  "tag": "3.0.17-overlay-k3",
-  "k_rev": 3,
+  "name": "ghcr.io/kaitakuai/mlnode-h100-glm-5-3-flash",
+  "tag": "3.0.17-overlay-k4",
+  "k_rev": 4,
   "vllm_base_version": null,
   "mlnode_version": null,
   "upstream_overlay_version": "3.0.17",
@@ -19,25 +19,23 @@
   "model_license": "MIT",
   "cuda": "13.0",
   "size": "15 GB",
-  "runtime": "docker run -d --gpus all -p 8080:8080 ghcr.io/kaitakuai/mlnode-h200-glm-5-3-flash:3.0.17-overlay-k3",
+  "runtime": "docker run -d --gpus all -p 8080:8080 ghcr.io/kaitakuai/mlnode-h100-glm-5-3-flash:3.0.17-overlay-k4",
   "flags": [
-    "tensor_parallel_size=4",
+    "tensor_parallel_size=8",
     "VLLM_USE_FLASHINFER_MOE_FP8=1",
     "VLLM_USE_FLASHINFER_MOE_FP4=1"
   ],
-  "flag_warnings": {
-    "PoC batch ceiling": "PoC saturates at batch 8 (1439 nonces/min at 8 and 16); batch 24 kills the engine on stock max-num-batched-tokens. Do not raise operator PoC batch above 16 on this topology."
-  },
+  "flag_warnings": {},
   "flag_descriptions": {
-    "tensor_parallel_size=4": "Topology validated on 4\u00d7H200 SXM (141 GB each, NV18 full mesh), TP=4 \u2014 1439 nonces/min per instance at batch 8-16 (PoC saturates at batch 8); two instances per 8-GPU node.",
+    "tensor_parallel_size=8": "Topology validated on 8\u00d7H100 80GB (NV18 full mesh), TP=8 \u2014 1775 nonces/min, one instance per 8-GPU node.",
     "VLLM_USE_FLASHINFER_MOE_FP8=1": "FlashInfer MoE FP8 path for the native-FP8 GLM-5.3-Flash checkpoint; baked into the image env.",
     "VLLM_USE_FLASHINFER_MOE_FP4=1": "FlashInfer MoE FP4 kernels enabled in the image env (no-op for the FP8 checkpoint; relevant only if an NVFP4 requant is mounted)."
   },
-  "digest": "sha256:eefab5eb3d11c0988dc074cc3431604c7ae3630981455ac00c4ce9a4ba9baeb3",
+  "digest": "sha256:b8ae548fe3f1d7987e95bb8503cc9eb6a1b41ef7a9d40e75b2988f7dbe33f665",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main",
   "slsa_attestation_url": null,
-  "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-09/glm53-flash-fp8-4xh200/README.md",
+  "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-09/glm53-flash-fp8-8xh100/README.md",
   "uploaded_by": "clanster",
-  "nonces": 2878,
-  "weight": 4532
+  "nonces": 1775,
+  "weight": 2795
 }

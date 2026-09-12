@@ -2,13 +2,13 @@
   "$schema": "./schema.json",
   "schema_version": 1,
   "line": "mlnode-overlay",
-  "gpu": "b300",
+  "gpu": "b200",
   "model_family": "glm",
   "model_revision": "5-3-flash",
   "quant": null,
-  "name": "ghcr.io/kaitakuai/mlnode-b300-glm-5-3-flash",
-  "tag": "3.0.17-overlay-k3",
-  "k_rev": 3,
+  "name": "ghcr.io/kaitakuai/mlnode-b200-glm-5-3-flash",
+  "tag": "3.0.17-overlay-k4",
+  "k_rev": 4,
   "vllm_base_version": null,
   "mlnode_version": null,
   "upstream_overlay_version": "3.0.17",
@@ -19,23 +19,23 @@
   "model_license": "MIT",
   "cuda": "13.0",
   "size": "15 GB",
-  "runtime": "docker run -d --gpus all -p 8080:8080 ghcr.io/kaitakuai/mlnode-b300-glm-5-3-flash:3.0.17-overlay-k3",
+  "runtime": "docker run -d --gpus all -p 8080:8080 ghcr.io/kaitakuai/mlnode-b200-glm-5-3-flash:3.0.17-overlay-k4",
   "flags": [
-    "tensor_parallel_size=2",
+    "tensor_parallel_size=4",
     "VLLM_USE_FLASHINFER_MOE_FP8=1",
     "VLLM_USE_FLASHINFER_MOE_FP4=1"
   ],
   "flag_warnings": {},
   "flag_descriptions": {
-    "tensor_parallel_size=2": "Topology validated on 2\u00d7B300 SXM6 (275 GB each, NV18), TP=2 \u2014 2030 nonces/min per instance at batch 32; four instances per 8-GPU node.",
+    "tensor_parallel_size=4": "Topology validated on 4\u00d7B200 SXM (183 GB each, NV18 full mesh), TP=4 \u2014 2727 nonces/min per instance; two instances per 8-GPU node.",
     "VLLM_USE_FLASHINFER_MOE_FP8=1": "FlashInfer MoE FP8 path for the native-FP8 GLM-5.3-Flash checkpoint; baked into the image env.",
     "VLLM_USE_FLASHINFER_MOE_FP4=1": "FlashInfer MoE FP4 kernels enabled in the image env (no-op for the FP8 checkpoint; relevant only if an NVFP4 requant is mounted)."
   },
-  "digest": "sha256:b42cdba8036d3cd26310975d25bef7aa010aecb2adbc4b32e83530018dea611c",
+  "digest": "sha256:47b2bed468a9afd97ca4f22b20a834cce1db9e50e239e477c4f2e69d7c5c7c67",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main",
   "slsa_attestation_url": null,
-  "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-09/glm53-flash-fp8-2xb300/README.md",
+  "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-09/glm53-flash-fp8-4xb200/README.md",
   "uploaded_by": "clanster",
-  "nonces": 8120,
-  "weight": 12787
+  "nonces": 5454,
+  "weight": 8589
 }
