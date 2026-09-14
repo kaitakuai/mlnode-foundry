@@ -1,0 +1,18 @@
+{
+  "profile": "profiles/h200-glm-5-3-flash.cue",
+  "profile_hash": "7d2c0a98db572507ebcaa2a16506add30bf43ddc00088cc9463717708740f8a6",
+  "status": "draft",
+  "image": {
+    "package": "ghcr.io/kaitakuai/mlnode-h200-glm-5-3-flash",
+    "tag": "3.1.0-overlay-k1",
+    "digest": "sha256:54533278e991b38dfc2164bf36a980f6a753e8ae173dc323b73452a2e3125b27",
+    "built_at": "2026-09-14T19:13:48Z",
+    "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/feat/glm53-overlay-3017"
+  },
+  "validation": {
+    "build_smoke": {
+      "result": "pass",
+      "at": "2026-09-14T19:13:48Z"
+    }
+  }
+}
