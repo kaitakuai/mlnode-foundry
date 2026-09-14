@@ -32,7 +32,7 @@ h200_glm_5_3_flash: #OverlayProfile & bases.H200 & {
 		}
 		version: {
 			upstream: "3.0.17"
-			rev:      5
+			rev:      6
 		}
 	}
 	mode: "upstream-overlay"
@@ -53,7 +53,7 @@ h200_glm_5_3_flash: #OverlayProfile & bases.H200 & {
 		"cold-start-tolerance",
 		"libnvrtc-symlink",
 		"sched-req-index-guard",
-		"poc-batch-size-from-env",
+		"poc-batch-size-force",
 	]
 	runner_patch: "h200-glm-5-3-flash-plugin"
 	env: {
@@ -63,9 +63,9 @@ h200_glm_5_3_flash: #OverlayProfile & bases.H200 & {
 		VLLM_ENGINE_READY_TIMEOUT_S: "3600"
 		VLLM_RUNNER_TIMEOUT:         "3600"
 		WATCHER_GRACE_FIRST_HEALTHY: "1"
-		// PoC batch when the request carries none, which is the production path:
-		// dapi omits batch_size on purpose. Needs the poc-batch-size-from-env
-		// layer above, or MLNode's own default of 32 wins. 16 is the usable PoC batch on Hopper: 32 fails in the FlashInfer sparse-MLA
+		// PoC batch for this hardware. The poc-batch-size-force layer above makes
+		// it outrank whatever the caller sends; without that layer the value is
+		// dead, since dapi omits batch_size and MLNode fills its own 32 in. 16 is the usable PoC batch on Hopper: 32 fails in the FlashInfer sparse-MLA
 		// kernel on H200 and is OOM on 8xH100.
 		// Crash_Bash_FL, 2026-09-10.
 		POC_BATCH_SIZE_DEFAULT: "16"

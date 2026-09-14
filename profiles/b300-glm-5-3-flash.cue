@@ -32,7 +32,7 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		}
 		version: {
 			upstream: "3.0.17"
-			rev:      5
+			rev:      6
 		}
 	}
 	mode: "upstream-overlay"
@@ -54,7 +54,7 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		"content-type-injector",
 		"libnvrtc-symlink",
 		"sched-req-index-guard",
-		"poc-batch-size-from-env",
+		"poc-batch-size-force",
 	]
 	runner_patch: "b300-glm-5-3-flash-plugin"
 	env: {
@@ -64,10 +64,10 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		VLLM_ENGINE_READY_TIMEOUT_S: "3600"
 		VLLM_RUNNER_TIMEOUT:         "3600"
 		WATCHER_GRACE_FIRST_HEALTHY: "1"
-		// PoC batch when the request carries none, which is the production path:
-		// dapi omits batch_size on purpose. Needs the poc-batch-size-from-env
-		// layer above, or MLNode's own default of 32 wins, which is the same
-		// number here but spelled out rather than inherited. 32 is the batch the Blackwell measurements ran with, and what the
+		// PoC batch for this hardware. The poc-batch-size-force layer above makes
+		// it outrank whatever the caller sends; without that layer the value is
+		// dead, since dapi omits batch_size and MLNode fills its own 32 in.
+		// 32 is the batch the Blackwell measurements ran with, and what the
 		// max-num-batched-tokens default above is sized for.
 		POC_BATCH_SIZE_DEFAULT: "32"
 	}
