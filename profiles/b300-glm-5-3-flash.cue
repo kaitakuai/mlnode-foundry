@@ -19,6 +19,14 @@ import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
 // H200-vs-Blackwell invalid votes of 2026-09-14. The mlnode sources are
 // unchanged from 3.0.17, so every Stage-4 layer below applies as before.
 //
+// Repinned 2026-09-16 to Vlad's rebuild (one layer over the first 3.1.0: a
+// per-model /versions cache in mlnode routes.py, since gonka-poc >= 0.1.6
+// reports poc_validation_inference per model and it is off for GLM). That
+// rebuild still carries the replay max_tokens pin from kaitakuai/vllm#21,
+// which two GLM nodes hung on the same day; gonka-ai/vllm#111 removed it
+// from the residual and the replay-max-tokens-pin-revert layer below does
+// the same inside this image until a base is built past #111.
+//
 // Tag 3.1.0-vllm-0.28.0 resolves to this digest; we pin by digest.
 //
 // Measured arm (B300): 2xB300 TP=2: PoC arm of the cross-hardware campaign and the generation side of the inference validation (4000 generations, 0 length mismatches).
@@ -32,13 +40,13 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		}
 		version: {
 			upstream: "3.1.0"
-			rev:      1
+			rev:      2
 		}
 	}
 	mode: "upstream-overlay"
 	base: {
 		image:            "ghcr.io/gonka-ai/mlnode"
-		digest:           "sha256:702d932957944b6a77b6fbb73b1cc00e5d437023500d1182d66ac4a233fc949e"
+		digest:           "sha256:25cccf7d9954678550e47a1f09f12d3db140803e9cd6c289f3af25d34ceabda0"
 		upstream_version: "3.1.0"
 	}
 	// content-type-injector: patches/0001 is not in 3.1.0 (the sender-side fix, gonka#1756, is still open).
@@ -55,6 +63,7 @@ b300_glm_5_3_flash: #OverlayProfile & bases.B300 & {
 		"libnvrtc-symlink",
 		"sched-req-index-guard",
 		"poc-batch-size-force",
+		"replay-max-tokens-pin-revert",
 	]
 	runner_patch: "b300-glm-5-3-flash-plugin"
 	env: {
