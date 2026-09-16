@@ -19,13 +19,13 @@ import "github.com/kaitakuai/mlnode-foundry/profiles/bases"
 // H200-vs-Blackwell invalid votes of 2026-09-14. The mlnode sources are
 // unchanged from 3.0.17, so every Stage-4 layer below applies as before.
 //
-// Repinned 2026-09-16 to Vlad's rebuild (one layer over the first 3.1.0: a
-// per-model /versions cache in mlnode routes.py, since gonka-poc >= 0.1.6
-// reports poc_validation_inference per model and it is off for GLM). That
-// rebuild still carries the replay max_tokens pin from kaitakuai/vllm#21,
-// which two GLM nodes hung on the same day; gonka-ai/vllm#111 removed it
-// from the residual and the replay-max-tokens-pin-revert layer below does
-// the same inside this image until a base is built past #111.
+// Repinned 2026-09-16 to Vlad's third 3.1.0 (18:08 UTC): two layers over the
+// first one. A per-model /versions cache in mlnode routes.py, since gonka-poc
+// >= 0.1.6 reports poc_validation_inference per model and it is off for GLM;
+// and serving.py without the replay max_tokens pin from kaitakuai/vllm#21
+// (gonka-ai/vllm#111), which had hung two GLM nodes that morning. The
+// effective serving.py is byte-identical to release/v0.28.0-glm53 after
+// #111, so no replay layer is needed here.
 //
 // Tag 3.1.0-vllm-0.28.0 resolves to this digest; we pin by digest.
 //
@@ -46,7 +46,7 @@ h100_glm_5_3_flash: #OverlayProfile & bases.H100 & {
 	mode: "upstream-overlay"
 	base: {
 		image:            "ghcr.io/gonka-ai/mlnode"
-		digest:           "sha256:25cccf7d9954678550e47a1f09f12d3db140803e9cd6c289f3af25d34ceabda0"
+		digest:           "sha256:de9150fcee0ad77199ca8a48ecae993b2cac0b92a7b05284d1575657d04522fa"
 		upstream_version: "3.1.0"
 	}
 	// content-type-injector: patches/0001 is not in 3.1.0 (the sender-side fix, gonka#1756, is still open).
@@ -62,7 +62,6 @@ h100_glm_5_3_flash: #OverlayProfile & bases.H100 & {
 		"libnvrtc-symlink",
 		"sched-req-index-guard",
 		"poc-batch-size-force",
-		"replay-max-tokens-pin-revert",
 	]
 	runner_patch: "h100-glm-5-3-flash-plugin"
 	env: {
