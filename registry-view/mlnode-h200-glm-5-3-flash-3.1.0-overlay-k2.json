@@ -7,8 +7,8 @@
   "model_revision": "5-3-flash",
   "quant": null,
   "name": "ghcr.io/kaitakuai/mlnode-h200-glm-5-3-flash",
-  "tag": "3.1.0-overlay-k1",
-  "k_rev": 1,
+  "tag": "3.1.0-overlay-k2",
+  "k_rev": 2,
   "vllm_base_version": null,
   "mlnode_version": null,
   "upstream_overlay_version": "3.1.0",
@@ -19,7 +19,7 @@
   "model_license": "MIT",
   "cuda": "13.0",
   "size": "15 GB",
-  "runtime": "docker run -d --gpus all -p 8080:8080 ghcr.io/kaitakuai/mlnode-h200-glm-5-3-flash:3.1.0-overlay-k1",
+  "runtime": "docker run -d --gpus all -p 8080:8080 ghcr.io/kaitakuai/mlnode-h200-glm-5-3-flash:3.1.0-overlay-k2",
   "flags": [
     "tensor_parallel_size=4",
     "VLLM_USE_FLASHINFER_MOE_FP8=1",
@@ -35,7 +35,7 @@
     "VLLM_USE_FLASHINFER_MOE_FP4=1": "FlashInfer MoE FP4 kernels enabled in the image env (no-op for the FP8 checkpoint; relevant only if an NVFP4 requant is mounted).",
     "POC_BATCH_SIZE=16": "PoC batch forced by the image to 16 for this GPU (validated 2026-09-13 on the 3.1.0 base with gonka-poc plugin v0.1.6, which fixes the first-nonce-in-batch artefact)."
   },
-  "digest": "sha256:54533278e991b38dfc2164bf36a980f6a753e8ae173dc323b73452a2e3125b27",
+  "digest": "sha256:1b94da9a0a5da18a51ddfe07a9539a51fbb4fa20ad6f90125f05263cc3dc04fb",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main",
   "slsa_attestation_url": null,
   "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-09/glm53-flash-fp8-4xh200/README.md",

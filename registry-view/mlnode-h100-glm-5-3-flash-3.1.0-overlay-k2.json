@@ -2,13 +2,13 @@
   "$schema": "./schema.json",
   "schema_version": 1,
   "line": "mlnode-overlay",
-  "gpu": "b300",
+  "gpu": "h100",
   "model_family": "glm",
   "model_revision": "5-3-flash",
   "quant": null,
-  "name": "ghcr.io/kaitakuai/mlnode-b300-glm-5-3-flash",
-  "tag": "3.1.0-overlay-k1",
-  "k_rev": 1,
+  "name": "ghcr.io/kaitakuai/mlnode-h100-glm-5-3-flash",
+  "tag": "3.1.0-overlay-k2",
+  "k_rev": 2,
   "vllm_base_version": null,
   "mlnode_version": null,
   "upstream_overlay_version": "3.1.0",
@@ -19,25 +19,25 @@
   "model_license": "MIT",
   "cuda": "13.0",
   "size": "15 GB",
-  "runtime": "docker run -d --gpus all -p 8080:8080 ghcr.io/kaitakuai/mlnode-b300-glm-5-3-flash:3.1.0-overlay-k1",
+  "runtime": "docker run -d --gpus all -p 8080:8080 ghcr.io/kaitakuai/mlnode-h100-glm-5-3-flash:3.1.0-overlay-k2",
   "flags": [
-    "tensor_parallel_size=2",
+    "tensor_parallel_size=8",
     "VLLM_USE_FLASHINFER_MOE_FP8=1",
     "VLLM_USE_FLASHINFER_MOE_FP4=1",
-    "POC_BATCH_SIZE=32"
+    "POC_BATCH_SIZE=8"
   ],
   "flag_warnings": {},
   "flag_descriptions": {
-    "tensor_parallel_size=2": "Topology validated on 2\u00d7B300 SXM6 (275 GB each, NV18), TP=2 \u2014 2030 nonces/min per instance at batch 32; four instances per 8-GPU node.",
+    "tensor_parallel_size=8": "Topology validated on 8\u00d7H100 80GB (NV18 full mesh), TP=8 \u2014 1775 nonces/min, one instance per 8-GPU node.",
     "VLLM_USE_FLASHINFER_MOE_FP8=1": "FlashInfer MoE FP8 path for the native-FP8 GLM-5.3-Flash checkpoint; baked into the image env.",
     "VLLM_USE_FLASHINFER_MOE_FP4=1": "FlashInfer MoE FP4 kernels enabled in the image env (no-op for the FP8 checkpoint; relevant only if an NVFP4 requant is mounted).",
-    "POC_BATCH_SIZE=32": "PoC batch forced by the image to 32 for this GPU (validated 2026-09-13 on the 3.1.0 base with gonka-poc plugin v0.1.6, which fixes the first-nonce-in-batch artefact)."
+    "POC_BATCH_SIZE=8": "PoC batch forced by the image to 8 for this GPU (validated 2026-09-13 on the 3.1.0 base with gonka-poc plugin v0.1.6, which fixes the first-nonce-in-batch artefact)."
   },
-  "digest": "sha256:a2a417a46ffbf7c477a64f385cf5bdb584aa38d4ef6d597bd469b3415176e6e2",
+  "digest": "sha256:c517993fb06b403d83bf8fcb2cf46f928ef776331d6d5963d47d382f17a96d15",
   "cosign_identity": "https://github.com/kaitakuai/mlnode-foundry/.github/workflows/build-stage4.yml@refs/heads/main",
   "slsa_attestation_url": null,
-  "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-09/glm53-flash-fp8-2xb300/README.md",
+  "report_url": "https://github.com/kaitakuai/experiments/blob/main/2026-09/glm53-flash-fp8-8xh100/README.md",
   "uploaded_by": "clanster",
-  "nonces": 8120,
-  "weight": 12787
+  "nonces": 1775,
+  "weight": 2795
 }
